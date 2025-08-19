@@ -8,6 +8,7 @@ namespace NET_Thing_Encryptor
         [STAThread]
         static void Main()
         {
+            ThingData.LoadMainData();
             ApplicationConfiguration.Initialize();
             using (var pw = new PasswordForm())
             {

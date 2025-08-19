@@ -48,7 +48,6 @@ public static class ThingData
         return output;
     }
 
-    // Convenience: String → String (Base64)
     public static async Task<string> Encrypt(string input)
     {
         if (string.IsNullOrEmpty(input))
@@ -69,6 +68,7 @@ public static class ThingData
         using var decrypted = await Decrypt(inputStream);
         return Encoding.UTF8.GetString(((MemoryStream)decrypted).ToArray());
     }
+
     public static string ComputeMD5Hash(byte[] input)
     {
         using (MD5 md5 = MD5.Create())
@@ -82,6 +82,7 @@ public static class ThingData
             return sb.ToString();
         }
     }
+
     public static async Task<bool> AttemptDecrypt(string password)
     {
         byte[] salt = Root.Salt;
@@ -132,7 +133,13 @@ public static class ThingData
         }
         catch(FileNotFoundException)
         {
-            MessageBox.Show("The main data file was not found, and a new one is being created." +
+            byte[] salt = new byte[32];
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+            Root = new ThingRoot(salt);
+            MessageBox.Show("The main data file was not found, and a new one has been created." +
                 "If this is your first time running this program, you can ignore this message." +
                 "This can be caused by deleting/moving Application Files or changing the Save Location.",
                 "New folder structure created", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -182,24 +189,34 @@ public static class ThingData
         }
         return false;
     }
-    public static string GetFilePath(ulong id)
+    public static string GetFilePath(ulong id, bool create = false)
     {
         string path = string.Empty;
         if (Root.SaveLocation == null)
         {
-            path = Path.GetFullPath(ThingData.IDToHex(id));
-            if(File.Exists(path))
+            path = Path.GetFullPath(IDToHex(id) + ".nte");
+            if (File.Exists(path))
                 return path;
+            else if (create)
+            {
+                File.Create(path).Close();
+                return path;
+            }
         }
         else
         {
-            path = Path.GetFullPath(Path.Combine(Root.SaveLocation, ThingData.IDToHex(id)));
+            path = Path.GetFullPath(Path.Combine(Root.SaveLocation, IDToHex(id)));
             if (File.Exists(path))
                 return path;
+            else if (create)
+            {
+                File.Create(path).Close();
+                return path;
+            }
         }
         throw new FileNotFoundException("File not found.", path);
     }
-    public static async Task<ThingFolder> GetFolderAsync(ulong folderID)
+    private static async Task<ThingFolder?> GetFolderAsync(ulong folderID)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         if (folderID == 0)
@@ -220,7 +237,7 @@ public static class ThingData
             throw new FileNotFoundException("Folder not found.", ThingData.GetFilePath(folderID));
         }
     }
-    public static async Task<ThingFile> GetFileAsync(ulong fileID)
+    private static async Task<ThingFile?> GetFileAsync(ulong fileID)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         if (fileID == 0)
@@ -238,41 +255,108 @@ public static class ThingData
             throw new FileNotFoundException("File not found.", ThingData.GetFilePath(fileID));
         }
     }
-    public static async Task SaveFolderAsync(ThingFolder? folder)
+    private static async Task SaveFolderAsync(ThingFolder? folder)
     {
         ArgumentNullException.ThrowIfNull(folder);
 
-        string folderPath = GetFilePath(folder.ID);
+        string folderPath = GetFilePath(folder.ID, true);
         string folderContent = JsonSerializer.Serialize(folder);
         string content = await Encrypt(folderContent);
 
         using FileStream fs = File.Create(folderPath);
         fs.Write(Encoding.UTF8.GetBytes(content));
     }
-    public static async Task SaveFileAsync(ThingFile? file)
+    private static async Task SaveFileAsync(ThingFile? file)
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        string filePath = GetFilePath(file.ID);
+        string filePath = GetFilePath(file.ID, true);
         string fileContent = JsonSerializer.Serialize(file);
         string content = await Encrypt(fileContent);
 
         using FileStream fs = File.Create(filePath);
         fs.Write(Encoding.UTF8.GetBytes(content));
     }
-    public static async Task AddFileToFolder(ThingFile file, ulong folderID)
+    public static async Task MoveFileToFolder(ThingFile file, ulong folderID)
     {
-        ThingFolder folder = await GetFolderAsync(folderID);
+        ThingFolder? folder = await GetFolderAsync(folderID);
+        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
 
-        if (file.ParentID != 0)
-        {
-            ThingFolder? oldFolder = await GetFolderAsync(file.ParentID);
-            oldFolder.Content.Remove(file.ID);
-            await SaveFolderAsync(oldFolder);
-        }
+        ThingFolder? oldFolder = await GetFolderAsync(file.ParentID);
+        ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
+        oldFolder.Content.Remove(file.ID);
+        await SaveFolderAsync(oldFolder);
+
         folder.Content.Add(file.ID);
         await SaveFolderAsync(folder);
         file.ParentID = folder.ID;
+        await SaveFileAsync(file);
+    }
+    public static async Task MoveFolderToFolder(ulong folder, ulong parentFolderID)
+    {
+        ThingFolder? parentFolder = await GetFolderAsync(parentFolderID);
+        ThingFolder? targetFolder = await GetFolderAsync(folder);
 
+        ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
+        ArgumentNullException.ThrowIfNull(targetFolder, nameof(targetFolder));
+
+        if(targetFolder.ID == 0)
+        {
+            throw new ArgumentException("Cannot add the root folder to another folder.", nameof(folder));
+        }
+
+        ThingFolder? oldFolder = await GetFolderAsync(targetFolder.ParentID);
+        ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
+        oldFolder.Content.Remove(targetFolder.ID);
+        await SaveFolderAsync(oldFolder);
+
+        parentFolder.Content.Add(targetFolder.ID);
+        await SaveFolderAsync(parentFolder);
+        targetFolder.ParentID = parentFolder.ID;
+        await SaveFolderAsync(targetFolder);
+    }
+    public static async Task DeleteFile(ulong fileID)
+    {
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+        ThingFile? file = await GetFileAsync(fileID);
+        ArgumentNullException.ThrowIfNull(file, nameof(file));
+        string filePath = GetFilePath(fileID);
+        if (File.Exists(filePath))
+        {
+            File.Delete(filePath);
+        }
+        if (file.ParentID != 0)
+        {
+            ThingFolder? folder = await GetFolderAsync(file.ParentID);
+            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+            folder.Content.Remove(file.ID);
+            await SaveFolderAsync(folder);
+        }
+    }
+    public static async Task DeleteFolder(ulong folderID)
+    {
+        if(folderID == 0)
+        {
+            throw new ArgumentException("Cannot delete the root folder.", nameof(folderID));
+        }
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+        ThingFolder? folder = await GetFolderAsync(folderID);
+        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+        if (folder.Content.Count != 0)
+        {
+            throw new InvalidOperationException("Cannot delete a folder that contains files or subfolders.");
+        }
+        string folderPath = GetFilePath(folderID);
+        if (Directory.Exists(folderPath))
+        {
+            Directory.Delete(folderPath, true);
+        }
+        if (folder.ParentID != 0)
+        {
+            ThingFolder? parentFolder = await GetFolderAsync(folder.ParentID);
+            ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
+            parentFolder.Content.Remove(folder.ID);
+            await SaveFolderAsync(parentFolder);
+        }
     }
 }

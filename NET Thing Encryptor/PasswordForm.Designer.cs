@@ -77,7 +77,7 @@
             labelPassword.RightToLeft = RightToLeft.No;
             labelPassword.Size = new Size(1034, 32);
             labelPassword.TabIndex = 1;
-            labelPassword.Text = "Enter your password to decrypt your files and press Enter to continue";
+            labelPassword.Text = "Enter your password to decrypt your files\r\n";
             labelPassword.TextAlign = ContentAlignment.TopCenter;
             // 
             // buttonContinue
