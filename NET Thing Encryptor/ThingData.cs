@@ -127,8 +127,17 @@ public static class ThingData
 
             if (root != null)
             {
+                List<ulong>? content = JsonSerializer.Deserialize<List<ulong>>(await Decrypt(root.ContentEncrypted));
                 Root = root;
                 return true;
+            }
+            else
+            {
+                File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
+                MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
+                    "Please restore from a backup or recreate the file.",
+                    "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new InvalidOperationException("The main data file is corrupted or damaged.");
             }
         }
         catch(FileNotFoundException)
