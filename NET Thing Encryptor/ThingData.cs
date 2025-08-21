@@ -139,6 +139,7 @@ public static class ThingData
                 rng.GetBytes(salt);
             }
             Root = new ThingRoot(salt);
+            await UpdateRootAsync();
             MessageBox.Show("The main data file was not found, and a new one has been created." +
                 "If this is your first time running this program, you can ignore this message." +
                 "This can be caused by deleting/moving Application Files or changing the Save Location.",
@@ -358,5 +359,17 @@ public static class ThingData
             parentFolder.Content.Remove(folder.ID);
             await SaveFolderAsync(parentFolder);
         }
+    }
+    public static async Task UpdateRootAsync()
+    {
+        ThingRoot tempRoot = Root;
+        tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
+        tempRoot.Content = null;
+        string rootPath = GetFilePath(0, true);
+        using FileStream fs = File.Create(@"\Data\0.nte");
+        string rootContent = JsonSerializer.Serialize(tempRoot);
+        await fs.WriteAsync(Encoding.UTF8.GetBytes(rootContent));
+        await fs.FlushAsync();
+        fs.Close();
     }
 }
