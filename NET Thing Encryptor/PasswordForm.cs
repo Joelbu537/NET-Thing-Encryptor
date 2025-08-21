@@ -21,7 +21,7 @@ namespace NET_Thing_Encryptor
             else
             {
                 MessageBox.Show("Failed to load main data. Please check the configuration.",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); // Change Text, maybe add auto repair options.
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
         }
