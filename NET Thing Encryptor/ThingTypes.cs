@@ -45,7 +45,7 @@ namespace NET_Thing_Encryptor
             Name = name;
             ID = ThingData.GenerateID();
             ParentID = 0;
-
+            MD5Hash = string.Empty;
             Content = content;
         }
     }
@@ -53,8 +53,8 @@ namespace NET_Thing_Encryptor
     {
         public byte[] Salt;
         public string? SaveLocation;
-        public string? ContentEncrypted; // magic-value + List<ThingObject>
-        public List<ulong> Content; // List of ThingObjects (Folders and Files)
+        public string ContentEncrypted; // magic-value + List<ThingObject>
+        public List<ulong>? Content; // List of ThingObjects (Folders and Files)
         public ThingRoot(byte[] salt)
         {
             Name = "Root";
@@ -63,7 +63,7 @@ namespace NET_Thing_Encryptor
 
             Salt = salt;
             SaveLocation = null;
-            ContentEncrypted = null;
+            ContentEncrypted = string.Empty;
             Content = new List<ulong>();
         }
     }

@@ -13,7 +13,7 @@ public static class ThingData
     private const string Magic = "NET Thing Encryptor";
     public static byte[]? Key { private get; set; }
     public static byte[]? IV { private get; set; }
-    public static ThingRoot Root { get; private set; }
+    public static ThingRoot? Root { get; private set; }
 
     public static async Task<Stream> Encrypt(Stream input)
     {
@@ -85,6 +85,7 @@ public static class ThingData
 
     public static async Task<bool> AttemptDecrypt(string password)
     {
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         byte[] salt = Root.Salt;
 
         try
@@ -100,6 +101,10 @@ public static class ThingData
             Key = key[..32];
             IV = key[32..];
 
+            if(Root.ContentEncrypted == null)
+            {
+                throw new InvalidOperationException("ContentEncrypted is null. Cannot decrypt.");
+            }
             string temp = await Decrypt(Root.ContentEncrypted);
 
             if(temp.StartsWith(Magic)) //PWD korrekt
@@ -124,21 +129,20 @@ public static class ThingData
         {
             using FileStream fs = File.OpenRead(@"/Data/0.nte");
             ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
+            ArgumentNullException.ThrowIfNull(root, nameof(root));
 
-            if (root != null)
-            {
-                List<ulong>? content = JsonSerializer.Deserialize<List<ulong>>(await Decrypt(root.ContentEncrypted));
-                Root = root;
-                return true;
-            }
-            else
-            {
-                File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
-                MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
-                    "Please restore from a backup or recreate the file.",
-                    "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                throw new InvalidOperationException("The main data file is corrupted or damaged.");
-            }
+            List<ulong>? content = JsonSerializer.Deserialize<List<ulong>>(await Decrypt(root.ContentEncrypted));
+            root.Content = content ?? new List<ulong>();
+            Root = root;
+            return true;
+        }
+        catch (ArgumentNullException)
+        {
+            File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
+            MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
+                "Please restore from a backup or recreate the file.",
+                "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            throw new InvalidOperationException("The main data file is corrupted or damaged.");
         }
         catch(FileNotFoundException)
         {
@@ -153,6 +157,7 @@ public static class ThingData
                 "If this is your first time running this program, you can ignore this message." +
                 "This can be caused by deleting/moving Application Files or changing the Save Location.",
                 "New folder structure created", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return true;
         }
         catch (UnauthorizedAccessException)
         {
@@ -180,6 +185,7 @@ public static class ThingData
     }
     public static ulong GenerateID()
     {
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         ulong tempID = 0;
         do
         {
@@ -187,7 +193,7 @@ public static class ThingData
             RandomNumberGenerator.Fill(buffer);
             tempID = BitConverter.ToUInt64(buffer, 0);
         }
-        while (tempID != 0 && File.Exists(Path.Combine(Root.SaveLocation, ThingData.IDToHex(tempID))));
+        while (tempID != 0 && File.Exists((Root.SaveLocation == null) ? ThingData.IDToHex(tempID) : Path.Combine(Root.SaveLocation, ThingData.IDToHex(tempID))));
         return tempID;
 
     }
@@ -201,6 +207,7 @@ public static class ThingData
     }
     public static string GetFilePath(ulong id, bool create = false)
     {
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         string path = string.Empty;
         if (Root.SaveLocation == null)
         {
@@ -371,6 +378,7 @@ public static class ThingData
     }
     public static async Task UpdateRootAsync()
     {
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         ThingRoot tempRoot = Root;
         tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
         tempRoot.Content = null;
