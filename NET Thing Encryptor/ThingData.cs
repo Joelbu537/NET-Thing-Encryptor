@@ -84,6 +84,18 @@ public static class ThingData
             return sb.ToString();
         }
     }
+    private static string GetPath(string localPath)
+    {
+        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+        if (Root.SaveLocation == null)
+        {
+            return Path.GetFullPath(localPath);
+        }
+        else
+        {
+            return Path.GetFullPath(Path.Combine(Root.SaveLocation, localPath));
+        }
+    }
 
     public static async Task<bool> AttemptDecrypt(string password)
     {
@@ -104,10 +116,12 @@ public static class ThingData
         if (!string.IsNullOrEmpty(Root.ContentEncrypted))
         {
             string temp = await Decrypt(Root.ContentEncrypted);
+            Debug.WriteLine(temp);
 
             if (temp.StartsWith(Magic)) //PWD korrekt
             {
-                Root.Content = JsonSerializer.Deserialize<List<ulong>>(temp[20..]);
+                string subtemp = temp.Substring(Magic.Length);
+                Root.Content = JsonSerializer.Deserialize<List<ulong>>(subtemp);
                 Debug.WriteLine("Password correct, main data loaded successfully.");
                 return true;
             }
@@ -128,14 +142,15 @@ public static class ThingData
     Retry:
         try
         {
-            if(!Directory.Exists(@"\Data"))
+            if(!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "Data")))
             {
-                Debug.WriteLine("\\Data not found, creating it.");
-                Directory.CreateDirectory(@"\Data");
+                Debug.WriteLine("\\Data Directory not found, creating it.");
+                Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, @"Data"));
             }
-            if (File.Exists(@"\Data\0.nte"))
+            if (File.Exists(Path.Combine(AppContext.BaseDirectory, @"Data\0.nte")))
             {
-                using FileStream fs = File.OpenRead(@"\Data\0.nte");
+                Debug.WriteLine("Main data file found, attempting to load.");
+                using FileStream fs = File.OpenRead(Path.Combine(AppContext.BaseDirectory, @"Data\0.nte"));
                 ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
@@ -151,7 +166,9 @@ public static class ThingData
                 {
                     rng.GetBytes(salt);
                 }
-                Root = new ThingRoot(salt);
+                Root = new ThingRoot();
+                Root.Salt = salt;
+                Debug.WriteLine("New Root created in memory");
                 MessageBox.Show("The main data file was not found." +
                     "If this is your first time running this program, you can ignore this message." +
                     "This can be caused by deleting/moving Application Files or changing the Save Location.",
@@ -227,6 +244,10 @@ public static class ThingData
     }
     public static string GetFilePath(ulong id, bool create = false)
     {
+        if(id == 0)
+        {
+            return Path.Combine(AppContext.BaseDirectory, @"Data\0.nte");
+        }
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         string path = string.Empty;
         if (Root.SaveLocation == null)
@@ -396,17 +417,22 @@ public static class ThingData
             await SaveFolderAsync(parentFolder);
         }
     }
-    public static async Task UpdateRootAsync()
+    public static async Task SaveRootAsync()
     {
+        Debug.WriteLine("Saving Root data to file.");
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ThingRoot tempRoot = Root;
+        ThingRoot tempRoot = (ThingRoot)Root.Clone();
         tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
         tempRoot.Content = null;
-        string rootPath = GetFilePath(0, true);
-        using FileStream fs = File.Create(@"\Data\0.nte");
         string rootContent = JsonSerializer.Serialize(tempRoot);
+        string rootPath = GetFilePath(0);
+        Debug.WriteLine($"Root path: {rootPath}");
+        using FileStream fs = File.Create(rootPath);
         await fs.WriteAsync(Encoding.UTF8.GetBytes(rootContent));
         await fs.FlushAsync();
         fs.Close();
+
+        // DEBUG
+        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "debug.txt"), JsonSerializer.Serialize(Root));
     }
 }

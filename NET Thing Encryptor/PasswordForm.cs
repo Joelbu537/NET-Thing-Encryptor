@@ -14,16 +14,7 @@ namespace NET_Thing_Encryptor
     {
         public PasswordForm()
         {
-            if (ThingData.LoadMainData().Result)
-            {
-                InitializeComponent();
-            }
-            else
-            {
-                MessageBox.Show("Failed to load main data. Please check the configuration.",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
-            }
+            InitializeComponent();
         }
 
         private void textBoxPassword_TextChanged(object sender, EventArgs e)

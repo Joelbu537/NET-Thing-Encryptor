@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,8 +20,15 @@ namespace NET_Thing_Encryptor
         {
             Name = name;
             ID = ThingData.GenerateID();
+            ParentID = 0;
 
             Content = new List<ulong>();
+
+            Debug.WriteLine($"Creating folder: {Name} with ID: {ID}");
+
+            ArgumentNullException.ThrowIfNull(ThingData.Root, "Root cannot be null.");
+            ThingData.Root.Content?.Add(ID);
+            Debug.WriteLine($"Added folder {Name} to Root's content.");
         }
     }
     public class ThingFile : ThingObject
@@ -50,22 +58,32 @@ namespace NET_Thing_Encryptor
             Content = content;
         }
     }
-    public class ThingRoot : ThingObject
+    public class ThingRoot : ThingObject, ICloneable
     {
-        public byte[] Salt;
-        public string? SaveLocation;
-        public string ContentEncrypted; // magic-value + List<ThingObject>
-        public List<ulong>? Content; // List of ThingObjects (Folders and Files)
-        public ThingRoot(byte[] salt)
+        public byte[] Salt { get; set; }
+        public string? SaveLocation { get; set; }
+        public string ContentEncrypted { get; set; }
+        public List<ulong>? Content { get; set; }
+
+        public ThingRoot()
         {
             Name = "Root";
             ID = 0;
             ParentID = 0;
 
-            Salt = salt;
+            Salt = new byte[32];
             SaveLocation = null;
             ContentEncrypted = string.Empty;
             Content = new List<ulong>();
+        }
+        public object Clone()
+        {
+            var clone = (ThingRoot)this.MemberwiseClone();
+
+            clone.Salt = (byte[])this.Salt.Clone();
+            clone.Content = this.Content != null ? new List<ulong>(this.Content) : null;
+
+            return clone;
         }
     }
     public enum FileType
