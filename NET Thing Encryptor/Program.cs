@@ -6,21 +6,41 @@ namespace NET_Thing_Encryptor
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static async Task Main()
         {
-            ThingData.LoadMainData().Wait();
-            ApplicationConfiguration.Initialize();
-            using (var pw = new PasswordForm())
+            MessageBox.Show("Test.",
+                "Test", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            try
             {
-                if (pw.ShowDialog() == DialogResult.OK)
+                if (await ThingData.LoadMainData())
                 {
-                    Application.Run(new FormMain());
-                }
-                else
-                {
-                    return;
+                    ApplicationConfiguration.Initialize();
+                    using (var pw = new PasswordForm())
+                    {
+                        if (pw.ShowDialog() == DialogResult.OK)
+                        {
+                            ThingFolder folder = new ThingFolder("Test Folder");
+                            await ThingData.SaveFolderAsync(folder);
+                            ThingFile file = new ThingFile("Test File", new byte[] { 1, 2, 3, 4, 5 });
+                            await ThingData.MoveFileToFolderAsync(file, folder.ID);
+                            MessageBox.Show("Test completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            Application.Run(new FormMain());
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}\n\n The Program was forced to stop.\n" +
+                    $"Try restarting the program, your pc, deleting Application Data and reinstalling the application.", "Critical Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+            }
+
         }
     }
 }

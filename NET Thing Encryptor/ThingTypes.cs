@@ -25,15 +25,16 @@ namespace NET_Thing_Encryptor
     }
     public class ThingFile : ThingObject
     {
+        private byte[] _content;
         public byte[] Content {
-            get { return Content; }
+            get { return _content; }
             set
             {
                 if(value == null || value.Length == 0)
                 {
                     throw new ArgumentException("Content cannot be null or empty.", nameof(value));
                 }
-                Content = value;
+                _content = value;
                 MD5Hash = ThingData.ComputeMD5Hash(value);
             }
         }

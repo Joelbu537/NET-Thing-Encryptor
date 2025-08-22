@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -88,9 +90,7 @@ public static class ThingData
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         byte[] salt = Root.Salt;
 
-        try
-        {
-            byte[] key = Rfc2898DeriveBytes.Pbkdf2(
+        byte[] key = Rfc2898DeriveBytes.Pbkdf2(
                 password,
                 salt,
                 iterations: 10000,
@@ -98,76 +98,96 @@ public static class ThingData
                 outputLength: 48
             );
 
-            Key = key[..32];
-            IV = key[32..];
+        Key = key[..32];
+        IV = key[32..];
 
-            if(Root.ContentEncrypted == null)
-            {
-                throw new InvalidOperationException("ContentEncrypted is null. Cannot decrypt.");
-            }
+        if (!string.IsNullOrEmpty(Root.ContentEncrypted))
+        {
             string temp = await Decrypt(Root.ContentEncrypted);
 
-            if(temp.StartsWith(Magic)) //PWD korrekt
+            if (temp.StartsWith(Magic)) //PWD korrekt
             {
-                Root.Content = JsonSerializer.Deserialize<List<ulong>>(temp[20..]); // CHECKEN
+                Root.Content = JsonSerializer.Deserialize<List<ulong>>(temp[20..]);
+                Debug.WriteLine("Password correct, main data loaded successfully.");
                 return true;
             }
-
-            Key = null;
-            IV = null;
-            return false;
         }
-        catch (Exception)
+        else
         {
-
+            Debug.WriteLine("No content encrypted found, assuming first run or no password set.");
+            return true;
         }
+
+        Debug.WriteLine("Password incorrect, resetting Key and IV.");
+        Key = null;
+        IV = null;
         return false;
     }
     public async static Task<bool> LoadMainData()
     {
+    Retry:
         try
         {
-            using FileStream fs = File.OpenRead(@"/Data/0.nte");
-            ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
-            ArgumentNullException.ThrowIfNull(root, nameof(root));
+            if(!Directory.Exists(@"\Data"))
+            {
+                Debug.WriteLine("\\Data not found, creating it.");
+                Directory.CreateDirectory(@"\Data");
+            }
+            if (File.Exists(@"\Data\0.nte"))
+            {
+                using FileStream fs = File.OpenRead(@"\Data\0.nte");
+                ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
+                ArgumentNullException.ThrowIfNull(root, nameof(root));
 
-            List<ulong>? content = JsonSerializer.Deserialize<List<ulong>>(await Decrypt(root.ContentEncrypted));
-            root.Content = content ?? new List<ulong>();
-            Root = root;
+                root.Content = new List<ulong>();
+                Root = root;
+                Debug.WriteLine("Root loaded successfully.");
+            }
+            else
+            {
+                Debug.WriteLine("Main data file not found.");
+                byte[] salt = new byte[32];
+                using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+                {
+                    rng.GetBytes(salt);
+                }
+                Root = new ThingRoot(salt);
+                MessageBox.Show("The main data file was not found." +
+                    "If this is your first time running this program, you can ignore this message." +
+                    "This can be caused by deleting/moving Application Files or changing the Save Location.",
+                    "New folder structure created", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
             return true;
         }
-        catch (ArgumentNullException)
+        catch (JsonException)
         {
+            Debug.WriteLine("JSON Exception occurred, attempting to recover.");
             File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
             MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
                 "Please restore from a backup or recreate the file.",
                 "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            throw new InvalidOperationException("The main data file is corrupted or damaged.");
+            goto Retry;
         }
-        catch(FileNotFoundException)
+        catch (ArgumentNullException)
         {
-            byte[] salt = new byte[32];
-            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(salt);
-            }
-            Root = new ThingRoot(salt);
-            await UpdateRootAsync();
-            MessageBox.Show("The main data file was not found, and a new one has been created." +
-                "If this is your first time running this program, you can ignore this message." +
-                "This can be caused by deleting/moving Application Files or changing the Save Location.",
-                "New folder structure created", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return true;
+            Debug.WriteLine("Argument Null Exception occurred, attempting to recover.");
+            File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
+            MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
+                "Please restore from a backup or recreate the file.",
+                "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            goto Retry;
         }
         catch (UnauthorizedAccessException)
         {
+            Debug.WriteLine("Unauthorized Access Exception occurred, user does not have permission to access the main data file.");
             MessageBox.Show("You do not have permission to access the main data file. " +
                 "Please check your permissions or run the application as an administrator.",
                 "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         catch (Exception ex)
         {
-            throw new Exception("An error occurred while loading the main data.", ex);
+            Debug.WriteLine($"An unexpected error occurred while loading the main data: {ex.Message}");
+            throw new Exception($"An error occurred while loading the main data. (Type: {ex.GetType().FullName})", ex);
         }
         return false;
     }
@@ -272,7 +292,7 @@ public static class ThingData
             throw new FileNotFoundException("File not found.", ThingData.GetFilePath(fileID));
         }
     }
-    private static async Task SaveFolderAsync(ThingFolder? folder)
+    public static async Task SaveFolderAsync(ThingFolder? folder)
     {
         ArgumentNullException.ThrowIfNull(folder);
 
@@ -283,7 +303,7 @@ public static class ThingData
         using FileStream fs = File.Create(folderPath);
         fs.Write(Encoding.UTF8.GetBytes(content));
     }
-    private static async Task SaveFileAsync(ThingFile? file)
+    public static async Task SaveFileAsync(ThingFile? file)
     {
         ArgumentNullException.ThrowIfNull(file);
 
@@ -294,7 +314,7 @@ public static class ThingData
         using FileStream fs = File.Create(filePath);
         fs.Write(Encoding.UTF8.GetBytes(content));
     }
-    public static async Task MoveFileToFolder(ThingFile file, ulong folderID)
+    public static async Task MoveFileToFolderAsync(ThingFile file, ulong folderID)
     {
         ThingFolder? folder = await GetFolderAsync(folderID);
         ArgumentNullException.ThrowIfNull(folder, nameof(folder));
@@ -309,7 +329,7 @@ public static class ThingData
         file.ParentID = folder.ID;
         await SaveFileAsync(file);
     }
-    public static async Task MoveFolderToFolder(ulong folder, ulong parentFolderID)
+    public static async Task MoveFolderToFolderAsync(ulong folder, ulong parentFolderID)
     {
         ThingFolder? parentFolder = await GetFolderAsync(parentFolderID);
         ThingFolder? targetFolder = await GetFolderAsync(folder);
