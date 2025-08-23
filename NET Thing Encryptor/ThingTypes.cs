@@ -9,13 +9,13 @@ namespace NET_Thing_Encryptor
 {
     public abstract class ThingObject
     {
-        public string? Name;
-        public ulong ID;
-        public ulong ParentID;
+        public string? Name { get; set; }
+        public ulong ID { get; set; }
+        public ulong ParentID { get; set; }
     }
     public class ThingFolder : ThingObject
     {
-        public List<ulong> Content;
+        public List<ulong> Content { get; set; }
         public ThingFolder(string name)
         {
             Name = name;
@@ -47,8 +47,8 @@ namespace NET_Thing_Encryptor
             }
         }
         public string MD5Hash { get; private set; }
-        public FileType Type;
-        public FileExtension Extension;
+        public FileType Type { get; set; }
+        public FileExtension Extension { get; set; }
         public ThingFile(string name, byte[] content)
         {
             Name = name;
@@ -56,6 +56,8 @@ namespace NET_Thing_Encryptor
             ParentID = 0;
             MD5Hash = string.Empty;
             Content = content;
+
+            Debug.WriteLine($"Creating file: {Name} with ID: {ID}");
         }
     }
     public class ThingRoot : ThingObject, ICloneable

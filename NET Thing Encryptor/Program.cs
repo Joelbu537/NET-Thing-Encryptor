@@ -17,11 +17,12 @@ namespace NET_Thing_Encryptor
                     {
                         if (pw.ShowDialog() == DialogResult.OK)
                         {
-                            ThingFolder folder = new ThingFolder("Test Folder");
-                            await ThingData.SaveFolderAsync(folder);
-                            await ThingData.SaveRootAsync();
-                            //ThingFile file = new ThingFile("Test File", new byte[] { 1, 2, 3, 4, 5 });
-                            //await ThingData.MoveFileToFolderAsync(file, folder.ID);
+
+                            foreach(ulong ID in ThingData.Root.Content)
+                            {
+                                
+                            }
+
                             MessageBox.Show("Test completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             Application.Run(new FormMain());
                         }
