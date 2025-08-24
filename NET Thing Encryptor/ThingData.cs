@@ -274,6 +274,7 @@ public static class ThingData
         }
         throw new FileNotFoundException("File not found.", path);
     }
+    [Obsolete("GetFolderAsync is deprecated, please use LoadFileAsync instead.")]
     private static async Task<ThingFolder?> GetFolderAsync(ulong folderID)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
@@ -297,7 +298,7 @@ public static class ThingData
             throw new FileNotFoundException("Folder not found.", ThingData.GetFilePath(folderID));
         }
     }
-
+    [Obsolete("GetFileAsync is deprecated, please use LoadFileAsync instead.")]
     private static async Task<ThingFile?> GetFileAsync(ulong fileID)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
@@ -320,15 +321,72 @@ public static class ThingData
             throw new FileNotFoundException("File not found.", ThingData.GetFilePath(fileID));
         }
     }
+    public static async Task<ThingObject?> LoadFileAsync(ulong id)
+    {
+        Debug.WriteLine($"Loading file with ID: {id}");
+        if (id == 0)
+            throw new ArgumentException("Cannot load root element.", nameof(id));
 
-    public static async Task SaveFolderAsync(ThingFolder? folder)
+        string filePath = string.Empty;
+        try
+        {
+            filePath = GetFilePath(id);
+            Debug.WriteLine($"File path resolved to: {filePath}");
+
+            using FileStream fs = File.OpenRead(filePath);
+            using var decrypted = await Decrypt(fs);
+
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            ThingObject? obj = await JsonSerializer.DeserializeAsync<ThingObject>(decrypted, options);
+
+            ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+            return obj;
+        }
+        catch (FileNotFoundException)
+        {
+            throw new FileNotFoundException("File not found.", filePath);
+        }
+    }
+    public static async Task<T?> LoadFileAsync<T>(ulong id) where T : ThingObject
+    {
+        ThingObject? obj = await LoadFileAsync(id);
+        if (obj is T tObj)
+        {
+            return tObj;
+        }
+        throw new InvalidCastException($"The object with ID {id} is not of type {typeof(T).Name}.");
+    }
+    public static async Task SaveFileAsync(ThingObject? obj)
+    {
+        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+        Debug.WriteLine("Saving file " + nameof(obj) + " with ID " + obj.ID);
+
+        switch (obj)
+        {
+            case ThingFile file:
+                await SaveFileAsyncLegacy(file);
+                break;
+            case ThingFolder folder:
+                await SaveFolderAsyncLegacy(folder);
+                break;
+            default:
+                throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
+        }
+    }
+    private static async Task SaveFolderAsyncLegacy(ThingFolder? folder)
     {
         ArgumentNullException.ThrowIfNull(folder);
 
         string folderPath = GetFilePath(folder.ID, true);
-        string folderContent = JsonSerializer.Serialize(folder);
 
-        Debug.WriteLine($"Folder content before encryption: {folderContent}");
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+        string folderContent = JsonSerializer.Serialize<ThingObject>(folder, options);
 
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(folderContent));
         using var encrypted = await Encrypt(input);
@@ -336,13 +394,17 @@ public static class ThingData
         using FileStream fs = File.Create(folderPath);
         await encrypted.CopyToAsync(fs);
     }
-
-    public static async Task SaveFileAsync(ThingFile? file)
+    private static async Task SaveFileAsyncLegacy(ThingFile? file)
     {
         ArgumentNullException.ThrowIfNull(file);
 
         string filePath = GetFilePath(file.ID, true);
-        string fileContent = JsonSerializer.Serialize(file);
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+        string fileContent = JsonSerializer.Serialize<ThingObject>(file, options);
 
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(fileContent));
         using var encrypted = await Encrypt(input);
@@ -352,7 +414,7 @@ public static class ThingData
     }
     public static async Task MoveFileToFolderAsync(ThingFile file, ulong folderID)
     {
-        ThingFolder? folder = await GetFolderAsync(folderID);
+        ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
         ArgumentNullException.ThrowIfNull(folder, nameof(folder));
 
         if(file.ParentID == 0)
@@ -363,21 +425,21 @@ public static class ThingData
         }
         else
         {
-            ThingFolder? oldFolder = await GetFolderAsync(file.ParentID);
+            ThingFolder? oldFolder = await LoadFileAsync(file.ParentID) as ThingFolder;
             ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
             oldFolder.Content.Remove(file.ID);
-            await SaveFolderAsync(oldFolder);
+            await SaveFileAsync(oldFolder);
         }
 
         folder.Content.Add(file.ID);
-        await SaveFolderAsync(folder);
+        await SaveFileAsync(folder);
         file.ParentID = folder.ID;
         await SaveFileAsync(file);
     }
     public static async Task MoveFolderToFolderAsync(ulong folder, ulong parentFolderID)
     {
-        ThingFolder? parentFolder = await GetFolderAsync(parentFolderID);
-        ThingFolder? targetFolder = await GetFolderAsync(folder);
+        ThingFolder? parentFolder = await LoadFileAsync(parentFolderID) as ThingFolder;
+        ThingFolder? targetFolder = await LoadFileAsync(folder) as ThingFolder;
 
         ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
         ArgumentNullException.ThrowIfNull(targetFolder, nameof(targetFolder));
@@ -387,20 +449,20 @@ public static class ThingData
             throw new ArgumentException("Cannot add the root folder to another folder.", nameof(folder));
         }
 
-        ThingFolder? oldFolder = await GetFolderAsync(targetFolder.ParentID);
+        ThingFolder? oldFolder = await LoadFileAsync(targetFolder.ParentID) as ThingFolder;
         ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
         oldFolder.Content.Remove(targetFolder.ID);
-        await SaveFolderAsync(oldFolder);
+        await SaveFileAsync(oldFolder);
 
         parentFolder.Content.Add(targetFolder.ID);
-        await SaveFolderAsync(parentFolder);
+        await SaveFileAsync(parentFolder);
         targetFolder.ParentID = parentFolder.ID;
-        await SaveFolderAsync(targetFolder);
+        await SaveFileAsync(targetFolder);
     }
     public static async Task DeleteFile(ulong fileID)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ThingFile? file = await GetFileAsync(fileID);
+        ThingFile? file = await LoadFileAsync(fileID) as ThingFile;
         ArgumentNullException.ThrowIfNull(file, nameof(file));
         string filePath = GetFilePath(fileID);
         if (File.Exists(filePath))
@@ -409,10 +471,10 @@ public static class ThingData
         }
         if (file.ParentID != 0)
         {
-            ThingFolder? folder = await GetFolderAsync(file.ParentID);
+            ThingFolder? folder = await LoadFileAsync(file.ParentID) as ThingFolder;
             ArgumentNullException.ThrowIfNull(folder, nameof(folder));
             folder.Content.Remove(file.ID);
-            await SaveFolderAsync(folder);
+            await SaveFileAsync(folder);
         }
     }
     public static async Task DeleteFolder(ulong folderID)
@@ -422,7 +484,7 @@ public static class ThingData
             throw new ArgumentException("Cannot delete the root folder.", nameof(folderID));
         }
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ThingFolder? folder = await GetFolderAsync(folderID);
+        ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
         ArgumentNullException.ThrowIfNull(folder, nameof(folder));
         if (folder.Content.Count != 0)
         {
@@ -435,10 +497,10 @@ public static class ThingData
         }
         if (folder.ParentID != 0)
         {
-            ThingFolder? parentFolder = await GetFolderAsync(folder.ParentID);
+            ThingFolder? parentFolder = await LoadFileAsync(folder.ParentID) as ThingFolder;
             ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
             parentFolder.Content.Remove(folder.ID);
-            await SaveFolderAsync(parentFolder);
+            await SaveFileAsync(parentFolder);
         }
     }
     public static async Task SaveRootAsync()

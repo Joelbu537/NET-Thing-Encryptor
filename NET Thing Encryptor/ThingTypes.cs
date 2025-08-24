@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace NET_Thing_Encryptor
 {
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+    [JsonDerivedType(typeof(ThingFolder), "folder")]
+    [JsonDerivedType(typeof(ThingFile), "file")]
     public abstract class ThingObject
     {
         public string? Name { get; set; }
