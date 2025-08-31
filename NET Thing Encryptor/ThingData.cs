@@ -13,8 +13,8 @@ namespace NET_Thing_Encryptor;
 public static class ThingData
 {
     private const string Magic = "NET Thing Encryptor";
-    public static byte[]? Key { private get; set; }
-    public static byte[]? IV { private get; set; }
+    public static byte[]? Key { get; private set; }
+    public static byte[]? IV { get; set; }
     public static ThingRoot? Root { get; private set; }
 
     public static async Task<Stream> Encrypt(Stream input)
