@@ -121,7 +121,7 @@ public static class ThingData
             if (temp.StartsWith(Magic)) //PWD korrekt
             {
                 string subtemp = temp.Substring(Magic.Length);
-                Root.Content = JsonSerializer.Deserialize<List<ulong>>(subtemp);
+                Root.Content = JsonSerializer.Deserialize<List<ThingObjectLink>>(subtemp);
                 Debug.WriteLine("Password correct, main data loaded successfully.");
                 return true;
             }
@@ -154,7 +154,7 @@ public static class ThingData
                 ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
-                root.Content = new List<ulong>();
+                root.Content = new List<ThingObjectLink>();
                 Root = root;
                 Debug.WriteLine("Root loaded successfully.");
             }
@@ -416,22 +416,25 @@ public static class ThingData
     {
         ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
         ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+        ThingObjectLink? link;
 
         if(file.ParentID == 0)
         {
             ArgumentNullException.ThrowIfNull(Root, nameof(Root));
             ArgumentNullException.ThrowIfNull(Root.Content, nameof(Root.Content));
-            Root.Content.Remove(file.ID);
+            link = Root.Content.FirstOrDefault(x => x.ID == file.ID);
+            Root.Content.Remove(link);
         }
         else
         {
             ThingFolder? oldFolder = await LoadFileAsync(file.ParentID) as ThingFolder;
             ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
-            oldFolder.Content.Remove(file.ID);
+            link = oldFolder.Content.FirstOrDefault(x => x.ID == file.ID);
+            oldFolder.Content.Remove(link);
             await SaveFileAsync(oldFolder);
         }
 
-        folder.Content.Add(file.ID);
+        folder.Content.Add(link);
         await SaveFileAsync(folder);
         file.ParentID = folder.ID;
         await SaveFileAsync(file);
@@ -440,6 +443,7 @@ public static class ThingData
     {
         ThingFolder? parentFolder = await LoadFileAsync(parentFolderID) as ThingFolder;
         ThingFolder? targetFolder = await LoadFileAsync(folder) as ThingFolder;
+        ThingObjectLink? link;
 
         ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
         ArgumentNullException.ThrowIfNull(targetFolder, nameof(targetFolder));
@@ -451,10 +455,11 @@ public static class ThingData
 
         ThingFolder? oldFolder = await LoadFileAsync(targetFolder.ParentID) as ThingFolder;
         ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
-        oldFolder.Content.Remove(targetFolder.ID);
+        link = oldFolder.Content.FirstOrDefault(x => x.ID == targetFolder.ID);
+        oldFolder.Content.Remove(link);
         await SaveFileAsync(oldFolder);
 
-        parentFolder.Content.Add(targetFolder.ID);
+        parentFolder.Content.Add(link);
         await SaveFileAsync(parentFolder);
         targetFolder.ParentID = parentFolder.ID;
         await SaveFileAsync(targetFolder);
@@ -469,13 +474,10 @@ public static class ThingData
         {
             File.Delete(filePath);
         }
-        if (file.ParentID != 0)
-        {
-            ThingFolder? folder = await LoadFileAsync(file.ParentID) as ThingFolder;
-            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-            folder.Content.Remove(file.ID);
-            await SaveFileAsync(folder);
-        }
+        ThingFolder? folder = await LoadFileAsync(file.ParentID) as ThingFolder;
+        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+        folder.Content.RemoveAll(x => x.ID == file.ID);
+        await SaveFileAsync(folder);
     }
     public static async Task DeleteFolder(ulong folderID)
     {
@@ -499,7 +501,7 @@ public static class ThingData
         {
             ThingFolder? parentFolder = await LoadFileAsync(folder.ParentID) as ThingFolder;
             ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
-            parentFolder.Content.Remove(folder.ID);
+            parentFolder.Content.RemoveAll(x => x.ID == folder.ID);
             await SaveFileAsync(parentFolder);
         }
     }

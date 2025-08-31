@@ -25,7 +25,7 @@ namespace NET_Thing_Encryptor
                             await ThingData.MoveFileToFolderAsync(file, foldertest.ID);
                             for(int i = 0; i < ThingData.Root.Content.Count; i++)
                             {
-                                ThingObject? obj = await ThingData.LoadFileAsync(ThingData.Root.Content[i]);
+                                ThingObject? obj = await ThingData.LoadFileAsync(ThingData.Root.Content[i].ID);
                                 if(obj is ThingFile)
                                 {
                                     Debug.WriteLine($"File: {file.Name}, MD5: {file.MD5Hash}, Size: {file.Content.Length} bytes");

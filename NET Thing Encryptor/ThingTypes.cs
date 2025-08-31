@@ -19,19 +19,19 @@ namespace NET_Thing_Encryptor
     }
     public class ThingFolder : ThingObject
     {
-        public List<ulong> Content { get; set; }
+        public List<ThingObjectLink> Content { get; set; }
         public ThingFolder(string name)
         {
             Name = name;
             ID = ThingData.GenerateID();
             ParentID = 0;
 
-            Content = new List<ulong>();
+            Content = new List<ThingObjectLink>();
 
             Debug.WriteLine($"Creating folder: {Name} with ID: {ID}");
 
             ArgumentNullException.ThrowIfNull(ThingData.Root, "Root cannot be null.");
-            ThingData.Root.Content?.Add(ID);
+            ThingData.Root.Content?.Add(new ThingObjectLink(ID, Name, FileType.other, null));
             Debug.WriteLine($"Added folder {Name} to Root's content.");
         }
     }
@@ -69,7 +69,7 @@ namespace NET_Thing_Encryptor
         public byte[] Salt { get; set; }
         public string? SaveLocation { get; set; }
         public string ContentEncrypted { get; set; }
-        public List<ulong>? Content { get; set; }
+        public List<ThingObjectLink>? Content { get; set; }
 
         public ThingRoot()
         {
@@ -80,16 +80,30 @@ namespace NET_Thing_Encryptor
             Salt = new byte[32];
             SaveLocation = null;
             ContentEncrypted = string.Empty;
-            Content = new List<ulong>();
+            Content = new List<ThingObjectLink>();
         }
         public object Clone()
         {
             var clone = (ThingRoot)this.MemberwiseClone();
 
             clone.Salt = (byte[])this.Salt.Clone();
-            clone.Content = this.Content != null ? new List<ulong>(this.Content) : null;
+            clone.Content = this.Content != null ? new List<ThingObjectLink>(this.Content) : null;
 
             return clone;
+        }
+    }
+    public class ThingObjectLink
+    {
+        public ulong ID { get; set; }
+        public string Name { get; set; }
+        public FileType Type { get; set; }
+        public byte[]? PreviewContent { get; set; }
+        public ThingObjectLink(ulong id, string name, FileType type, byte[]? previewContent)
+        {
+            ID = id;
+            Name = name;
+            Type = type;
+            PreviewContent = previewContent;
         }
     }
     public enum FileType
