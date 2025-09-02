@@ -34,9 +34,14 @@ namespace NET_Thing_Encryptor
                                 else if(obj is ThingFolder folder)
                                 {
                                     Debug.WriteLine($"Folder: {folder.Name}, Contains: {folder.Content.Count} items");
+                                    foreach(ThingObjectLink item in folder.Content)
+                                    {
+                                        Debug.WriteLine("Item:" + item.Name);
+                                    }
                                 }
                             }
 
+                            await ThingData.SaveRootAsync();
                             MessageBox.Show("Test completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             Application.Run(new FormMain());
                         }
