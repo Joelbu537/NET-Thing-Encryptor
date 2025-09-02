@@ -30,8 +30,6 @@ namespace NET_Thing_Encryptor
 
             Debug.WriteLine($"Creating folder: {Name} with ID: {ID}");
 
-            ArgumentNullException.ThrowIfNull(ThingData.Root, "Root cannot be null.");
-            ThingData.Root.Content?.Add(new ThingObjectLink(ID, Name, FileType.other, null));
             Debug.WriteLine($"Added folder {Name} to Root's content.");
         }
     }
@@ -98,7 +96,7 @@ namespace NET_Thing_Encryptor
         public string Name { get; set; }
         public FileType Type { get; set; }
         public byte[]? PreviewContent { get; set; }
-        public ThingObjectLink(ulong id, string name, FileType type, byte[]? previewContent)
+        public ThingObjectLink(ulong id, string name, FileType type, byte[]? previewContent = null)
         {
             ID = id;
             Name = name;

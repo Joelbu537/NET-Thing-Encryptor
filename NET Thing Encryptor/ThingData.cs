@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace NET_Thing_Encryptor;
 public static class ThingData
@@ -340,7 +341,7 @@ public static class ThingData
             {
                 WriteIndented = true
             };
-            ThingObject? obj = await JsonSerializer.DeserializeAsync<ThingObject>(decrypted, options);
+            ThingObject? obj = await JsonSerializer.DeserializeAsync<ThingObject>(decrypted, options); //// GRRRRRR NEUE INSTANZ :X
 
             ArgumentNullException.ThrowIfNull(obj, nameof(obj));
             return obj;
@@ -362,7 +363,7 @@ public static class ThingData
     public static async Task SaveFileAsync(ThingObject? obj)
     {
         ArgumentNullException.ThrowIfNull(obj, nameof(obj));
-        Debug.WriteLine("Saving file " + nameof(obj) + " with ID " + obj.ID);
+        Debug.WriteLine($"Saving file {obj.Name} with ID {obj.ID} as {IDToHex(obj.ID)}");
 
         switch (obj)
         {
@@ -422,7 +423,8 @@ public static class ThingData
         {
             ArgumentNullException.ThrowIfNull(Root, nameof(Root));
             ArgumentNullException.ThrowIfNull(Root.Content, nameof(Root.Content));
-            link = Root.Content.FirstOrDefault(x => x.ID == file.ID);
+            link = new ThingObjectLink(file.ID, file.Name, file.Type);
+
             Root.Content.Remove(link);
         }
         else
@@ -433,6 +435,8 @@ public static class ThingData
             oldFolder.Content.Remove(link);
             await SaveFileAsync(oldFolder);
         }
+
+
 
         folder.Content.Add(link);
         await SaveFileAsync(folder);
@@ -522,5 +526,11 @@ public static class ThingData
 
         // DEBUG
         File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "debug.txt"), JsonSerializer.Serialize(Root));
+    }
+    public static ThingFolder AddToRoot(this ThingFolder folder)
+    {
+        ArgumentNullException.ThrowIfNull(ThingData.Root, "Root cannot be null.");
+        ThingData.Root.Content?.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.other));
+        return folder;
     }
 }
