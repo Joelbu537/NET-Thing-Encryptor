@@ -22,9 +22,15 @@ namespace NET_Thing_Encryptor
                             ThingFolder? foldertest = new ThingFolder("TestFolder").AddToRoot();
                             await ThingData.SaveFileAsync(foldertest);
                             ThingFile? file = new ThingFile("TestFile", new byte[] { 0, 1, 2, 3, 4 });
-                            await ThingData.SaveFileAsync(file);
                             await ThingData.MoveFileToFolderAsync(file, foldertest.ID);
-                            for(int i = 0; i < Root.Content.Count; i++)
+                            await ThingData.SaveFileAsync(file);
+                            ThingFolder? subfolder = new ThingFolder("SubFolder").AddToRoot();
+                            await ThingData.SaveFileAsync(subfolder);
+                            await ThingData.MoveFolderToFolderAsync(subfolder.ID, foldertest.ID);
+                            ThingFile? subfile = new ThingFile("SubFile", new byte[] { 5, 6, 7, 8, 9 });
+                            await ThingData.MoveFileToFolderAsync(subfile, subfolder.ID);
+                            await ThingData.SaveFileAsync(subfile);
+                            for (int i = 0; i < Root.Content.Count; i++)
                             {
                                 ThingObject? obj = await ThingData.LoadFileAsync(Root.Content[i].ID);
                                 if(obj is ThingFile)
@@ -37,6 +43,11 @@ namespace NET_Thing_Encryptor
                                     foreach(ThingObjectLink item in folder.Content)
                                     {
                                         Debug.WriteLine("Item:" + item.Name);
+                                        ThingObject? subobj = await ThingData.LoadFileAsync(Root.Content[i].ID);
+                                        if (subobj is ThingFile subfile2)
+                                        {
+                                            Debug.WriteLine($"File: {subfile2.Name}, MD5: {subfile2.MD5Hash}, Size: {subfile2.Content.Length} bytes");
+                                        }
                                     }
                                 }
                             }

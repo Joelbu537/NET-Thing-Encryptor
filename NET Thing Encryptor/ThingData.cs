@@ -396,30 +396,39 @@ public static class ThingData
         file.ParentID = folder.ID;
         await SaveFileAsync(file);
     }
-    public static async Task MoveFolderToFolderAsync(ulong folder, ulong parentFolderID)
+    public static async Task MoveFolderToFolderAsync(ulong folderID, ulong parentFolderID)
     {
         ThingFolder? parentFolder = await LoadFileAsync(parentFolderID) as ThingFolder;
-        ThingFolder? targetFolder = await LoadFileAsync(folder) as ThingFolder;
+        ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
         ThingObjectLink? link;
 
         ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
-        ArgumentNullException.ThrowIfNull(targetFolder, nameof(targetFolder));
+        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
 
-        if(targetFolder.ID == 0)
+        if(folder.ID == 0)
         {
             throw new ArgumentException("Cannot add the root folder to another folder.", nameof(folder));
         }
 
-        ThingFolder? oldFolder = await LoadFileAsync(targetFolder.ParentID) as ThingFolder;
-        ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
-        link = oldFolder.Content.FirstOrDefault(x => x.ID == targetFolder.ID);
-        oldFolder.Content.Remove(link);
-        await SaveFileAsync(oldFolder);
+        if(folder.ParentID == 0)
+        {
+            link = Root.Content.FirstOrDefault(x => x.ID == folder.ID);
+            Root.Content.Remove(link);
+        }
+        else
+        {
+            ThingFolder? oldFolder = await LoadFileAsync(folder.ParentID) as ThingFolder; // GRRRR
+            ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
+            link = oldFolder.Content.FirstOrDefault(x => x.ID == folder.ID);
+            oldFolder.Content.Remove(link);
+            await SaveFileAsync(oldFolder);
+        }
+
 
         parentFolder.Content.Add(link);
         await SaveFileAsync(parentFolder);
-        targetFolder.ParentID = parentFolder.ID;
-        await SaveFileAsync(targetFolder);
+        folder.ParentID = parentFolder.ID;
+        await SaveFileAsync(folder);
     }
     public static async Task DeleteFile(ulong fileID)
     {
