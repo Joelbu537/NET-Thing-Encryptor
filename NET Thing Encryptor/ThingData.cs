@@ -243,7 +243,7 @@ public static class ThingData
         }
         return false;
     }
-    public static string GetFilePath(ulong id, bool create = false)
+    private static string GetFilePath(ulong id, bool create = false)
     {
         if(id == 0)
         {
@@ -274,53 +274,6 @@ public static class ThingData
             }
         }
         throw new FileNotFoundException("File not found.", path);
-    }
-    [Obsolete("GetFolderAsync is deprecated, please use LoadFileAsync instead.")]
-    private static async Task<ThingFolder?> GetFolderAsync(ulong folderID)
-    {
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        if (folderID == 0)
-            throw new ArgumentException("Folder ID cannot be 0.", nameof(folderID));
-
-        try
-        {
-            string folderPath = GetFilePath(folderID);
-
-            Debug.WriteLine($"Attempting to load folder from path: {folderPath}");
-            using FileStream fs = File.OpenRead(folderPath);
-            using var decrypted = await Decrypt(fs);
-            ThingFolder? folder = await JsonSerializer.DeserializeAsync<ThingFolder>(decrypted);
-
-            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-            return folder;
-        }
-        catch (FileNotFoundException)
-        {
-            throw new FileNotFoundException("Folder not found.", ThingData.GetFilePath(folderID));
-        }
-    }
-    [Obsolete("GetFileAsync is deprecated, please use LoadFileAsync instead.")]
-    private static async Task<ThingFile?> GetFileAsync(ulong fileID)
-    {
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        if (fileID == 0)
-            throw new ArgumentException("File ID cannot be 0.", nameof(fileID));
-
-        try
-        {
-            string filePath = GetFilePath(fileID);
-
-            using FileStream fs = File.OpenRead(filePath);
-            using var decrypted = await Decrypt(fs);
-            ThingFile? file = await JsonSerializer.DeserializeAsync<ThingFile>(decrypted);
-
-            ArgumentNullException.ThrowIfNull(file, nameof(file));
-            return file;
-        }
-        catch (FileNotFoundException)
-        {
-            throw new FileNotFoundException("File not found.", ThingData.GetFilePath(fileID));
-        }
     }
     public static async Task<ThingObject?> LoadFileAsync(ulong id)
     {
