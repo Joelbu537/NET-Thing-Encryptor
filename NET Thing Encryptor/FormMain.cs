@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace NET_Thing_Encryptor
 {
@@ -19,11 +20,8 @@ namespace NET_Thing_Encryptor
             }
             set
             {
-                if (_currentFolderID != value)
-                {
-                    _currentFolderID = value;
-                    FolderChanged?.Invoke(this, EventArgs.Empty);
-                }
+                _currentFolderID = value;
+                FolderChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
@@ -45,7 +43,14 @@ namespace NET_Thing_Encryptor
         {
             Debug.WriteLine("Folder changed. Refreshing items.");
             listViewMain.Items.Clear();
-            CurrentFolder = await ThingData.LoadFileAsync(CurrentFolderID) as ThingFolder ?? throw new ArgumentException();
+            if(CurrentFolderID == 0)
+            {
+                CurrentFolder = null;
+            }
+            else
+            {
+                CurrentFolder = await ThingData.LoadFileAsync(CurrentFolderID) as ThingFolder ?? throw new ArgumentException();
+            }
             List<ThingObjectLink> new_content = await ThingData.LoadFolderContent(CurrentFolderID);
             Debug.WriteLine($"Loaded folder contains {new_content.Count} items");
 
@@ -85,7 +90,7 @@ namespace NET_Thing_Encryptor
             }
         }
 
-        private void buttonNavigationBack_Click(object sender, EventArgs e)
+        private async void buttonNavigationBack_Click(object sender, EventArgs e)
         {
             if (CurrentFolderID != 0 && CurrentFolder != null)
             {
@@ -93,23 +98,49 @@ namespace NET_Thing_Encryptor
             }
         }
 
-        private void buttonNavigationCreateFile_Click(object sender, EventArgs e)
+        private async void buttonNavigationCreateFile_Click(object sender, EventArgs e)
         {
             // Implement creation dialog
             throw new NotImplementedException();
         }
 
-        private void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
+        private async void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
         {
+            ThingFolder newFolder = new ThingFolder("New Folder created :)").AddToRoot();
+            await ThingData.SaveFileAsync(newFolder);
+            await ThingData.MoveFolderToFolderAsync(newFolder.ID, CurrentFolderID);
+            if(CurrentFolderID == 0)
+            {
+                await ThingData.SaveRootAsync();
+            }
+
+            CurrentFolderID = CurrentFolderID;
             // Implement creation dialog
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
-        private void buttonNavigationDeleteSelected_Click(object sender, EventArgs e)
+        private async void buttonNavigationDeleteSelected_Click(object sender, EventArgs e)
         {
             if (listViewMain.SelectedItems.Count > 0)
             {
                 ListViewItem item = listViewMain.SelectedItems[0];
+                Debug.WriteLine($"Lösche {item.Text} mit ID {item.Name}");
+
+                ThingObject? deletion = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
+                if(deletion is ThingFolder)
+                {
+                    DialogResult r = MessageBox.Show($"Lösche Ordner {deletion.Name} und alle seine Inhalte.",
+                        "Folder deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if(r == DialogResult.No)
+                    {
+                        return;
+                    }
+                    await ThingData.DeleteObject(deletion);
+                }
+                else if(deletion is ThingFile)
+                {
+                    await ThingData.DeleteFile(deletion.ID);
+                }
             }
         }
 

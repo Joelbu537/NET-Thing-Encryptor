@@ -479,6 +479,38 @@ public static class ThingData
             await SaveFileAsync(parentFolder);
         }
     }
+    public static async Task DeleteObject(ulong id)
+    {
+        ThingObject? obj = await LoadFileAsync(id);
+        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+        await DeleteObject(obj);
+    }
+    public static async Task DeleteObject(ThingObject obj)
+    {
+        if(obj is ThingFile file)
+        {
+            await DeleteFile(file.ID);
+        }
+        else if(obj is ThingFolder folder)
+        {
+            foreach(ThingObjectLink link in folder.Content.ToList())
+            {
+                if(link.Type == FileType.folder)
+                {
+                    await DeleteObject(link.ID);
+                }
+                else
+                {
+                    await DeleteFile(link.ID);
+                }
+            }
+            await DeleteFolder(obj.ID);
+        }
+        else
+        {
+            throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
+        }
+    }
     public static async Task SaveRootAsync()
     {
         Debug.WriteLine("Saving Root data to file.");
@@ -531,7 +563,7 @@ public static class ThingData
     }
     public static string Sizeify(this long size_in_bytes)
     {
-        string[] sizes = { "Byte", "KB", "MB", "GB", "TB" };
+        string[] sizes = { "Bytes", "KB", "MB", "GB", "TB" };
         double len = size_in_bytes;
         int order = 0;
         while (len >= 1024 && order < sizes.Length - 1)
