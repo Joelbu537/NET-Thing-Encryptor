@@ -563,7 +563,7 @@ public static class ThingData
     }
     public static string Sizeify(this long size_in_bytes)
     {
-        string[] sizes = { "Bytes", "KB", "MB", "GB", "TB" };
+        string[] sizes = { "Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "RB", "QB" };
         double len = size_in_bytes;
         int order = 0;
         while (len >= 1024 && order < sizes.Length - 1)

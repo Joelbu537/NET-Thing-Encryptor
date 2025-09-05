@@ -108,13 +108,16 @@ namespace NET_Thing_Encryptor
         {
             ThingFolder newFolder = new ThingFolder("New Folder created :)").AddToRoot();
             await ThingData.SaveFileAsync(newFolder);
-            await ThingData.MoveFolderToFolderAsync(newFolder.ID, CurrentFolderID);
             if(CurrentFolderID == 0)
             {
                 await ThingData.SaveRootAsync();
             }
+            else
+            {
+                await ThingData.MoveFolderToFolderAsync(newFolder.ID, CurrentFolderID);
+            }
 
-            CurrentFolderID = CurrentFolderID;
+                CurrentFolderID = CurrentFolderID;
             // Implement creation dialog
             //throw new NotImplementedException();
         }
