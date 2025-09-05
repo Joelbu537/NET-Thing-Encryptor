@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using System.Xml.Linq;
 
 namespace NET_Thing_Encryptor;
@@ -101,9 +102,9 @@ public static class ThingData
     public static async Task<bool> AttemptDecrypt(string password)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        byte[] salt = Root.Salt;
+        byte[]? salt = Root.Salt;
 
-        byte[] key = Rfc2898DeriveBytes.Pbkdf2(
+        byte[]? key = Rfc2898DeriveBytes.Pbkdf2(
                 password,
                 salt,
                 iterations: 10000,
@@ -116,15 +117,22 @@ public static class ThingData
 
         if (!string.IsNullOrEmpty(Root.ContentEncrypted))
         {
-            string temp = await Decrypt(Root.ContentEncrypted);
-            Debug.WriteLine(temp);
-
-            if (temp.StartsWith(Magic)) //PWD korrekt
+            try
             {
-                string subtemp = temp.Substring(Magic.Length);
-                Root.Content = JsonSerializer.Deserialize<List<ThingObjectLink>>(subtemp);
-                Debug.WriteLine("Password correct, main data loaded successfully.");
-                return true;
+                string? temp = await Decrypt(Root.ContentEncrypted);
+                Debug.WriteLine(temp);
+
+                if (temp.StartsWith(Magic)) //PWD korrekt
+                {
+                    string? subtemp = temp.Substring(Magic.Length);
+                    Root.Content = JsonSerializer.Deserialize<List<ThingObjectLink>>(subtemp);
+                    Debug.WriteLine("Password correct, main data loaded successfully.");
+                    return true;
+                }
+            }
+            catch(CryptographicException)
+            {
+                Debug.WriteLine("Decryption FAILED.");
             }
         }
         else
@@ -243,7 +251,7 @@ public static class ThingData
         }
         return false;
     }
-    private static string GetFilePath(ulong id, bool create = false)
+    public static string GetFilePath(ulong id, bool create = false)
     {
         if(id == 0)
         {
@@ -492,7 +500,45 @@ public static class ThingData
     public static ThingFolder AddToRoot(this ThingFolder folder)
     {
         ArgumentNullException.ThrowIfNull(ThingData.Root, "Root cannot be null.");
-        ThingData.Root.Content?.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.other));
+        ThingData.Root.Content?.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.folder));
         return folder;
+    }
+    public static async Task<List<ThingObjectLink>> LoadFolderContent(ulong id)
+    {
+        List<ThingObjectLink> content = new List<ThingObjectLink>();
+
+        if(id == 0)
+        {
+            foreach (ThingObjectLink link in Root.Content)
+            {
+                content.Add(link);
+            }
+            return content;
+        }
+        else
+        {
+            ThingObject? file = await LoadFileAsync(id);
+            if(file is ThingFolder folder)
+            {
+                foreach(ThingObjectLink link in folder.Content)
+                {
+                    content.Add(link);
+                }
+                return content;
+            }
+        }
+        throw new ArgumentException("The provided ID does not correspond to a folder.", nameof(id));
+    }
+    public static string Sizeify(this long size_in_bytes)
+    {
+        string[] sizes = { "Byte", "KB", "MB", "GB", "TB" };
+        double len = size_in_bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return String.Format("{0:0.##} {1}", len, sizes[order]);
     }
 }

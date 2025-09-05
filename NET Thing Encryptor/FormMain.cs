@@ -1,15 +1,124 @@
+using System.ComponentModel;
+using System.Diagnostics;
+
 namespace NET_Thing_Encryptor
 {
     public partial class FormMain : Form
     {
+        public event EventHandler FolderChanged;
+        private ThingFolder? CurrentFolder;
+        private ulong _currentFolderID = 1;
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        [Browsable(false)]
+        public ulong CurrentFolderID
+        {
+            get
+            {
+                return _currentFolderID;
+            }
+            set
+            {
+                if (_currentFolderID != value)
+                {
+                    _currentFolderID = value;
+                    FolderChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+
         public FormMain()
         {
             InitializeComponent();
+            FolderChanged += OnFolderChanged;
         }
 
-        private void FormMain_Load(object sender, EventArgs e)
+        private async void FormMain_Load(object sender, EventArgs e)
         {
+            ThingFolder folder = new ThingFolder("TestFolder").AddToRoot();
+            await ThingData.SaveFileAsync(folder);
+            await ThingData.SaveRootAsync();
 
+            CurrentFolderID = 0;
+        }
+        private async void OnFolderChanged(object sender, EventArgs e)
+        {
+            Debug.WriteLine("Folder changed. Refreshing items.");
+            listViewMain.Items.Clear();
+            CurrentFolder = await ThingData.LoadFileAsync(CurrentFolderID) as ThingFolder ?? throw new ArgumentException();
+            List<ThingObjectLink> new_content = await ThingData.LoadFolderContent(CurrentFolderID);
+            Debug.WriteLine($"Loaded folder contains {new_content.Count} items");
+
+            foreach (ThingObjectLink o in new_content)
+            {
+                Debug.WriteLine($"Loading item: {o.Name} (ID: {o.ID}, Type: {o.Type}, CreatedAt: {o.CreatedAt})");
+
+                ListViewItem item = new ListViewItem(o.Name);
+                item.Name = o.ID.ToString();
+                item.ImageKey = o.Type.ToString();
+
+                FileInfo inf = new FileInfo(ThingData.GetFilePath(o.ID));
+                item.SubItems.Add(inf.Length.Sizeify().ToString());
+                item.SubItems.Add(o.CreatedAt.ToString());
+
+                listViewMain.Items.Add(item);
+            }
+        }
+
+        private async void listViewMain_DoubleClick(object sender, EventArgs e)
+        {
+            if (listViewMain.SelectedItems.Count > 0)
+            {
+                ListViewItem item = listViewMain.SelectedItems[0];
+                Debug.WriteLine($"Doppelklick auf {item.Text} mit ID {item.Name}");
+                ThingObject? obj = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
+                if (obj is ThingFolder folder)
+                {
+                    CurrentFolderID = folder.ID;
+                }
+                else if (obj is ThingFile file)
+                {
+                    Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash}");
+                    // Open File
+                    throw new NotImplementedException();
+                }
+            }
+        }
+
+        private void buttonNavigationBack_Click(object sender, EventArgs e)
+        {
+            if (CurrentFolderID != 0 && CurrentFolder != null)
+            {
+                CurrentFolderID = CurrentFolder.ParentID;
+            }
+        }
+
+        private void buttonNavigationCreateFile_Click(object sender, EventArgs e)
+        {
+            // Implement creation dialog
+            throw new NotImplementedException();
+        }
+
+        private void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
+        {
+            // Implement creation dialog
+            throw new NotImplementedException();
+        }
+
+        private void buttonNavigationDeleteSelected_Click(object sender, EventArgs e)
+        {
+            if (listViewMain.SelectedItems.Count > 0)
+            {
+                ListViewItem item = listViewMain.SelectedItems[0];
+            }
+        }
+
+        private void buttonNavigationRoot_Click(object sender, EventArgs e)
+        {
+            if (CurrentFolderID != 0)
+            {
+                CurrentFolderID = 0;
+            }
         }
     }
 }

@@ -47,6 +47,8 @@ namespace NET_Thing_Encryptor
                     MessageBox.Show("Incorrect password. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     textBoxPassword.Enabled = true;
                     buttonContinue.Enabled = true;
+                    GC.Collect();
+                    textBoxPassword.Focus();
                 }
             }
         }

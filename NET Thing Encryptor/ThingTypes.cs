@@ -95,6 +95,7 @@ namespace NET_Thing_Encryptor
         public ulong ID { get; set; }
         public string Name { get; set; }
         public FileType Type { get; set; }
+        public DateOnly CreatedAt { get; set; } = DateOnly.FromDateTime(DateTime.Now);
         public byte[]? PreviewContent { get; set; }
         public ThingObjectLink(ulong id, string name, FileType type, byte[]? previewContent = null)
         {
@@ -110,7 +111,8 @@ namespace NET_Thing_Encryptor
         audio,
         image,
         text,
-        other
+        other,
+        folder
     }
     public enum  FileExtension
     {

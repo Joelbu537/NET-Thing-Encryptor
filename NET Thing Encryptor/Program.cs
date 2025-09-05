@@ -19,7 +19,7 @@ namespace NET_Thing_Encryptor
                     {
                         if (pw.ShowDialog() == DialogResult.OK)
                         {
-                            ThingFolder? foldertest = new ThingFolder("TestFolder").AddToRoot();
+                            /*ThingFolder? foldertest = new ThingFolder("TestFolder").AddToRoot();
                             await ThingData.SaveFileAsync(foldertest);
                             ThingFile? file = new ThingFile("TestFile", new byte[] { 0, 1, 2, 3, 4 });
                             await ThingData.MoveFileToFolderAsync(file, foldertest.ID);
@@ -53,7 +53,8 @@ namespace NET_Thing_Encryptor
                             }
 
                             await ThingData.SaveRootAsync();
-                            MessageBox.Show("Test completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("Test completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);*/
+                            await ThingData.SaveRootAsync();
                             Application.Run(new FormMain());
                         }
                         else
@@ -65,10 +66,10 @@ namespace NET_Thing_Encryptor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred: {ex.Message}\n\n The Program was forced to stop.\n" +
+                MessageBox.Show($"The Program was forced to stop.\n" +
                     $"Try restarting the program, your pc, deleting Application Data and reinstalling the application.\n\n" +
-                    $"Exception Type: {ex.GetType().FullName}\n\n" +
-                    $"Stack trace: {ex.StackTrace}",
+                    $"Exception: {ex.GetType().FullName} : {ex.Message}\n" +
+                    $"StackTrace: {ex.StackTrace}",
                     "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
