@@ -305,6 +305,7 @@ public static class ThingData
             ThingObject? obj = await JsonSerializer.DeserializeAsync<ThingObject>(decrypted, options); //// GRRRRRR NEUE INSTANZ :X
 
             ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+            obj.ID = id;
             return obj;
         }
         catch (FileNotFoundException)
@@ -443,6 +444,7 @@ public static class ThingData
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         ThingFile? file = await LoadFileAsync(fileID) as ThingFile;
         ArgumentNullException.ThrowIfNull(file, nameof(file));
+        Debug.WriteLine("Attempting to delete file: " + file.Name);
         string filePath = GetFilePath(fileID);
         if (File.Exists(filePath))
         {
@@ -462,15 +464,12 @@ public static class ThingData
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
         ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+        Debug.Write("Attempting to delete folder: " + folder.Name + "...  ");
         if (folder.Content.Count != 0)
         {
             throw new InvalidOperationException("Cannot delete a folder that contains files or subfolders.");
         }
         string folderPath = GetFilePath(folderID);
-        if (Directory.Exists(folderPath))
-        {
-            Directory.Delete(folderPath, true);
-        }
         if (folder.ParentID != 0)
         {
             ThingFolder? parentFolder = await LoadFileAsync(folder.ParentID) as ThingFolder;
@@ -478,6 +477,16 @@ public static class ThingData
             parentFolder.Content.RemoveAll(x => x.ID == folder.ID);
             await SaveFileAsync(parentFolder);
         }
+        else
+        {
+            Root.Content.RemoveAll(x => x.ID == folder.ID);
+            await SaveRootAsync();
+        }
+        if (File.Exists(folderPath))
+        {
+            File.Delete(folderPath);
+        }
+        Debug.WriteLine("Success");
     }
     public static async Task DeleteObject(ulong id)
     {
@@ -504,7 +513,7 @@ public static class ThingData
                     await DeleteFile(link.ID);
                 }
             }
-            await DeleteFolder(obj.ID);
+            await DeleteFolder(folder.ID);
         }
         else
         {

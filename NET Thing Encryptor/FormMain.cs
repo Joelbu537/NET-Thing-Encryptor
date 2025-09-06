@@ -33,17 +33,13 @@ namespace NET_Thing_Encryptor
 
         private async void FormMain_Load(object sender, EventArgs e)
         {
-            ThingFolder folder = new ThingFolder("TestFolder").AddToRoot();
-            await ThingData.SaveFileAsync(folder);
-            await ThingData.SaveRootAsync();
-
             CurrentFolderID = 0;
         }
         private async void OnFolderChanged(object sender, EventArgs e)
         {
             Debug.WriteLine("Folder changed. Refreshing items.");
             listViewMain.Items.Clear();
-            if(CurrentFolderID == 0)
+            if (CurrentFolderID == 0)
             {
                 CurrentFolder = null;
             }
@@ -52,11 +48,11 @@ namespace NET_Thing_Encryptor
                 CurrentFolder = await ThingData.LoadFileAsync(CurrentFolderID) as ThingFolder ?? throw new ArgumentException();
             }
             List<ThingObjectLink> new_content = await ThingData.LoadFolderContent(CurrentFolderID);
-            Debug.WriteLine($"Loaded folder contains {new_content.Count} items");
+            Debug.WriteLine($"Loaded folder contains {new_content.Count} items:");
 
             foreach (ThingObjectLink o in new_content)
             {
-                Debug.WriteLine($"Loading item: {o.Name} (ID: {o.ID}, Type: {o.Type}, CreatedAt: {o.CreatedAt})");
+                Debug.WriteLine($"  - {o.Name} ({o.Type}, ID {o.ID})");
 
                 ListViewItem item = new ListViewItem(o.Name);
                 item.Name = o.ID.ToString();
@@ -80,21 +76,36 @@ namespace NET_Thing_Encryptor
                 if (obj is ThingFolder folder)
                 {
                     CurrentFolderID = folder.ID;
+                    textBoxNavigation.Text += $@"/{folder.Name}";
                 }
                 else if (obj is ThingFile file)
                 {
                     Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash}");
-                    // Open File
+                    switch (file.Type)
+                    {
+                        case FileType.text:
+                            break;
+                        case FileType.image:
+                            break;
+                        case FileType.audio:
+                            break;
+                        case FileType.video:
+                            break;
+                        case FileType.other:
+                            break;
+
+                    }
                     throw new NotImplementedException();
                 }
             }
         }
 
-        private async void buttonNavigationBack_Click(object sender, EventArgs e)
+        private void buttonNavigationBack_Click(object sender, EventArgs e)
         {
             if (CurrentFolderID != 0 && CurrentFolder != null)
             {
                 CurrentFolderID = CurrentFolder.ParentID;
+                textBoxNavigation.Text = textBoxNavigation.Text.Substring(0, textBoxNavigation.Text.LastIndexOf('/'));
             }
         }
 
@@ -106,18 +117,26 @@ namespace NET_Thing_Encryptor
 
         private async void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
         {
-            ThingFolder newFolder = new ThingFolder("New Folder created :)").AddToRoot();
-            await ThingData.SaveFileAsync(newFolder);
-            if(CurrentFolderID == 0)
+            using CreateFolderForm form = new CreateFolderForm();
+            if(form.ShowDialog() == DialogResult.OK)
             {
-                await ThingData.SaveRootAsync();
+                ThingFolder newFolder = new ThingFolder(form.Name).AddToRoot();
+                await ThingData.SaveFileAsync(newFolder);
+                if (CurrentFolderID == 0)
+                {
+                    await ThingData.SaveRootAsync();
+                }
+                else
+                {
+                    await ThingData.MoveFolderToFolderAsync(newFolder.ID, CurrentFolderID);
+                }
             }
             else
             {
-                await ThingData.MoveFolderToFolderAsync(newFolder.ID, CurrentFolderID);
+                return;
             }
 
-                CurrentFolderID = CurrentFolderID;
+            CurrentFolderID = CurrentFolderID;
             // Implement creation dialog
             //throw new NotImplementedException();
         }
@@ -127,23 +146,23 @@ namespace NET_Thing_Encryptor
             if (listViewMain.SelectedItems.Count > 0)
             {
                 ListViewItem item = listViewMain.SelectedItems[0];
-                Debug.WriteLine($"Lösche {item.Text} mit ID {item.Name}");
+                Debug.WriteLine($"Deleting {item.Text}");
 
                 ThingObject? deletion = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
-                if(deletion is ThingFolder)
+                if (deletion is ThingFolder)
                 {
-                    DialogResult r = MessageBox.Show($"Lösche Ordner {deletion.Name} und alle seine Inhalte.",
+                    DialogResult r = MessageBox.Show($"Are you sure you want to delete {deletion.Name} and all of its contents?",
                         "Folder deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if(r == DialogResult.No)
+                    if (r == DialogResult.Yes)
                     {
-                        return;
+                        await ThingData.DeleteObject(deletion);
                     }
-                    await ThingData.DeleteObject(deletion);
                 }
-                else if(deletion is ThingFile)
+                else if (deletion is ThingFile)
                 {
                     await ThingData.DeleteFile(deletion.ID);
                 }
+                CurrentFolderID = CurrentFolderID;
             }
         }
 
@@ -152,7 +171,18 @@ namespace NET_Thing_Encryptor
             if (CurrentFolderID != 0)
             {
                 CurrentFolderID = 0;
+                textBoxNavigation.Text = "/Root";
             }
+        }
+
+        private void listViewMain_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void buttonNavigationSettings_Click(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 }
