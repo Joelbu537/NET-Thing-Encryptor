@@ -55,15 +55,15 @@
             tableLayoutPanel.RowStyles.Add(new RowStyle());
             tableLayoutPanel.RowStyles.Add(new RowStyle());
             tableLayoutPanel.RowStyles.Add(new RowStyle());
-            tableLayoutPanel.Size = new Size(1040, 227);
+            tableLayoutPanel.Size = new Size(1040, 204);
             tableLayoutPanel.TabIndex = 0;
             // 
             // label
             // 
             label.AutoSize = true;
             label.Dock = DockStyle.Fill;
-            label.Location = new Point(3, 50);
-            label.Margin = new Padding(3, 50, 3, 0);
+            label.Location = new Point(3, 30);
+            label.Margin = new Padding(3, 30, 3, 0);
             label.Name = "label";
             label.Size = new Size(1034, 32);
             label.TabIndex = 0;
@@ -73,7 +73,7 @@
             // textBox
             // 
             textBox.Dock = DockStyle.Fill;
-            textBox.Location = new Point(50, 92);
+            textBox.Location = new Point(50, 72);
             textBox.Margin = new Padding(50, 10, 50, 3);
             textBox.Name = "textBox";
             textBox.Size = new Size(940, 39);
@@ -89,19 +89,20 @@
             tableLayoutPanelButtons.Controls.Add(buttonCancel, 0, 0);
             tableLayoutPanelButtons.Controls.Add(buttonOK, 1, 0);
             tableLayoutPanelButtons.Dock = DockStyle.Fill;
-            tableLayoutPanelButtons.Location = new Point(3, 154);
+            tableLayoutPanelButtons.Location = new Point(3, 134);
             tableLayoutPanelButtons.Margin = new Padding(3, 20, 3, 3);
             tableLayoutPanelButtons.Name = "tableLayoutPanelButtons";
             tableLayoutPanelButtons.RowCount = 1;
             tableLayoutPanelButtons.RowStyles.Add(new RowStyle());
-            tableLayoutPanelButtons.Size = new Size(1034, 70);
+            tableLayoutPanelButtons.Size = new Size(1034, 67);
             tableLayoutPanelButtons.TabIndex = 2;
             // 
             // buttonCancel
             // 
             buttonCancel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             buttonCancel.AutoSize = true;
-            buttonCancel.Location = new Point(402, 3);
+            buttonCancel.Location = new Point(400, 3);
+            buttonCancel.Margin = new Padding(3, 3, 5, 3);
             buttonCancel.Name = "buttonCancel";
             buttonCancel.Size = new Size(112, 42);
             buttonCancel.TabIndex = 0;
@@ -113,7 +114,8 @@
             // 
             buttonOK.AutoSize = true;
             buttonOK.Enabled = false;
-            buttonOK.Location = new Point(520, 3);
+            buttonOK.Location = new Point(522, 3);
+            buttonOK.Margin = new Padding(5, 3, 3, 3);
             buttonOK.Name = "buttonOK";
             buttonOK.Size = new Size(112, 42);
             buttonOK.TabIndex = 1;
@@ -128,7 +130,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             AutoSize = true;
             CancelButton = buttonCancel;
-            ClientSize = new Size(1040, 227);
+            ClientSize = new Size(1040, 204);
             Controls.Add(tableLayoutPanel);
             Font = new Font("Segoe UI", 12F);
             FormBorderStyle = FormBorderStyle.FixedDialog;

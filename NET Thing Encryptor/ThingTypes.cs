@@ -63,7 +63,25 @@ namespace NET_Thing_Encryptor
     public class ThingRoot : ThingObject, ICloneable
     {
         public byte[] Salt { get; set; }
-        public string? SaveLocation { get; set; }
+        private string? _saveLocation;
+        public string SaveLocation 
+        { 
+            get 
+            { 
+                if(_saveLocation == null)
+                {
+                    return Directory.GetCurrentDirectory();
+                }
+                else
+                {
+                    return _saveLocation;
+                }
+            } 
+            set 
+            { 
+                _saveLocation = value; 
+            } 
+        }
         public string ContentEncrypted { get; set; }
         public List<ThingObjectLink>? Content { get; set; }
 

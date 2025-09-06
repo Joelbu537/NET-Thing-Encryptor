@@ -182,7 +182,8 @@ namespace NET_Thing_Encryptor
 
         private void buttonNavigationSettings_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            using SettingsForm form = new SettingsForm();
+            form.ShowDialog();
         }
     }
 }
