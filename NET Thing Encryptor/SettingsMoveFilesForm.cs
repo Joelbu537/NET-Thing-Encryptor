@@ -21,28 +21,33 @@ namespace NET_Thing_Encryptor
             path = targetDirectory;
         }
 
-        private void SettingsMoveFilesForm_Load(object sender, EventArgs e)
+        private async void SettingsMoveFilesForm_Load(object sender, EventArgs e)
         {
-            progressBar.Maximum = files.Count * 2;
+            progressBar.Maximum = files.Count;
             progressBar.Value = 0;
-            Parallel.ForEach(files, (file) =>
+
+            int count = 0;
+            ThingData.Saving++;
+
+            await Task.Run(() =>
             {
-                File.Copy(file.FullName, Path.Combine(path, file.Name), true);
-                this.Invoke(() =>
+                Parallel.ForEach(files, (file) =>
                 {
-                    progressBar.Value += 1;
-                    label.Text = $"Moving {progressBar.Value}/{progressBar.Maximum} files...";
+                    File.Copy(file.FullName, Path.Combine(path, file.Name), true);
+                    File.Delete(file.FullName);
+
+                    int current = Interlocked.Increment(ref count);
+
+                    this.Invoke(() =>
+                    {
+                        progressBar.Value = current;
+                        label.Text = $"Moving {current}/{progressBar.Maximum} files...";
+                    });
                 });
             });
-            Parallel.ForEach(files, (file) =>
-            {
-                File.Delete(file.FullName);
-                this.Invoke(() =>
-                {
-                    progressBar.Value += 1;
-                    label.Text = $"Deleting {progressBar.Value - files.Count}/{progressBar.Maximum / 2} files...";
-                });
-            });
+
+            ThingData.Saving--;
+            this.Close();
         }
     }
 }

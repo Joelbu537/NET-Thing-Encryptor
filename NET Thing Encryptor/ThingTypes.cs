@@ -70,7 +70,7 @@ namespace NET_Thing_Encryptor
             { 
                 if(_saveLocation == null)
                 {
-                    return Directory.GetCurrentDirectory();
+                    return Path.Combine(Directory.GetCurrentDirectory(), "Data");
                 }
                 else
                 {
@@ -112,12 +112,14 @@ namespace NET_Thing_Encryptor
         public string Name { get; set; }
         public FileType Type { get; set; }
         public DateOnly CreatedAt { get; set; } = DateOnly.FromDateTime(DateTime.Now);
+        public long Size { get; set; } = 0;
         public byte[]? PreviewContent { get; set; }
-        public ThingObjectLink(ulong id, string name, FileType type, byte[]? previewContent = null)
+        public ThingObjectLink(ulong id, string name, FileType type, long size, byte[]? previewContent = null)
         {
             ID = id;
             Name = name;
             Type = type;
+            Size = size;
             PreviewContent = previewContent;
         }
     }

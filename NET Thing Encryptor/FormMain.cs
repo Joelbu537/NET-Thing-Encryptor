@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace NET_Thing_Encryptor
@@ -29,10 +30,24 @@ namespace NET_Thing_Encryptor
         {
             InitializeComponent();
             FolderChanged += OnFolderChanged;
+
+            ThingData.SaveStatusChanged += (o, e) =>
+            {
+                if (ThingData.Saving > 0)
+                {
+                    labelInfoSaving.Visible = true;
+                }
+                else
+                {
+                    labelInfoSaving.Visible = false;
+                }
+            };
         }
 
         private async void FormMain_Load(object sender, EventArgs e)
         {
+            Debug.WriteLine($"FormMain ist {System.Threading.Thread.CurrentThread.GetApartmentState()}");
+
             CurrentFolderID = 0;
         }
         private async void OnFolderChanged(object sender, EventArgs e)
@@ -50,20 +65,30 @@ namespace NET_Thing_Encryptor
             List<ThingObjectLink> new_content = await ThingData.LoadFolderContent(CurrentFolderID);
             Debug.WriteLine($"Loaded folder contains {new_content.Count} items:");
 
+            int folderCount = 0;
+            int fileCount = 0;
+            long totalSize = 0;
+
             foreach (ThingObjectLink o in new_content)
             {
                 Debug.WriteLine($"  - {o.Name} ({o.Type}, ID {o.ID})");
+                if(o.Type == FileType.folder) folderCount++;
+                else fileCount++;
 
                 ListViewItem item = new ListViewItem(o.Name);
                 item.Name = o.ID.ToString();
                 item.ImageKey = o.Type.ToString();
 
-                FileInfo inf = new FileInfo(ThingData.GetFilePath(o.ID));
-                item.SubItems.Add(inf.Length.Sizeify().ToString());
+                item.SubItems.Add(o.Size.Sizeify().ToString());
+                totalSize += o.Size;
                 item.SubItems.Add(o.CreatedAt.ToString());
 
                 listViewMain.Items.Add(item);
             }
+
+            labelInfoFileCount.Text = $"Files: {fileCount}";
+            labelInfoFolderCount.Text = $"Folders: {folderCount}";
+            labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
         }
 
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
@@ -118,7 +143,7 @@ namespace NET_Thing_Encryptor
         private async void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
         {
             using CreateFolderForm form = new CreateFolderForm();
-            if(form.ShowDialog() == DialogResult.OK)
+            if (form.ShowDialog() == DialogResult.OK)
             {
                 ThingFolder newFolder = new ThingFolder(form.Name).AddToRoot();
                 await ThingData.SaveFileAsync(newFolder);
@@ -184,6 +209,44 @@ namespace NET_Thing_Encryptor
         {
             using SettingsForm form = new SettingsForm();
             form.ShowDialog();
+        }
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool ShutdownBlockReasonCreate(IntPtr hWnd, [MarshalAs(UnmanagedType.LPWStr)] string pwszReason);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool ShutdownBlockReasonDestroy(IntPtr hWnd);
+        private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (ThingData.Saving > 0)
+            {
+                switch (e.CloseReason)
+                {
+                    // Closing allowed
+                    case CloseReason.ApplicationExitCall:
+                        e.Cancel = false;
+                        break;
+                    case CloseReason.TaskManagerClosing:
+                        e.Cancel = false;
+                        break;
+                    // Closing forbidden
+                    case CloseReason.UserClosing:
+                        e.Cancel = true;
+                        MessageBox.Show("Please wait until the saving process has finished!", "Saving in progress", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        break;
+                    case CloseReason.WindowsShutDown:
+                        ShutdownBlockReasonCreate(this.Handle, "Saving changes...");
+                        e.Cancel = true;
+                        break;
+                    default:
+                        e.Cancel = true;
+                        break;
+                }
+            }
+        }
+
+        private void FormMain_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            ShutdownBlockReasonDestroy(this.Handle);
         }
     }
 }

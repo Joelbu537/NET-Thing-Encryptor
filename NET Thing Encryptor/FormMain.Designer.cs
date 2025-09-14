@@ -37,6 +37,7 @@
             buttonNavigationCreateFile = new Button();
             buttonNavigationCreateFolder = new Button();
             buttonNavigationDeleteSelected = new Button();
+            buttonNavigationSettings = new Button();
             buttonNavigationRoot = new Button();
             textBoxNavigation = new TextBox();
             listViewMain = new ListView();
@@ -44,10 +45,15 @@
             columnHeaderSize = new ColumnHeader();
             columnHeaderCreated = new ColumnHeader();
             imageListFileIcons = new ImageList(components);
-            buttonNavigationSettings = new Button();
+            flowLayoutPanelInfo = new FlowLayoutPanel();
+            labelInfoFileCount = new Label();
+            labelInfoFolderCount = new Label();
+            labelInfoTotalSize = new Label();
+            labelInfoSaving = new Label();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
+            flowLayoutPanelInfo.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanelMain
@@ -57,13 +63,15 @@
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanelMain.Controls.Add(tableLayoutPanelNavigation, 0, 0);
             tableLayoutPanelMain.Controls.Add(listViewMain, 0, 1);
+            tableLayoutPanelMain.Controls.Add(flowLayoutPanelInfo, 0, 2);
             tableLayoutPanelMain.Dock = DockStyle.Fill;
             tableLayoutPanelMain.Location = new Point(0, 0);
             tableLayoutPanelMain.Margin = new Padding(0);
             tableLayoutPanelMain.Name = "tableLayoutPanelMain";
-            tableLayoutPanelMain.RowCount = 2;
+            tableLayoutPanelMain.RowCount = 3;
             tableLayoutPanelMain.RowStyles.Add(new RowStyle());
             tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanelMain.RowStyles.Add(new RowStyle());
             tableLayoutPanelMain.Size = new Size(1778, 944);
             tableLayoutPanelMain.TabIndex = 0;
             // 
@@ -163,6 +171,22 @@
             buttonNavigationDeleteSelected.UseVisualStyleBackColor = false;
             buttonNavigationDeleteSelected.Click += buttonNavigationDeleteSelected_Click;
             // 
+            // buttonNavigationSettings
+            // 
+            buttonNavigationSettings.Anchor = AnchorStyles.Left;
+            buttonNavigationSettings.AutoSize = true;
+            buttonNavigationSettings.BackColor = Color.Transparent;
+            buttonNavigationSettings.BackgroundImage = Properties.Resources.shell32_gear;
+            buttonNavigationSettings.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationSettings.Location = new Point(219, 3);
+            buttonNavigationSettings.MinimumSize = new Size(48, 48);
+            buttonNavigationSettings.Name = "buttonNavigationSettings";
+            buttonNavigationSettings.Size = new Size(48, 48);
+            buttonNavigationSettings.TabIndex = 6;
+            buttonNavigationSettings.TextImageRelation = TextImageRelation.ImageAboveText;
+            buttonNavigationSettings.UseVisualStyleBackColor = false;
+            buttonNavigationSettings.Click += buttonNavigationSettings_Click;
+            // 
             // buttonNavigationRoot
             // 
             buttonNavigationRoot.Anchor = AnchorStyles.Left;
@@ -199,7 +223,7 @@
             listViewMain.Location = new Point(3, 69);
             listViewMain.MultiSelect = false;
             listViewMain.Name = "listViewMain";
-            listViewMain.Size = new Size(1772, 872);
+            listViewMain.Size = new Size(1772, 833);
             listViewMain.SmallImageList = imageListFileIcons;
             listViewMain.TabIndex = 1;
             listViewMain.UseCompatibleStateImageBehavior = false;
@@ -234,21 +258,62 @@
             imageListFileIcons.Images.SetKeyName(4, "folder");
             imageListFileIcons.Images.SetKeyName(5, "text");
             // 
-            // buttonNavigationSettings
+            // flowLayoutPanelInfo
             // 
-            buttonNavigationSettings.Anchor = AnchorStyles.Left;
-            buttonNavigationSettings.AutoSize = true;
-            buttonNavigationSettings.BackColor = Color.Transparent;
-            buttonNavigationSettings.BackgroundImage = Properties.Resources.shell32_gear;
-            buttonNavigationSettings.BackgroundImageLayout = ImageLayout.Stretch;
-            buttonNavigationSettings.Location = new Point(219, 3);
-            buttonNavigationSettings.MinimumSize = new Size(48, 48);
-            buttonNavigationSettings.Name = "buttonNavigationSettings";
-            buttonNavigationSettings.Size = new Size(48, 48);
-            buttonNavigationSettings.TabIndex = 6;
-            buttonNavigationSettings.TextImageRelation = TextImageRelation.ImageAboveText;
-            buttonNavigationSettings.UseVisualStyleBackColor = false;
-            buttonNavigationSettings.Click += buttonNavigationSettings_Click;
+            flowLayoutPanelInfo.AutoSize = true;
+            flowLayoutPanelInfo.Controls.Add(labelInfoFileCount);
+            flowLayoutPanelInfo.Controls.Add(labelInfoFolderCount);
+            flowLayoutPanelInfo.Controls.Add(labelInfoTotalSize);
+            flowLayoutPanelInfo.Controls.Add(labelInfoSaving);
+            flowLayoutPanelInfo.Dock = DockStyle.Fill;
+            flowLayoutPanelInfo.Font = new Font("Consolas", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            flowLayoutPanelInfo.Location = new Point(3, 908);
+            flowLayoutPanelInfo.Name = "flowLayoutPanelInfo";
+            flowLayoutPanelInfo.Size = new Size(1772, 33);
+            flowLayoutPanelInfo.TabIndex = 2;
+            // 
+            // labelInfoFileCount
+            // 
+            labelInfoFileCount.AutoSize = true;
+            labelInfoFileCount.Location = new Point(5, 5);
+            labelInfoFileCount.Margin = new Padding(5);
+            labelInfoFileCount.Name = "labelInfoFileCount";
+            labelInfoFileCount.Size = new Size(208, 23);
+            labelInfoFileCount.TabIndex = 0;
+            labelInfoFileCount.Text = "labelInfoFileCount";
+            // 
+            // labelInfoFolderCount
+            // 
+            labelInfoFolderCount.AutoSize = true;
+            labelInfoFolderCount.Location = new Point(223, 5);
+            labelInfoFolderCount.Margin = new Padding(5);
+            labelInfoFolderCount.Name = "labelInfoFolderCount";
+            labelInfoFolderCount.Size = new Size(230, 23);
+            labelInfoFolderCount.TabIndex = 1;
+            labelInfoFolderCount.Text = "labelInfoFolderCount";
+            // 
+            // labelInfoTotalSize
+            // 
+            labelInfoTotalSize.AutoSize = true;
+            labelInfoTotalSize.Location = new Point(463, 5);
+            labelInfoTotalSize.Margin = new Padding(5);
+            labelInfoTotalSize.Name = "labelInfoTotalSize";
+            labelInfoTotalSize.Size = new Size(208, 23);
+            labelInfoTotalSize.TabIndex = 2;
+            labelInfoTotalSize.Text = "labelInfoTotalSize";
+            // 
+            // labelInfoSaving
+            // 
+            labelInfoSaving.AutoSize = true;
+            labelInfoSaving.BackColor = Color.Red;
+            labelInfoSaving.ForeColor = Color.Black;
+            labelInfoSaving.Location = new Point(681, 5);
+            labelInfoSaving.Margin = new Padding(5);
+            labelInfoSaving.Name = "labelInfoSaving";
+            labelInfoSaving.Size = new Size(109, 23);
+            labelInfoSaving.TabIndex = 3;
+            labelInfoSaving.Text = "Saving...";
+            labelInfoSaving.Visible = false;
             // 
             // FormMain
             // 
@@ -263,6 +328,8 @@
             Name = "FormMain";
             Text = ".NET Thing Encryptor";
             WindowState = FormWindowState.Maximized;
+            FormClosing += FormMain_FormClosing;
+            FormClosed += FormMain_FormClosed;
             Load += FormMain_Load;
             tableLayoutPanelMain.ResumeLayout(false);
             tableLayoutPanelMain.PerformLayout();
@@ -270,6 +337,8 @@
             tableLayoutPanelNavigation.PerformLayout();
             flowLayoutPanelNavigationButtons.ResumeLayout(false);
             flowLayoutPanelNavigationButtons.PerformLayout();
+            flowLayoutPanelInfo.ResumeLayout(false);
+            flowLayoutPanelInfo.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -291,5 +360,10 @@
         private Button buttonNavigationCreateFolder;
         private Button buttonNavigationDeleteSelected;
         private Button buttonNavigationSettings;
+        private FlowLayoutPanel flowLayoutPanelInfo;
+        private Label labelInfoFileCount;
+        private Label labelInfoFolderCount;
+        private Label labelInfoTotalSize;
+        private Label labelInfoSaving;
     }
 }

@@ -110,6 +110,7 @@
             buttonSaveLocation.TabIndex = 3;
             buttonSaveLocation.Text = "...";
             buttonSaveLocation.UseVisualStyleBackColor = true;
+            buttonSaveLocation.Click += buttonSaveLocation_Click;
             // 
             // flowLayoutPanel1
             // 

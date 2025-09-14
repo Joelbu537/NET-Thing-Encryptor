@@ -57,7 +57,6 @@
             progressBar.Margin = new Padding(20);
             progressBar.Name = "progressBar";
             progressBar.Size = new Size(697, 45);
-            progressBar.Style = ProgressBarStyle.Marquee;
             progressBar.TabIndex = 1;
             // 
             // label
@@ -70,7 +69,7 @@
             label.Name = "label";
             label.Size = new Size(721, 32);
             label.TabIndex = 2;
-            label.Text = "Moving Files 0/0";
+            label.Text = "Moving 0/0 files...";
             label.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // SettingsMoveFilesForm
@@ -85,7 +84,7 @@
             MinimizeBox = false;
             Name = "SettingsMoveFilesForm";
             ShowIcon = false;
-            Text = "Moving Files...";
+            Text = "Moving files to new directory";
             Load += SettingsMoveFilesForm_Load;
             tableLayoutPanel1.ResumeLayout(false);
             tableLayoutPanel1.PerformLayout();

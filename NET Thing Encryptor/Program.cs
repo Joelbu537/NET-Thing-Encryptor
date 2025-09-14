@@ -8,12 +8,12 @@ namespace NET_Thing_Encryptor
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static async Task Main()
+        static void Main()
         {
             ApplicationConfiguration.Initialize();
             try
             {
-                if (await ThingData.LoadMainData())
+                if (ThingData.LoadMainData().Result)
                 {
                     using var pw = new PasswordForm();
                     if (pw.ShowDialog() == DialogResult.OK)
@@ -53,7 +53,7 @@ namespace NET_Thing_Encryptor
 
                         await ThingData.SaveRootAsync();
                         MessageBox.Show("Test completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);*/
-                        await ThingData.SaveRootAsync();
+                        ThingData.SaveRootAsync().Wait();
                         Application.Run(new FormMain());
                     }
                     else
