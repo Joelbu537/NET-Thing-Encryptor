@@ -15,31 +15,25 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_011FBEB83BBD44AC8C0298E34447FCA3"
+        "MsmKey" = "8:_0B9EF97B59DE4AF4B268007BBBC47209"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
-        "MsmKey" = "8:_030710CA1E884A278453E7BE14FBA9BA"
+        "MsmKey" = "8:_3F811C302CC84413ACB54169BA4E2C7A"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
-        "MsmKey" = "8:_0D3DD48C2BBF40DC89065C8F5EFD028E"
+        "MsmKey" = "8:_4D307D35357F48B7ABE4AB4157F03F01"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
-        "MsmKey" = "8:_4C83576F385C4E318F08DBCF04F2E85C"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_666146E062E44C468B2F246F50A6A162"
+        "MsmKey" = "8:_6A1E0AABE55F474EA5D496840212C94B"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -51,7 +45,13 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_A6D2994703AB4E2BBA47A2113E4AD9F9"
+        "MsmKey" = "8:_82B8DC4BA9B24D928AF3485EC32C457D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_A1DF1A24316142EEA3955C1B284C48DC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -144,67 +144,7 @@
         }
         "File"
         {
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_011FBEB83BBD44AC8C0298E34447FCA3"
-            {
-            "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\PresentationNative_cor3.dll"
-            "TargetName" = "8:PresentationNative_cor3.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_030710CA1E884A278453E7BE14FBA9BA"
-            {
-            "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\vcruntime140_cor3.dll"
-            "TargetName" = "8:vcruntime140_cor3.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0D3DD48C2BBF40DC89065C8F5EFD028E"
-            {
-            "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\wpfgfx_cor3.dll"
-            "TargetName" = "8:wpfgfx_cor3.dll"
-            "Tag" = "8:"
-            "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4C83576F385C4E318F08DBCF04F2E85C"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0B9EF97B59DE4AF4B268007BBBC47209"
             {
             "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\PenImc_cor3.dll"
             "TargetName" = "8:PenImc_cor3.dll"
@@ -224,7 +164,47 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_666146E062E44C468B2F246F50A6A162"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3F811C302CC84413ACB54169BA4E2C7A"
+            {
+            "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\PresentationNative_cor3.dll"
+            "TargetName" = "8:PresentationNative_cor3.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4D307D35357F48B7ABE4AB4157F03F01"
+            {
+            "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\vcruntime140_cor3.dll"
+            "TargetName" = "8:vcruntime140_cor3.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6A1E0AABE55F474EA5D496840212C94B"
             {
             "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\NET Thing Encryptor.exe"
             "TargetName" = "8:NET Thing Encryptor.exe"
@@ -264,10 +244,30 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A6D2994703AB4E2BBA47A2113E4AD9F9"
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_82B8DC4BA9B24D928AF3485EC32C457D"
             {
             "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\D3DCompiler_47_cor3.dll"
             "TargetName" = "8:D3DCompiler_47_cor3.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A1DF1A24316142EEA3955C1B284C48DC"
+            {
+            "SourcePath" = "8:..\\NET Thing Encryptor\\bin\\Release\\net9.0-windows10.0.22000.0\\win-x64\\publish\\wpfgfx_cor3.dll"
+            "TargetName" = "8:wpfgfx_cor3.dll"
             "Tag" = "8:"
             "Folder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
             "Condition" = "8:"
@@ -339,9 +339,9 @@
         "Product"
         {
         "Name" = "8:Microsoft Visual Studio"
-        "ProductName" = "8:Setup"
+        "ProductName" = "8:NET Thing Encryptor"
         "ProductCode" = "8:{0C97E400-A866-45AC-8F01-7B8D2D0C0D63}"
-        "PackageCode" = "8:{A709EAA7-CF04-4A8F-945F-0AF83B1D6DDF}"
+        "PackageCode" = "8:{BD6054D5-296C-4978-A770-819B3F68C1B1}"
         "UpgradeCode" = "8:{770FAB0E-EF01-4796-A0CB-E02453214375}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
@@ -555,7 +555,7 @@
         }
         "Shortcut"
         {
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_CE60D57DBFFC4B6DBC038DE568F8631E"
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_C6F37A3B067A4C5DAB993A1C8ABB4974"
             {
             "Name" = "8:NET Thing Encryptor"
             "Arguments" = "8:"
@@ -563,7 +563,7 @@
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_666146E062E44C468B2F246F50A6A162"
+            "Target" = "8:_6A1E0AABE55F474EA5D496840212C94B"
             "Folder" = "8:_C3A618CB410C4A70BF8D947C98CAB44E"
             "WorkingFolder" = "8:_B630746AB02F4D71B99A88F2CCBD2724"
             "Icon" = "8:_7FC17023A42E44119B45024587D72B81"
