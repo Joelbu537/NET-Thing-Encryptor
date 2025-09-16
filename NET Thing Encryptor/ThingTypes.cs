@@ -33,8 +33,8 @@ namespace NET_Thing_Encryptor
     }
     public class ThingFile : ThingObject
     {
-        private byte[] _content;
-        public byte[] Content {
+        private byte[]? _content;
+        public byte[]? Content {
             get { return _content; }
             set
             {
@@ -94,7 +94,7 @@ namespace NET_Thing_Encryptor
             Salt = new byte[32];
             SaveLocation = null;
             ContentEncrypted = string.Empty;
-            Content = new List<ThingObjectLink>();
+            Content = new();
         }
         public object Clone()
         {

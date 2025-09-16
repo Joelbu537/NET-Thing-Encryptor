@@ -4,9 +4,7 @@ namespace NET_Thing_Encryptor
     internal static class Program
     {
         private static ThingRoot? Root = ThingData.Root;
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
+
         [STAThread]
         static void Main()
         {

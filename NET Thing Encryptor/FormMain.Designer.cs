@@ -40,20 +40,23 @@
             buttonNavigationSettings = new Button();
             buttonNavigationRoot = new Button();
             textBoxNavigation = new TextBox();
-            listViewMain = new ListView();
-            columnHeaderName = new ColumnHeader();
-            columnHeaderSize = new ColumnHeader();
-            columnHeaderCreated = new ColumnHeader();
-            imageListFileIcons = new ImageList(components);
             flowLayoutPanelInfo = new FlowLayoutPanel();
             labelInfoFileCount = new Label();
             labelInfoFolderCount = new Label();
             labelInfoTotalSize = new Label();
             labelInfoSaving = new Label();
+            tableLayoutPanelDiv = new TableLayoutPanel();
+            listViewMain = new ListView();
+            columnHeaderName = new ColumnHeader();
+            columnHeaderSize = new ColumnHeader();
+            columnHeaderCreated = new ColumnHeader();
+            imageListFileIcons = new ImageList(components);
+            toolTip = new ToolTip(components);
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
             flowLayoutPanelInfo.SuspendLayout();
+            tableLayoutPanelDiv.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanelMain
@@ -62,8 +65,8 @@
             tableLayoutPanelMain.ColumnCount = 1;
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanelMain.Controls.Add(tableLayoutPanelNavigation, 0, 0);
-            tableLayoutPanelMain.Controls.Add(listViewMain, 0, 1);
             tableLayoutPanelMain.Controls.Add(flowLayoutPanelInfo, 0, 2);
+            tableLayoutPanelMain.Controls.Add(tableLayoutPanelDiv, 0, 1);
             tableLayoutPanelMain.Dock = DockStyle.Fill;
             tableLayoutPanelMain.Location = new Point(0, 0);
             tableLayoutPanelMain.Margin = new Padding(0);
@@ -72,7 +75,7 @@
             tableLayoutPanelMain.RowStyles.Add(new RowStyle());
             tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanelMain.RowStyles.Add(new RowStyle());
-            tableLayoutPanelMain.Size = new Size(1778, 944);
+            tableLayoutPanelMain.Size = new Size(1828, 944);
             tableLayoutPanelMain.TabIndex = 0;
             // 
             // tableLayoutPanelNavigation
@@ -88,7 +91,7 @@
             tableLayoutPanelNavigation.Name = "tableLayoutPanelNavigation";
             tableLayoutPanelNavigation.RowCount = 1;
             tableLayoutPanelNavigation.RowStyles.Add(new RowStyle());
-            tableLayoutPanelNavigation.Size = new Size(1772, 60);
+            tableLayoutPanelNavigation.Size = new Size(1822, 60);
             tableLayoutPanelNavigation.TabIndex = 0;
             // 
             // flowLayoutPanelNavigationButtons
@@ -136,6 +139,7 @@
             buttonNavigationCreateFile.Size = new Size(48, 48);
             buttonNavigationCreateFile.TabIndex = 5;
             buttonNavigationCreateFile.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationCreateFile, "Create new file");
             buttonNavigationCreateFile.UseVisualStyleBackColor = false;
             buttonNavigationCreateFile.Click += buttonNavigationCreateFile_Click;
             // 
@@ -152,6 +156,7 @@
             buttonNavigationCreateFolder.Size = new Size(48, 48);
             buttonNavigationCreateFolder.TabIndex = 3;
             buttonNavigationCreateFolder.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationCreateFolder, "Create new folder");
             buttonNavigationCreateFolder.UseVisualStyleBackColor = false;
             buttonNavigationCreateFolder.Click += buttonNavigationCreateFolder_Click;
             // 
@@ -168,6 +173,7 @@
             buttonNavigationDeleteSelected.Size = new Size(48, 48);
             buttonNavigationDeleteSelected.TabIndex = 4;
             buttonNavigationDeleteSelected.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationDeleteSelected, "Delete");
             buttonNavigationDeleteSelected.UseVisualStyleBackColor = false;
             buttonNavigationDeleteSelected.Click += buttonNavigationDeleteSelected_Click;
             // 
@@ -184,6 +190,7 @@
             buttonNavigationSettings.Size = new Size(48, 48);
             buttonNavigationSettings.TabIndex = 6;
             buttonNavigationSettings.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationSettings, "Open settings");
             buttonNavigationSettings.UseVisualStyleBackColor = false;
             buttonNavigationSettings.Click += buttonNavigationSettings_Click;
             // 
@@ -201,6 +208,7 @@
             buttonNavigationRoot.Size = new Size(48, 48);
             buttonNavigationRoot.TabIndex = 2;
             buttonNavigationRoot.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationRoot, "Return to root directory");
             buttonNavigationRoot.UseVisualStyleBackColor = false;
             buttonNavigationRoot.Click += buttonNavigationRoot_Click;
             // 
@@ -211,52 +219,10 @@
             textBoxNavigation.Margin = new Padding(20, 3, 20, 3);
             textBoxNavigation.Name = "textBoxNavigation";
             textBoxNavigation.ReadOnly = true;
-            textBoxNavigation.Size = new Size(1385, 39);
+            textBoxNavigation.Size = new Size(1435, 39);
             textBoxNavigation.TabIndex = 2;
             textBoxNavigation.Text = "/Root";
-            // 
-            // listViewMain
-            // 
-            listViewMain.Columns.AddRange(new ColumnHeader[] { columnHeaderName, columnHeaderSize, columnHeaderCreated });
-            listViewMain.Dock = DockStyle.Fill;
-            listViewMain.FullRowSelect = true;
-            listViewMain.Location = new Point(3, 69);
-            listViewMain.MultiSelect = false;
-            listViewMain.Name = "listViewMain";
-            listViewMain.Size = new Size(1772, 833);
-            listViewMain.SmallImageList = imageListFileIcons;
-            listViewMain.TabIndex = 1;
-            listViewMain.UseCompatibleStateImageBehavior = false;
-            listViewMain.View = View.Details;
-            listViewMain.SelectedIndexChanged += listViewMain_SelectedIndexChanged;
-            listViewMain.DoubleClick += listViewMain_DoubleClick;
-            // 
-            // columnHeaderName
-            // 
-            columnHeaderName.Text = "Name";
-            columnHeaderName.Width = 500;
-            // 
-            // columnHeaderSize
-            // 
-            columnHeaderSize.Text = "Size";
-            columnHeaderSize.Width = 250;
-            // 
-            // columnHeaderCreated
-            // 
-            columnHeaderCreated.Text = "Created At";
-            columnHeaderCreated.Width = 300;
-            // 
-            // imageListFileIcons
-            // 
-            imageListFileIcons.ColorDepth = ColorDepth.Depth32Bit;
-            imageListFileIcons.ImageStream = (ImageListStreamer)resources.GetObject("imageListFileIcons.ImageStream");
-            imageListFileIcons.TransparentColor = Color.Transparent;
-            imageListFileIcons.Images.SetKeyName(0, "audio");
-            imageListFileIcons.Images.SetKeyName(1, "image");
-            imageListFileIcons.Images.SetKeyName(2, "other");
-            imageListFileIcons.Images.SetKeyName(3, "video");
-            imageListFileIcons.Images.SetKeyName(4, "folder");
-            imageListFileIcons.Images.SetKeyName(5, "text");
+            toolTip.SetToolTip(textBoxNavigation, "Current directory");
             // 
             // flowLayoutPanelInfo
             // 
@@ -269,7 +235,7 @@
             flowLayoutPanelInfo.Font = new Font("Consolas", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
             flowLayoutPanelInfo.Location = new Point(3, 908);
             flowLayoutPanelInfo.Name = "flowLayoutPanelInfo";
-            flowLayoutPanelInfo.Size = new Size(1772, 33);
+            flowLayoutPanelInfo.Size = new Size(1822, 33);
             flowLayoutPanelInfo.TabIndex = 2;
             // 
             // labelInfoFileCount
@@ -315,16 +281,71 @@
             labelInfoSaving.Text = "Saving...";
             labelInfoSaving.Visible = false;
             // 
+            // tableLayoutPanelDiv
+            // 
+            tableLayoutPanelDiv.ColumnCount = 2;
+            tableLayoutPanelDiv.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
+            tableLayoutPanelDiv.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+            tableLayoutPanelDiv.Controls.Add(listViewMain, 0, 0);
+            tableLayoutPanelDiv.Dock = DockStyle.Fill;
+            tableLayoutPanelDiv.Location = new Point(3, 69);
+            tableLayoutPanelDiv.Name = "tableLayoutPanelDiv";
+            tableLayoutPanelDiv.RowCount = 1;
+            tableLayoutPanelDiv.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanelDiv.Size = new Size(1822, 833);
+            tableLayoutPanelDiv.TabIndex = 3;
+            // 
+            // listViewMain
+            // 
+            listViewMain.Columns.AddRange(new ColumnHeader[] { columnHeaderName, columnHeaderSize, columnHeaderCreated });
+            listViewMain.Dock = DockStyle.Fill;
+            listViewMain.FullRowSelect = true;
+            listViewMain.Location = new Point(3, 3);
+            listViewMain.MultiSelect = false;
+            listViewMain.Name = "listViewMain";
+            listViewMain.Size = new Size(1178, 827);
+            listViewMain.SmallImageList = imageListFileIcons;
+            listViewMain.TabIndex = 3;
+            listViewMain.UseCompatibleStateImageBehavior = false;
+            listViewMain.View = View.Details;
+            // 
+            // columnHeaderName
+            // 
+            columnHeaderName.Text = "Name";
+            columnHeaderName.Width = 600;
+            // 
+            // columnHeaderSize
+            // 
+            columnHeaderSize.Text = "Size";
+            columnHeaderSize.Width = 250;
+            // 
+            // columnHeaderCreated
+            // 
+            columnHeaderCreated.Text = "Created At";
+            columnHeaderCreated.Width = 300;
+            // 
+            // imageListFileIcons
+            // 
+            imageListFileIcons.ColorDepth = ColorDepth.Depth32Bit;
+            imageListFileIcons.ImageStream = (ImageListStreamer)resources.GetObject("imageListFileIcons.ImageStream");
+            imageListFileIcons.TransparentColor = Color.Transparent;
+            imageListFileIcons.Images.SetKeyName(0, "audio");
+            imageListFileIcons.Images.SetKeyName(1, "image");
+            imageListFileIcons.Images.SetKeyName(2, "other");
+            imageListFileIcons.Images.SetKeyName(3, "video");
+            imageListFileIcons.Images.SetKeyName(4, "folder");
+            imageListFileIcons.Images.SetKeyName(5, "text");
+            // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1778, 944);
+            ClientSize = new Size(1828, 944);
             Controls.Add(tableLayoutPanelMain);
             Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
-            MinimumSize = new Size(1800, 1000);
+            MinimumSize = new Size(1850, 1000);
             Name = "FormMain";
             Text = ".NET Thing Encryptor";
             WindowState = FormWindowState.Maximized;
@@ -339,6 +360,7 @@
             flowLayoutPanelNavigationButtons.PerformLayout();
             flowLayoutPanelInfo.ResumeLayout(false);
             flowLayoutPanelInfo.PerformLayout();
+            tableLayoutPanelDiv.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -351,10 +373,6 @@
         private FlowLayoutPanel flowLayoutPanelNavigationButtons;
         private Button buttonNavigationRoot;
         private TextBox textBoxNavigation;
-        private ListView listViewMain;
-        private ColumnHeader columnHeaderName;
-        private ColumnHeader columnHeaderSize;
-        private ColumnHeader columnHeaderCreated;
         private ImageList imageListFileIcons;
         private Button buttonNavigationCreateFile;
         private Button buttonNavigationCreateFolder;
@@ -365,5 +383,11 @@
         private Label labelInfoFolderCount;
         private Label labelInfoTotalSize;
         private Label labelInfoSaving;
+        private TableLayoutPanel tableLayoutPanelDiv;
+        private ListView listViewMain;
+        private ColumnHeader columnHeaderName;
+        private ColumnHeader columnHeaderSize;
+        private ColumnHeader columnHeaderCreated;
+        private ToolTip toolTip;
     }
 }

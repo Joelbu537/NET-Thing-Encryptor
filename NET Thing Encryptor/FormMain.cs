@@ -12,7 +12,7 @@ namespace NET_Thing_Encryptor
         private ulong _currentFolderID = 1;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        [Browsable(false)]
+        //[Browsable(false)]
         public ulong CurrentFolderID
         {
             get
@@ -44,7 +44,7 @@ namespace NET_Thing_Encryptor
             };
         }
 
-        private async void FormMain_Load(object sender, EventArgs e)
+        private void FormMain_Load(object sender, EventArgs e)
         {
             Debug.WriteLine($"FormMain ist {System.Threading.Thread.CurrentThread.GetApartmentState()}");
 
@@ -111,6 +111,8 @@ namespace NET_Thing_Encryptor
                         case FileType.text:
                             break;
                         case FileType.image:
+                            var imageView = new ImageViewForm(file);
+                            imageView.Show();
                             break;
                         case FileType.audio:
                             break;

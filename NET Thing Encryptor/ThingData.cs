@@ -593,4 +593,13 @@ public static class ThingData
         }
         return String.Format("{0:0.##} {1}", len, sizes[order]);
     }
+    public static void ClearImage(this PictureBox p)
+    {
+        if (p.Image != null)
+        {
+            p.Image.Dispose();
+            p.Image = null;
+        }
+
+    }
 }

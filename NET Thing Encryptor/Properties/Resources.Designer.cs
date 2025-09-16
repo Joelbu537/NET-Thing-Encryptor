@@ -63,6 +63,16 @@ namespace NET_Thing_Encryptor.Properties {
         /// <summary>
         ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap fileError {
+            get {
+                object obj = ResourceManager.GetObject("fileError", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap imageres_audio_file {
             get {
                 object obj = ResourceManager.GetObject("imageres_audio_file", resourceCulture);
