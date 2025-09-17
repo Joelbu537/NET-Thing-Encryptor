@@ -137,6 +137,7 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
             Name = "CreateFolderForm";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Create Folder";
             tableLayoutPanel.ResumeLayout(false);
             tableLayoutPanel.PerformLayout();

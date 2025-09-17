@@ -28,32 +28,31 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CreateFileForm));
             tableLayoutPanel = new TableLayoutPanel();
-            flowLayoutPanel = new FlowLayoutPanel();
-            labelSelect = new Label();
-            comboBox = new ComboBox();
-            tableLayoutPanelImage = new TableLayoutPanel();
-            flowLayoutPanelImage = new FlowLayoutPanel();
-            listViewImage = new ListView();
+            flowLayoutPanelControlls = new FlowLayoutPanel();
             buttonAddFiles = new Button();
             buttonRemoveSelected = new Button();
-            flowLayoutPanel1 = new FlowLayoutPanel();
+            flowLayoutPanelActions = new FlowLayoutPanel();
             buttonImport = new Button();
             buttonCancel = new Button();
+            listViewFiles = new ListView();
+            columnHeaderName = new ColumnHeader();
+            columnHeaderPath = new ColumnHeader();
+            imageListFileIcons = new ImageList(components);
             tableLayoutPanel.SuspendLayout();
-            flowLayoutPanel.SuspendLayout();
-            tableLayoutPanelImage.SuspendLayout();
-            flowLayoutPanelImage.SuspendLayout();
-            flowLayoutPanel1.SuspendLayout();
+            flowLayoutPanelControlls.SuspendLayout();
+            flowLayoutPanelActions.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanel
             // 
             tableLayoutPanel.ColumnCount = 1;
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel.Controls.Add(flowLayoutPanel, 0, 0);
-            tableLayoutPanel.Controls.Add(tableLayoutPanelImage, 0, 1);
-            tableLayoutPanel.Controls.Add(flowLayoutPanel1, 0, 2);
+            tableLayoutPanel.Controls.Add(flowLayoutPanelControlls, 0, 0);
+            tableLayoutPanel.Controls.Add(flowLayoutPanelActions, 0, 2);
+            tableLayoutPanel.Controls.Add(listViewFiles, 0, 1);
             tableLayoutPanel.Dock = DockStyle.Fill;
             tableLayoutPanel.Location = new Point(0, 0);
             tableLayoutPanel.Name = "tableLayoutPanel";
@@ -61,78 +60,19 @@
             tableLayoutPanel.RowStyles.Add(new RowStyle());
             tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel.RowStyles.Add(new RowStyle());
-            tableLayoutPanel.Size = new Size(1040, 584);
+            tableLayoutPanel.Size = new Size(1028, 584);
             tableLayoutPanel.TabIndex = 0;
             // 
-            // flowLayoutPanel
+            // flowLayoutPanelControlls
             // 
-            flowLayoutPanel.Controls.Add(labelSelect);
-            flowLayoutPanel.Controls.Add(comboBox);
-            flowLayoutPanel.Dock = DockStyle.Fill;
-            flowLayoutPanel.Location = new Point(3, 3);
-            flowLayoutPanel.Name = "flowLayoutPanel";
-            flowLayoutPanel.Size = new Size(1034, 47);
-            flowLayoutPanel.TabIndex = 0;
-            // 
-            // labelSelect
-            // 
-            labelSelect.Anchor = AnchorStyles.Top;
-            labelSelect.AutoSize = true;
-            labelSelect.Location = new Point(5, 5);
-            labelSelect.Margin = new Padding(5);
-            labelSelect.Name = "labelSelect";
-            labelSelect.Size = new Size(244, 32);
-            labelSelect.TabIndex = 0;
-            labelSelect.Text = "Select type to import:";
-            // 
-            // comboBox
-            // 
-            comboBox.Anchor = AnchorStyles.Top;
-            comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            comboBox.FormattingEnabled = true;
-            comboBox.Items.AddRange(new object[] { "Image", "Video", "Audio", "Text", "Other (Store encrypted only, no viewer)" });
-            comboBox.Location = new Point(257, 3);
-            comboBox.Name = "comboBox";
-            comboBox.Size = new Size(742, 40);
-            comboBox.TabIndex = 1;
-            comboBox.SelectedIndexChanged += comboBox_SelectedIndexChanged;
-            // 
-            // tableLayoutPanelImage
-            // 
-            tableLayoutPanelImage.ColumnCount = 1;
-            tableLayoutPanelImage.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanelImage.Controls.Add(flowLayoutPanelImage, 0, 0);
-            tableLayoutPanelImage.Controls.Add(listViewImage, 0, 1);
-            tableLayoutPanelImage.Dock = DockStyle.Fill;
-            tableLayoutPanelImage.Location = new Point(3, 56);
-            tableLayoutPanelImage.Name = "tableLayoutPanelImage";
-            tableLayoutPanelImage.RowCount = 2;
-            tableLayoutPanelImage.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
-            tableLayoutPanelImage.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanelImage.Size = new Size(1034, 471);
-            tableLayoutPanelImage.TabIndex = 1;
-            // 
-            // flowLayoutPanelImage
-            // 
-            flowLayoutPanelImage.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            flowLayoutPanelImage.AutoSize = true;
-            flowLayoutPanelImage.Controls.Add(buttonAddFiles);
-            flowLayoutPanelImage.Controls.Add(buttonRemoveSelected);
-            flowLayoutPanelImage.Location = new Point(3, 6);
-            flowLayoutPanelImage.Name = "flowLayoutPanelImage";
-            flowLayoutPanelImage.Size = new Size(1028, 48);
-            flowLayoutPanelImage.TabIndex = 0;
-            // 
-            // listViewImage
-            // 
-            listViewImage.Dock = DockStyle.Fill;
-            listViewImage.Font = new Font("Segoe UI", 10F);
-            listViewImage.Location = new Point(3, 63);
-            listViewImage.Name = "listViewImage";
-            listViewImage.Size = new Size(1028, 405);
-            listViewImage.TabIndex = 1;
-            listViewImage.UseCompatibleStateImageBehavior = false;
-            listViewImage.View = View.List;
+            flowLayoutPanelControlls.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            flowLayoutPanelControlls.AutoSize = true;
+            flowLayoutPanelControlls.Controls.Add(buttonAddFiles);
+            flowLayoutPanelControlls.Controls.Add(buttonRemoveSelected);
+            flowLayoutPanelControlls.Location = new Point(3, 3);
+            flowLayoutPanelControlls.Name = "flowLayoutPanelControlls";
+            flowLayoutPanelControlls.Size = new Size(1022, 48);
+            flowLayoutPanelControlls.TabIndex = 3;
             // 
             // buttonAddFiles
             // 
@@ -143,48 +83,91 @@
             buttonAddFiles.TabIndex = 0;
             buttonAddFiles.Text = "Add Files";
             buttonAddFiles.UseVisualStyleBackColor = true;
+            buttonAddFiles.Click += buttonAddFiles_Click;
             // 
             // buttonRemoveSelected
             // 
             buttonRemoveSelected.AutoSize = true;
+            buttonRemoveSelected.Enabled = false;
             buttonRemoveSelected.Location = new Point(130, 3);
             buttonRemoveSelected.Name = "buttonRemoveSelected";
             buttonRemoveSelected.Size = new Size(208, 42);
             buttonRemoveSelected.TabIndex = 1;
             buttonRemoveSelected.Text = "Remove Selected";
             buttonRemoveSelected.UseVisualStyleBackColor = true;
+            buttonRemoveSelected.Click += buttonRemoveSelected_Click;
             // 
-            // flowLayoutPanel1
+            // flowLayoutPanelActions
             // 
-            flowLayoutPanel1.AutoSize = true;
-            flowLayoutPanel1.Controls.Add(buttonImport);
-            flowLayoutPanel1.Controls.Add(buttonCancel);
-            flowLayoutPanel1.Dock = DockStyle.Fill;
-            flowLayoutPanel1.FlowDirection = FlowDirection.RightToLeft;
-            flowLayoutPanel1.Location = new Point(3, 533);
-            flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(1034, 48);
-            flowLayoutPanel1.TabIndex = 2;
+            flowLayoutPanelActions.AutoSize = true;
+            flowLayoutPanelActions.Controls.Add(buttonImport);
+            flowLayoutPanelActions.Controls.Add(buttonCancel);
+            flowLayoutPanelActions.Dock = DockStyle.Fill;
+            flowLayoutPanelActions.FlowDirection = FlowDirection.RightToLeft;
+            flowLayoutPanelActions.Location = new Point(3, 533);
+            flowLayoutPanelActions.Name = "flowLayoutPanelActions";
+            flowLayoutPanelActions.Size = new Size(1022, 48);
+            flowLayoutPanelActions.TabIndex = 2;
             // 
             // buttonImport
             // 
             buttonImport.AutoSize = true;
-            buttonImport.Location = new Point(891, 3);
+            buttonImport.Enabled = false;
+            buttonImport.Location = new Point(879, 3);
             buttonImport.Name = "buttonImport";
             buttonImport.Size = new Size(140, 42);
             buttonImport.TabIndex = 0;
             buttonImport.Text = "Import";
             buttonImport.UseVisualStyleBackColor = true;
+            buttonImport.Click += buttonImport_Click;
             // 
             // buttonCancel
             // 
             buttonCancel.AutoSize = true;
-            buttonCancel.Location = new Point(745, 3);
+            buttonCancel.Location = new Point(733, 3);
             buttonCancel.Name = "buttonCancel";
             buttonCancel.Size = new Size(140, 42);
             buttonCancel.TabIndex = 1;
             buttonCancel.Text = "Cancel";
             buttonCancel.UseVisualStyleBackColor = true;
+            buttonCancel.Click += buttonCancel_Click;
+            // 
+            // listViewFiles
+            // 
+            listViewFiles.Columns.AddRange(new ColumnHeader[] { columnHeaderName, columnHeaderPath });
+            listViewFiles.Dock = DockStyle.Fill;
+            listViewFiles.Font = new Font("Segoe UI", 10F);
+            listViewFiles.FullRowSelect = true;
+            listViewFiles.GridLines = true;
+            listViewFiles.Location = new Point(3, 57);
+            listViewFiles.Name = "listViewFiles";
+            listViewFiles.Size = new Size(1022, 470);
+            listViewFiles.SmallImageList = imageListFileIcons;
+            listViewFiles.TabIndex = 4;
+            listViewFiles.UseCompatibleStateImageBehavior = false;
+            listViewFiles.View = View.Details;
+            listViewFiles.SelectedIndexChanged += listViewFiles_SelectedIndexChanged;
+            // 
+            // columnHeaderName
+            // 
+            columnHeaderName.Text = "Name";
+            columnHeaderName.Width = 500;
+            // 
+            // columnHeaderPath
+            // 
+            columnHeaderPath.Text = "Path";
+            columnHeaderPath.Width = 500;
+            // 
+            // imageListFileIcons
+            // 
+            imageListFileIcons.ColorDepth = ColorDepth.Depth32Bit;
+            imageListFileIcons.ImageStream = (ImageListStreamer)resources.GetObject("imageListFileIcons.ImageStream");
+            imageListFileIcons.TransparentColor = Color.Transparent;
+            imageListFileIcons.Images.SetKeyName(0, "audio");
+            imageListFileIcons.Images.SetKeyName(1, "image");
+            imageListFileIcons.Images.SetKeyName(2, "other");
+            imageListFileIcons.Images.SetKeyName(3, "video");
+            imageListFileIcons.Images.SetKeyName(4, "text");
             // 
             // CreateFileForm
             // 
@@ -192,27 +175,23 @@
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = buttonCancel;
-            ClientSize = new Size(1040, 584);
+            ClientSize = new Size(1028, 584);
             Controls.Add(tableLayoutPanel);
             Font = new Font("Segoe UI", 12F);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
             Margin = new Padding(4);
-            MaximizeBox = false;
             MinimizeBox = false;
+            MinimumSize = new Size(1050, 640);
             Name = "CreateFileForm";
             ShowIcon = false;
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Create new File";
             Load += CreateFileForm_Load;
             tableLayoutPanel.ResumeLayout(false);
             tableLayoutPanel.PerformLayout();
-            flowLayoutPanel.ResumeLayout(false);
-            flowLayoutPanel.PerformLayout();
-            tableLayoutPanelImage.ResumeLayout(false);
-            tableLayoutPanelImage.PerformLayout();
-            flowLayoutPanelImage.ResumeLayout(false);
-            flowLayoutPanelImage.PerformLayout();
-            flowLayoutPanel1.ResumeLayout(false);
-            flowLayoutPanel1.PerformLayout();
+            flowLayoutPanelControlls.ResumeLayout(false);
+            flowLayoutPanelControlls.PerformLayout();
+            flowLayoutPanelActions.ResumeLayout(false);
+            flowLayoutPanelActions.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -225,10 +204,15 @@
         private TableLayoutPanel tableLayoutPanelImage;
         private FlowLayoutPanel flowLayoutPanelImage;
         private ListView listViewImage;
-        private Button buttonAddFiles;
-        private Button buttonRemoveSelected;
-        private FlowLayoutPanel flowLayoutPanel1;
+        private FlowLayoutPanel flowLayoutPanelActions;
         private Button buttonImport;
         private Button buttonCancel;
+        private FlowLayoutPanel flowLayoutPanelControlls;
+        private Button buttonAddFiles;
+        private Button buttonRemoveSelected;
+        private ListView listViewFiles;
+        private ImageList imageListFileIcons;
+        private ColumnHeader columnHeaderName;
+        private ColumnHeader columnHeaderPath;
     }
 }
