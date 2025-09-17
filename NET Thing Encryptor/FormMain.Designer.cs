@@ -37,6 +37,7 @@
             buttonNavigationCreateFile = new Button();
             buttonNavigationCreateFolder = new Button();
             buttonNavigationDeleteSelected = new Button();
+            buttonNavigationExport = new Button();
             buttonNavigationSettings = new Button();
             buttonNavigationRoot = new Button();
             textBoxNavigation = new TextBox();
@@ -101,12 +102,13 @@
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationCreateFile);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationCreateFolder);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationDeleteSelected);
+            flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationExport);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationSettings);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationRoot);
             flowLayoutPanelNavigationButtons.Dock = DockStyle.Fill;
             flowLayoutPanelNavigationButtons.Location = new Point(3, 3);
             flowLayoutPanelNavigationButtons.Name = "flowLayoutPanelNavigationButtons";
-            flowLayoutPanelNavigationButtons.Size = new Size(341, 54);
+            flowLayoutPanelNavigationButtons.Size = new Size(395, 54);
             flowLayoutPanelNavigationButtons.TabIndex = 1;
             flowLayoutPanelNavigationButtons.WrapContents = false;
             // 
@@ -177,6 +179,22 @@
             buttonNavigationDeleteSelected.UseVisualStyleBackColor = false;
             buttonNavigationDeleteSelected.Click += buttonNavigationDeleteSelected_Click;
             // 
+            // buttonNavigationExport
+            // 
+            buttonNavigationExport.Anchor = AnchorStyles.Left;
+            buttonNavigationExport.AutoSize = true;
+            buttonNavigationExport.BackColor = Color.Transparent;
+            buttonNavigationExport.BackgroundImage = Properties.Resources.imageres_export;
+            buttonNavigationExport.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationExport.Location = new Point(219, 3);
+            buttonNavigationExport.MinimumSize = new Size(48, 48);
+            buttonNavigationExport.Name = "buttonNavigationExport";
+            buttonNavigationExport.Size = new Size(48, 48);
+            buttonNavigationExport.TabIndex = 7;
+            buttonNavigationExport.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationExport, "Export to file system");
+            buttonNavigationExport.UseVisualStyleBackColor = false;
+            // 
             // buttonNavigationSettings
             // 
             buttonNavigationSettings.Anchor = AnchorStyles.Left;
@@ -184,7 +202,7 @@
             buttonNavigationSettings.BackColor = Color.Transparent;
             buttonNavigationSettings.BackgroundImage = Properties.Resources.shell32_gear;
             buttonNavigationSettings.BackgroundImageLayout = ImageLayout.Stretch;
-            buttonNavigationSettings.Location = new Point(219, 3);
+            buttonNavigationSettings.Location = new Point(273, 3);
             buttonNavigationSettings.MinimumSize = new Size(48, 48);
             buttonNavigationSettings.Name = "buttonNavigationSettings";
             buttonNavigationSettings.Size = new Size(48, 48);
@@ -201,7 +219,7 @@
             buttonNavigationRoot.BackColor = Color.Transparent;
             buttonNavigationRoot.BackgroundImage = Properties.Resources.imageres_explorer;
             buttonNavigationRoot.BackgroundImageLayout = ImageLayout.Stretch;
-            buttonNavigationRoot.Location = new Point(290, 3);
+            buttonNavigationRoot.Location = new Point(344, 3);
             buttonNavigationRoot.Margin = new Padding(20, 3, 3, 3);
             buttonNavigationRoot.MinimumSize = new Size(48, 48);
             buttonNavigationRoot.Name = "buttonNavigationRoot";
@@ -215,11 +233,11 @@
             // textBoxNavigation
             // 
             textBoxNavigation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            textBoxNavigation.Location = new Point(367, 10);
+            textBoxNavigation.Location = new Point(421, 10);
             textBoxNavigation.Margin = new Padding(20, 3, 20, 3);
             textBoxNavigation.Name = "textBoxNavigation";
             textBoxNavigation.ReadOnly = true;
-            textBoxNavigation.Size = new Size(1435, 39);
+            textBoxNavigation.Size = new Size(1381, 39);
             textBoxNavigation.TabIndex = 2;
             textBoxNavigation.Text = "/Root";
             toolTip.SetToolTip(textBoxNavigation, "Current directory");
@@ -308,6 +326,7 @@
             listViewMain.TabIndex = 3;
             listViewMain.UseCompatibleStateImageBehavior = false;
             listViewMain.View = View.Details;
+            listViewMain.DoubleClick += listViewMain_DoubleClick;
             // 
             // columnHeaderName
             // 
@@ -389,5 +408,6 @@
         private ColumnHeader columnHeaderSize;
         private ColumnHeader columnHeaderCreated;
         private ToolTip toolTip;
+        private Button buttonNavigationExport;
     }
 }

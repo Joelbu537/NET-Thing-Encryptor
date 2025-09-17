@@ -93,10 +93,11 @@ namespace NET_Thing_Encryptor
 
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
         {
+            Debug.Write("Doppelklick auf ");
             if (listViewMain.SelectedItems.Count > 0)
             {
                 ListViewItem item = listViewMain.SelectedItems[0];
-                Debug.WriteLine($"Doppelklick auf {item.Text} mit ID {item.Name}");
+                Debug.WriteLine($"{item.Text} mit ID {item.Name}");
                 ThingObject? obj = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
                 if (obj is ThingFolder folder)
                 {
@@ -111,8 +112,10 @@ namespace NET_Thing_Encryptor
                         case FileType.text:
                             break;
                         case FileType.image:
-                            var imageView = new ImageViewForm(file);
-                            imageView.Show();
+                            {
+                                using ImageViewForm imageView = new(file);
+                                imageView.Show();
+                            }
                             break;
                         case FileType.audio:
                             break;
@@ -125,6 +128,10 @@ namespace NET_Thing_Encryptor
                     throw new NotImplementedException();
                 }
             }
+            else
+            {
+                Debug.WriteLine("nichts!");
+            }
         }
 
         private void buttonNavigationBack_Click(object sender, EventArgs e)
@@ -136,15 +143,24 @@ namespace NET_Thing_Encryptor
             }
         }
 
-        private async void buttonNavigationCreateFile_Click(object sender, EventArgs e)
+        private void buttonNavigationCreateFile_Click(object sender, EventArgs e)
         {
-            // Implement creation dialog
-            throw new NotImplementedException();
+            if(CurrentFolder == null && CurrentFolderID == 0)
+            {
+                MessageBox.Show("You cannot create files in the root directory. Please create a folder first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                ArgumentNullException.ThrowIfNull(CurrentFolder);
+                using CreateFileForm form = new(CurrentFolder);
+                form.ShowDialog();
+            }
+
         }
 
         private async void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
         {
-            using CreateFolderForm form = new CreateFolderForm();
+            using CreateFolderForm form = new();
             if (form.ShowDialog() == DialogResult.OK)
             {
                 ThingFolder newFolder = new ThingFolder(form.Name).AddToRoot();

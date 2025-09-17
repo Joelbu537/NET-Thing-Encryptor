@@ -121,37 +121,40 @@
   <data name="imageres_video_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\imageres_video_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="imageres_image_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imageres_image_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="imageres_text_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_text_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="imageres_explorer" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_explorer.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="imageres_audio_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\imageres_audio_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="imageres_text_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imageres_text_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="imageres_folder_empty" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\imageres_folder_empty.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="imageres_other_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imageres_other_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="shell32_gear" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\shell32_gear.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="imageres_return" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imageres_return.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="imageres_cross_red" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imageres_cross_red.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="imageres_explorer" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\imageres_explorer.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="imageres_new_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\imageres_new_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="fileError" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\fileError.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="imageres_image_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_image_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="imageres_cross_red" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_cross_red.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="imageres_other_file" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_other_file.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="imageres_return" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_return.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="imageres_export" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\imageres_export.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

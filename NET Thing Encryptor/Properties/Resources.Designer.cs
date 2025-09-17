@@ -103,6 +103,16 @@ namespace NET_Thing_Encryptor.Properties {
         /// <summary>
         ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap imageres_export {
+            get {
+                object obj = ResourceManager.GetObject("imageres_export", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap imageres_folder_empty {
             get {
                 object obj = ResourceManager.GetObject("imageres_folder_empty", resourceCulture);
