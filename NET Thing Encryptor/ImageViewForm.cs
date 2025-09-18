@@ -33,6 +33,7 @@ namespace NET_Thing_Encryptor
         }
         public ImageViewForm(ThingFile file)
         {
+            Debug.WriteLine($"Opening ImageViewForm for file {file.Name} (ID {file.ID})");
             if (file.Type != FileType.image)
             {
                 MessageBox.Show("The provided file is not an image.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);

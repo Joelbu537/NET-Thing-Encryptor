@@ -55,7 +55,7 @@ public static class ThingData
 
         var output = new MemoryStream();
         using var cryptoStream = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read, leaveOpen: true);
-        await cryptoStream.CopyToAsync(output);
+        await cryptoStream.CopyToAsync(output); /// GRRRR SCHON WIEDER
         output.Position = 0;
         return output;
     }

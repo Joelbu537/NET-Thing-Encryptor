@@ -105,6 +105,7 @@ namespace NET_Thing_Encryptor
 
         private void buttonCancel_Click(object sender, EventArgs e)
         {
+            if(buttonCancel.Enabled == false) { return; }
             this.Close();
         }
 
@@ -125,10 +126,12 @@ namespace NET_Thing_Encryptor
                         throw new FileNotFoundException("File not found.", filePath);
 
                     ThingFile? file = new ThingFile(System.IO.Path.GetFileName(filePath), File.ReadAllBytes(filePath));
+                    Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
+                    file.Type = result;
+                    Enum.TryParse<FileExtension>(Path.GetExtension(filePath).TrimStart('.'), true, out FileExtension extResult);
+                    file.Extension = extResult;
                     await ThingData.MoveFileToFolderAsync(file, currentFolder.ID);
                     await ThingData.SaveFileAsync(file);
-
-                    
                 }
                 catch (Exception ex)
                 {
@@ -147,12 +150,18 @@ namespace NET_Thing_Encryptor
 
 
                     link.Size = (long)(new FileInfo(item.SubItems[1].Text).Length);
-                    link.Type = (FileType)Enum.Parse(typeof(FileType), item.ImageKey, true);
+
+                    Debug.WriteLine(item.ImageKey);
+                    Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
+                    Debug.WriteLine(result.ToString());
+                    link.Type = result;
 
                     listViewFiles.Items[item.Index].Remove();
                 }
             }
             await ThingData.SaveFileAsync(currentFolder);
+
+            buttonCancel.Enabled = true;
         }
 
         private void listViewFiles_SelectedIndexChanged(object sender, EventArgs e)

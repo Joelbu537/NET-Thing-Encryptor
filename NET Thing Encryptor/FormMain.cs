@@ -106,8 +106,8 @@ namespace NET_Thing_Encryptor
                 }
                 else if (obj is ThingFile file)
                 {
-                    Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash}");
-                    switch (file.Type)
+                    Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash} Type: {file.Type.ToString()}");
+                    switch (file.Type) // Warum ist es immer OTHER ?????
                     {
                         case FileType.text:
                             break;
@@ -123,9 +123,9 @@ namespace NET_Thing_Encryptor
                             break;
                         case FileType.other:
                             break;
-
+                        default:
+                            throw new InvalidEnumArgumentException("Unknown internal file type.");
                     }
-                    throw new NotImplementedException();
                 }
             }
             else
@@ -154,6 +154,7 @@ namespace NET_Thing_Encryptor
                 ArgumentNullException.ThrowIfNull(CurrentFolder);
                 using CreateFileForm form = new(CurrentFolder);
                 form.ShowDialog();
+                CurrentFolderID = CurrentFolderID;
             }
 
         }

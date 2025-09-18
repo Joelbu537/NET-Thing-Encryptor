@@ -125,14 +125,14 @@ namespace NET_Thing_Encryptor
     }
     public enum FileType
     {
-        video,
+        other,
         audio,
         image,
         text,
-        other,
+        video,
         folder
     }
-    public enum  FileExtension
+    public enum FileExtension
     {
         //Videos
         mp4,
