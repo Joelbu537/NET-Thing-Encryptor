@@ -114,6 +114,7 @@ namespace NET_Thing_Encryptor
             buttonImport.Enabled = false;
             buttonCancel.Enabled = false;
 
+            // Neu schreiben
             foreach(ListViewItem item in listViewFiles.Items)
             {
                 try
@@ -151,6 +152,7 @@ namespace NET_Thing_Encryptor
                     listViewFiles.Items[item.Index].Remove();
                 }
             }
+            await ThingData.SaveFileAsync(currentFolder);
         }
 
         private void listViewFiles_SelectedIndexChanged(object sender, EventArgs e)
