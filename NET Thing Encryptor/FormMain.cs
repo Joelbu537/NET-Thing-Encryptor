@@ -110,18 +110,22 @@ namespace NET_Thing_Encryptor
                     switch (file.Type) // Warum ist es immer OTHER ?????
                     {
                         case FileType.text:
+                            MessageBox.Show("Text preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             break;
                         case FileType.image:
                             {
-                                using ImageViewForm imageView = new(file);
+                                ImageViewForm imageView = new(file);
                                 imageView.Show();
                             }
                             break;
                         case FileType.audio:
+                            MessageBox.Show("Audio preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             break;
                         case FileType.video:
+                            MessageBox.Show("Video preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             break;
                         case FileType.other:
+                            MessageBox.Show("Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.", "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             break;
                         default:
                             throw new InvalidEnumArgumentException("Unknown internal file type.");

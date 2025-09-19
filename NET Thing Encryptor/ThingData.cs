@@ -55,7 +55,8 @@ public static class ThingData
 
         var output = new MemoryStream();
         using var cryptoStream = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read, leaveOpen: true);
-        await cryptoStream.CopyToAsync(output); /// GRRRR SCHON WIEDER
+        await cryptoStream.CopyToAsync(output); /// Freezes
+
         output.Position = 0;
         return output;
     }
@@ -591,7 +592,20 @@ public static class ThingData
             order++;
             len = len / 1024;
         }
-        return String.Format("{0:0.##} {1}", len, sizes[order]);
+        string temp = String.Format("{0:0.##}", len);
+        string[] parts = temp.Split(',');
+        if (parts.Length == 1)
+        {
+            return $"{parts[0]} {sizes[order]}";
+        }
+        else if (parts[0].Length >= 3)
+        {
+            return $"{parts[0]} {sizes[order]}";
+        }
+        else
+        {
+            return $"{parts[0]},{parts[1]} {sizes[order]}";
+        }
     }
     public static void ClearImage(this PictureBox p)
     {

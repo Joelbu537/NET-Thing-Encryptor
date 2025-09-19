@@ -14,7 +14,7 @@ namespace NET_Thing_Encryptor
 {
     public partial class ImageViewForm : Form
     {
-        private readonly List<ThingObjectLink> Images = new();
+        private List<ThingObjectLink> Images = new();
         private event EventHandler OnIndexChanged;
         private int _index = 0;
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -33,27 +33,32 @@ namespace NET_Thing_Encryptor
         }
         public ImageViewForm(ThingFile file)
         {
-            Debug.WriteLine($"Opening ImageViewForm for file {file.Name} (ID {file.ID})");
+            OnIndexChanged += RefreshImage;
+            this.KeyPreview = true;
+
+            InitializeComponent();
+
+            _ = InitAsync(file);
+        }
+        private async Task InitAsync(ThingFile file)
+        {
+            Debug.WriteLine($"Opening ImageViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
             if (file.Type != FileType.image)
             {
                 MessageBox.Show("The provided file is not an image.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            ThingFolder? parentFolder = ThingData.LoadFileAsync<ThingFolder>(file.ParentID).Result;
-            ArgumentNullException.ThrowIfNull(parentFolder);
-            Images = parentFolder.Content.Where((x) => x.Type == FileType.image).ToList();
+            List<ThingObjectLink> content = await ThingData.LoadFolderContent(file.ParentID);
+            Images = content.Where((x) => x.Type == FileType.image).ToList();
+            Debug.WriteLine($"Found {Images.Count} images!");
             int selectedIndex = Images.IndexOf(Images.FirstOrDefault((x) => x.ID == file.ID));
-
-            OnIndexChanged += RefreshImage;
-            this.KeyPreview = true;
-
-            InitializeComponent();
 
             Index = selectedIndex;
         }
         private async void RefreshImage(object? o, EventArgs e)
         {
+            if(Images.Count == 0) { return; }
             ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[Index].ID);
             ArgumentNullException.ThrowIfNull(imageFile);
             pictureBox.ClearImage();
@@ -68,6 +73,7 @@ namespace NET_Thing_Encryptor
                 ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
                 pictureBox.Image = (Image)pictureBox.ErrorImage.Clone();
             }
+            textBoxIndex.Text = $"{Index + 1}/{Images.Count}";
         }
 
         private void pictureBox_MouseClick(object sender, MouseEventArgs e)
@@ -104,15 +110,20 @@ namespace NET_Thing_Encryptor
         }
         private void ImageViewForm_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Space)
+            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.D)
                 Index++;
-            if (e.KeyCode == Keys.Back)
+            if (e.KeyCode == Keys.Back || e.KeyCode == Keys.A)
                 Index--;
-            if (e.KeyCode == Keys.Escape)
+        }
+
+        private void ImageViewForm_Load(object sender, EventArgs e)
+        {
+            while(Images.Count == 0)
             {
-                pictureBox.ClearImage();
-                this.Close();
+                Application.DoEvents();
+                Task.Delay(100).Wait();
             }
+            OnIndexChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

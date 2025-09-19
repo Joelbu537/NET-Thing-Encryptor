@@ -60,7 +60,7 @@
             textBoxIndex.Size = new Size(150, 40);
             textBoxIndex.TabIndex = 0;
             textBoxIndex.TabStop = false;
-            textBoxIndex.Text = "17/22";
+            textBoxIndex.Text = "0/0";
             textBoxIndex.TextAlign = HorizontalAlignment.Right;
             textBoxIndex.KeyDown += textBoxIndex_KeyDown;
             textBoxIndex.Leave += textBoxIndex_Leave;
@@ -79,6 +79,7 @@
             ShowIcon = false;
             Text = ".NET Thing Image Viewer";
             WindowState = FormWindowState.Maximized;
+            Load += ImageViewForm_Load;
             KeyDown += ImageViewForm_KeyDown;
             ((System.ComponentModel.ISupportInitialize)pictureBox).EndInit();
             ResumeLayout(false);

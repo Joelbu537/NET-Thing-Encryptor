@@ -28,7 +28,6 @@ namespace NET_Thing_Encryptor
 
             Content = new List<ThingObjectLink>();
 
-            Debug.WriteLine($"Instantiating ThingFolder {Name}");
         }
     }
     public class ThingFile : ThingObject
@@ -56,8 +55,6 @@ namespace NET_Thing_Encryptor
             ParentID = 0;
             MD5Hash = string.Empty;
             Content = content;
-
-            Debug.WriteLine($"Instantiating ThingFile {Name}");
         }
     }
     public class ThingRoot : ThingObject, ICloneable
