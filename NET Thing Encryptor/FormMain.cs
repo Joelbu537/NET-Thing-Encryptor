@@ -1,3 +1,4 @@
+using Microsoft.WindowsAPICodePack.Dialogs;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -12,7 +13,6 @@ namespace NET_Thing_Encryptor
         private ulong _currentFolderID = 1;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        //[Browsable(false)]
         public ulong CurrentFolderID
         {
             get
@@ -147,20 +147,85 @@ namespace NET_Thing_Encryptor
             }
         }
 
-        private void buttonNavigationCreateFile_Click(object sender, EventArgs e)
+        private async void buttonNavigationCreateFile_Click(object sender, EventArgs e)
         {
-            if(CurrentFolder == null && CurrentFolderID == 0)
+            if (CurrentFolder == null && CurrentFolderID == 0)
             {
                 MessageBox.Show("You cannot create files in the root directory. Please create a folder first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else
             {
                 ArgumentNullException.ThrowIfNull(CurrentFolder);
-                using CreateFileForm form = new(CurrentFolder);
-                form.ShowDialog();
-                CurrentFolderID = CurrentFolderID;
-            }
 
+                var dialog = new CommonOpenFileDialog
+                {
+                    IsFolderPicker = false,
+                    Multiselect = true,
+                    Title = "Select Files",
+                    Filters =
+                    {
+                        new CommonFileDialogFilter("All files", "*.*"),
+                    },
+                };
+
+                if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+                {
+                    List<string> selectedFiles = dialog.FileNames.ToList();
+
+                    foreach (string file in selectedFiles)
+                    {
+                        if (!File.Exists(file))
+                        {
+                            MessageBox.Show($"The file {file} does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            continue;
+                        }
+                        ThingFile? newFile = new ThingFile(System.IO.Path.GetFileName(file), File.ReadAllBytes(file));
+                        Enum.TryParse<FileType>(GetImageKey(file), true, out FileType result);
+                        newFile.Type = result;
+                        Enum.TryParse<FileExtension>(Path.GetExtension(file).TrimStart('.'), true, out FileExtension extResult);
+                        newFile.Extension = extResult;
+
+                        await ThingData.MoveFileToFolderAsync(newFile, CurrentFolderID);
+                        await ThingData.SaveFileAsync(newFile);
+
+                        ThingFolder? currentFolderTemp = await ThingData.LoadFileAsync<ThingFolder>(CurrentFolder.ID);
+
+                        ThingObjectLink? link = currentFolderTemp.Content.Where(l => l.ID == newFile.ID).FirstOrDefault();
+                        ArgumentNullException.ThrowIfNull(link, "Imported file link not found in folder after import.");
+
+
+                        link.Size = (long)(new FileInfo(file).Length);
+                        link.Type = result;
+                        await ThingData.SaveFileAsync(currentFolderTemp);
+                    }
+                    CurrentFolderID = CurrentFolderID;
+                }
+            }
+        }
+        private string GetImageKey(string filePath)
+        {
+            string extension = System.IO.Path.GetExtension(filePath).ToLower();
+            switch (extension)
+            {
+                case ".txt":
+                    return "text";
+                case ".jpg":
+                case ".jpeg":
+                case ".png":
+                case ".gif":
+                    return "image";
+                case ".mp3":
+                case ".wav":
+                case ".ogg":
+                    return "audio";
+                case ".mp4":
+                case ".avi":
+                case ".mkv":
+                case ".mov":
+                    return "video";
+                default:
+                    return "other";
+            }
         }
 
         private async void buttonNavigationCreateFolder_Click(object sender, EventArgs e)

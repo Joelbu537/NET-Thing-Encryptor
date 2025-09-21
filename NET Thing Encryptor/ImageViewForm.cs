@@ -27,7 +27,7 @@ namespace NET_Thing_Encryptor
             set
             {
                 if (_index == value) { return; }
-                _index = Math.Clamp(value, 0, Images.Count - 1);
+                _index = Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0));
                 OnIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -66,7 +66,7 @@ namespace NET_Thing_Encryptor
             if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
             {
                 using var ms = new MemoryStream(imageFile.Content);
-                pictureBox.Image = Image.FromStream(ms);
+                pictureBox.Image = Image.FromStream(ms); // WARUM SIND JPEGS UNGÜLTIG
             }
             else
             {

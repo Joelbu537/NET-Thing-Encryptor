@@ -95,19 +95,6 @@ public static class ThingData
             return sb.ToString();
         }
     }
-    private static string GetPath(string localPath)
-    {
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        if (Root.SaveLocation == null)
-        {
-            return Path.GetFullPath(localPath);
-        }
-        else
-        {
-            return Path.GetFullPath(Path.Combine(Root.SaveLocation, localPath));
-        }
-    }
-
     public static async Task<bool> AttemptDecrypt(string password)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
@@ -187,8 +174,8 @@ public static class ThingData
                 Root = new ThingRoot();
                 Root.Salt = salt;
                 Debug.WriteLine("New Root created in memory");
-                MessageBox.Show("The main data file was not found." +
-                    "If this is your first time running this program, you can ignore this message." +
+                MessageBox.Show("The main data file was not found.\n" +
+                    "If this is your first time running this program, you can ignore this message.\n" +
                     "This can be caused by deleting/moving Application Files or changing the Save Location.",
                     "New folder structure created", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }

@@ -112,6 +112,14 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
             }
         }
     }
@@ -341,13 +349,13 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:NET Thing Encryptor"
         "ProductCode" = "8:{0C97E400-A866-45AC-8F01-7B8D2D0C0D63}"
-        "PackageCode" = "8:{BD6054D5-296C-4978-A770-819B3F68C1B1}"
+        "PackageCode" = "8:{DF25D087-84B6-4225-8926-2A63A6BD8B86}"
         "UpgradeCode" = "8:{770FAB0E-EF01-4796-A0CB-E02453214375}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:FALSE"
         "DetectNewerInstalledVersion" = "11:TRUE"
-        "InstallAllUsers" = "11:TRUE"
+        "InstallAllUsers" = "11:FALSE"
         "ProductVersion" = "8:1.0.0"
         "Manufacturer" = "8:Joelbu"
         "ARPHELPTELEPHONE" = "8:"
