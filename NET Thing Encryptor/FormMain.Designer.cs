@@ -194,6 +194,7 @@
             buttonNavigationExport.TextImageRelation = TextImageRelation.ImageAboveText;
             toolTip.SetToolTip(buttonNavigationExport, "Export to file system");
             buttonNavigationExport.UseVisualStyleBackColor = false;
+            buttonNavigationExport.Click += buttonNavigationExport_Click;
             // 
             // buttonNavigationSettings
             // 

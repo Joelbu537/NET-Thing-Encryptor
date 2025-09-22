@@ -72,7 +72,7 @@ namespace NET_Thing_Encryptor
             foreach (ThingObjectLink o in new_content)
             {
                 Debug.WriteLine($"  - {o.Name} ({o.Type}, ID {o.ID})");
-                if(o.Type == FileType.folder) folderCount++;
+                if (o.Type == FileType.folder) folderCount++;
                 else fileCount++;
 
                 ListViewItem item = new ListViewItem(o.Name);
@@ -134,7 +134,7 @@ namespace NET_Thing_Encryptor
             }
             else
             {
-                Debug.WriteLine("nichts!");
+                Debug.WriteLine("nichts?!");
             }
         }
 
@@ -146,7 +146,6 @@ namespace NET_Thing_Encryptor
                 textBoxNavigation.Text = textBoxNavigation.Text.Substring(0, textBoxNavigation.Text.LastIndexOf('/'));
             }
         }
-
         private async void buttonNavigationCreateFile_Click(object sender, EventArgs e)
         {
             if (CurrentFolder == null && CurrentFolderID == 0)
@@ -180,7 +179,7 @@ namespace NET_Thing_Encryptor
                             continue;
                         }
                         ThingFile? newFile = new ThingFile(System.IO.Path.GetFileName(file), File.ReadAllBytes(file));
-                        Enum.TryParse<FileType>(GetImageKey(file), true, out FileType result);
+                        Enum.TryParse<FileType>(ThingData.GetFileType(file), true, out FileType result);
                         newFile.Type = result;
                         Enum.TryParse<FileExtension>(Path.GetExtension(file).TrimStart('.'), true, out FileExtension extResult);
                         newFile.Extension = extResult;
@@ -202,32 +201,6 @@ namespace NET_Thing_Encryptor
                 }
             }
         }
-        private string GetImageKey(string filePath)
-        {
-            string extension = System.IO.Path.GetExtension(filePath).ToLower();
-            switch (extension)
-            {
-                case ".txt":
-                    return "text";
-                case ".jpg":
-                case ".jpeg":
-                case ".png":
-                case ".gif":
-                    return "image";
-                case ".mp3":
-                case ".wav":
-                case ".ogg":
-                    return "audio";
-                case ".mp4":
-                case ".avi":
-                case ".mkv":
-                case ".mov":
-                    return "video";
-                default:
-                    return "other";
-            }
-        }
-
         private async void buttonNavigationCreateFolder_Click(object sender, EventArgs e)
         {
             using CreateFolderForm form = new();
@@ -253,7 +226,6 @@ namespace NET_Thing_Encryptor
             // Implement creation dialog
             //throw new NotImplementedException();
         }
-
         private async void buttonNavigationDeleteSelected_Click(object sender, EventArgs e)
         {
             if (listViewMain.SelectedItems.Count > 0)
@@ -278,7 +250,6 @@ namespace NET_Thing_Encryptor
                 CurrentFolderID = CurrentFolderID;
             }
         }
-
         private void buttonNavigationRoot_Click(object sender, EventArgs e)
         {
             if (CurrentFolderID != 0)
@@ -287,12 +258,6 @@ namespace NET_Thing_Encryptor
                 textBoxNavigation.Text = "/Root";
             }
         }
-
-        private void listViewMain_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
-
         private void buttonNavigationSettings_Click(object sender, EventArgs e)
         {
             using SettingsForm form = new SettingsForm();
@@ -335,6 +300,66 @@ namespace NET_Thing_Encryptor
         private void FormMain_FormClosed(object sender, FormClosedEventArgs e)
         {
             ShutdownBlockReasonDestroy(this.Handle);
+        }
+
+        // Auf Multiselect umstellen!!!
+        private async void buttonNavigationExport_Click(object sender, EventArgs e)
+        {
+            if (listViewMain.SelectedItems.Count <= 0)
+                return;
+
+            var dialog = new CommonOpenFileDialog
+            {
+                IsFolderPicker = true,
+                Multiselect = false,
+                Title = "Select target directory"
+            };
+
+            if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+            {
+                string path = dialog.FileName;
+                ListViewItem item = listViewMain.SelectedItems[0];
+                ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
+                if (o is ThingFolder f)
+                {
+                    foreach (ThingObjectLink link in f.Content)
+                    {
+                        await ExportFile(link, path);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Exporting files is not implemented yet. Please export the parent folder instead!", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private async Task ExportFile(ThingObjectLink file, string path)
+        {
+            ThingData.Saving++;
+            if (file.Type == FileType.folder)
+            {
+                ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(file.ID);
+                ArgumentNullException.ThrowIfNull(f);
+
+                foreach (ThingObjectLink o in f.Content)
+                {
+                    await ExportFile(o, Path.Combine(path, f.Name));
+                }
+            }
+            else
+            {
+                ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
+                ArgumentNullException.ThrowIfNull(f);
+
+                if(f.Content == null || f.Content.Length == 0)
+                {
+                    MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                string filePath = Path.Combine(path, f.Name);
+                File.WriteAllBytes(filePath, f.Content);
+            }
+            ThingData.Saving--;
         }
     }
 }

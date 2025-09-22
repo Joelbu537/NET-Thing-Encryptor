@@ -603,4 +603,17 @@ public static class ThingData
         }
 
     }
+    public static string GetFileType(string filePath)
+    {
+        var lookup = new Dictionary<string, string[]>
+        {
+            { "text", new[] { ".txt" } },
+            { "image", new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".ico", ".webp", ".heic", ".svg", ".apng" } },
+            { "audio", new[] { ".mp3", ".wav", ".ogg" } },
+            { "video", new[] { ".mp4", ".avi", ".mkv", ".mov" } }
+        };
+
+        string ext = Path.GetExtension(filePath).ToLower();
+        return lookup.FirstOrDefault(kvp => kvp.Value.Contains(ext)).Key ?? "other";
+    }
 }

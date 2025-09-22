@@ -62,9 +62,9 @@ namespace NET_Thing_Encryptor
         private async void RefreshImage(object? o, EventArgs e)
         {
             if (Images.Count == 0) { return; }
+            pictureBox.ClearImage();
             ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[Index].ID);
             ArgumentNullException.ThrowIfNull(imageFile);
-            pictureBox.ClearImage();
 
             if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
             {
@@ -126,8 +126,9 @@ namespace NET_Thing_Encryptor
                 Index++;
             if (e.KeyCode == Keys.Back || e.KeyCode == Keys.A)
                 Index--;
+            if (e.KeyCode == Keys.Escape)
+                this.Close();
         }
-
         private void ImageViewForm_Load(object sender, EventArgs e)
         {
             while (Images.Count == 0)
@@ -136,11 +137,6 @@ namespace NET_Thing_Encryptor
                 Task.Delay(100).Wait();
             }
             OnIndexChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        private void buttonCancel_Click(object sender, EventArgs e)
-        {
-            this.Close();
         }
     }
 }
