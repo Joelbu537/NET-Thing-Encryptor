@@ -41,6 +41,5 @@ namespace NET_Thing_Encryptor
 /*          /// TO DO \\\
  *      ListView multiselect amchen, um mehrere Items gleichzeitig exportieren und löschen zu können
  *      Dateien verschiebbar machen
- *      Dateiformate erkennen und ggf umwandeln
- *      Dateien importieren
+ *      Buffer in ImageViewer
  */

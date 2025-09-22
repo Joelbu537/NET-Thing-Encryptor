@@ -79,6 +79,8 @@ namespace NET_Thing_Encryptor
                 _saveLocation = value; 
             } 
         }
+        public int ForwardBuffer { get; set; } = 5;
+        public int BackBuffer { get; set; } = 2;
         public string ContentEncrypted { get; set; }
         public List<ThingObjectLink>? Content { get; set; }
 

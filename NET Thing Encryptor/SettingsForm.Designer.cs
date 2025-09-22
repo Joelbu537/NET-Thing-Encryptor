@@ -28,14 +28,20 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             tableLayoutPanel1 = new TableLayoutPanel();
             tableLayoutPanel = new TableLayoutPanel();
             labelSaveLocation = new Label();
             textBoxSaveLocation = new TextBox();
             buttonSaveLocation = new Button();
+            labelBufferForward = new Label();
+            labelBufferBackward = new Label();
             flowLayoutPanel1 = new FlowLayoutPanel();
             buttonApply = new Button();
             buttonCancel = new Button();
+            toolTip = new ToolTip(components);
+            textBoxBufferForward = new TextBox();
+            textBoxBufferBackwards = new TextBox();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel.SuspendLayout();
             flowLayoutPanel1.SuspendLayout();
@@ -63,9 +69,13 @@
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle());
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle());
+            tableLayoutPanel.Controls.Add(textBoxBufferForward, 1, 1);
             tableLayoutPanel.Controls.Add(labelSaveLocation, 0, 0);
             tableLayoutPanel.Controls.Add(textBoxSaveLocation, 1, 0);
             tableLayoutPanel.Controls.Add(buttonSaveLocation, 2, 0);
+            tableLayoutPanel.Controls.Add(labelBufferForward, 0, 1);
+            tableLayoutPanel.Controls.Add(labelBufferBackward, 0, 2);
+            tableLayoutPanel.Controls.Add(textBoxBufferBackwards, 1, 2);
             tableLayoutPanel.Dock = DockStyle.Fill;
             tableLayoutPanel.Location = new Point(12, 4);
             tableLayoutPanel.Margin = new Padding(12, 4, 4, 4);
@@ -88,17 +98,18 @@
             labelSaveLocation.Location = new Point(4, 10);
             labelSaveLocation.Margin = new Padding(4, 0, 4, 0);
             labelSaveLocation.Name = "labelSaveLocation";
-            labelSaveLocation.Size = new Size(146, 30);
+            labelSaveLocation.Size = new Size(238, 30);
             labelSaveLocation.TabIndex = 1;
             labelSaveLocation.Text = "Save Location";
             labelSaveLocation.TextAlign = ContentAlignment.MiddleLeft;
+            toolTip.SetToolTip(labelSaveLocation, "All of your encrypted files are stored here");
             // 
             // textBoxSaveLocation
             // 
             textBoxSaveLocation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            textBoxSaveLocation.Location = new Point(157, 6);
+            textBoxSaveLocation.Location = new Point(249, 6);
             textBoxSaveLocation.Name = "textBoxSaveLocation";
-            textBoxSaveLocation.Size = new Size(956, 37);
+            textBoxSaveLocation.Size = new Size(864, 37);
             textBoxSaveLocation.TabIndex = 2;
             // 
             // buttonSaveLocation
@@ -111,6 +122,32 @@
             buttonSaveLocation.Text = "...";
             buttonSaveLocation.UseVisualStyleBackColor = true;
             buttonSaveLocation.Click += buttonSaveLocation_Click;
+            // 
+            // labelBufferForward
+            // 
+            labelBufferForward.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            labelBufferForward.AutoSize = true;
+            labelBufferForward.Location = new Point(4, 60);
+            labelBufferForward.Margin = new Padding(4, 0, 4, 0);
+            labelBufferForward.Name = "labelBufferForward";
+            labelBufferForward.Size = new Size(238, 30);
+            labelBufferForward.TabIndex = 4;
+            labelBufferForward.Text = "Image forward buffer";
+            labelBufferForward.TextAlign = ContentAlignment.MiddleLeft;
+            toolTip.SetToolTip(labelBufferForward, "When viewing images, this ammount of images are going to be pre-loaded to reduce loading time");
+            // 
+            // labelBufferBackward
+            // 
+            labelBufferBackward.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            labelBufferBackward.AutoSize = true;
+            labelBufferBackward.Location = new Point(4, 110);
+            labelBufferBackward.Margin = new Padding(4, 0, 4, 0);
+            labelBufferBackward.Name = "labelBufferBackward";
+            labelBufferBackward.Size = new Size(238, 30);
+            labelBufferBackward.TabIndex = 5;
+            labelBufferBackward.Text = "Image backward buffer";
+            labelBufferBackward.TextAlign = ContentAlignment.MiddleLeft;
+            toolTip.SetToolTip(labelBufferBackward, "When viewing images, this ammount of images are going to be pre-loaded to reduce loading time");
             // 
             // flowLayoutPanel1
             // 
@@ -145,6 +182,24 @@
             buttonCancel.Text = "Cancel";
             buttonCancel.UseVisualStyleBackColor = true;
             buttonCancel.Click += buttonCancel_Click;
+            // 
+            // textBoxBufferForward
+            // 
+            textBoxBufferForward.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            textBoxBufferForward.Location = new Point(249, 56);
+            textBoxBufferForward.MaxLength = 3;
+            textBoxBufferForward.Name = "textBoxBufferForward";
+            textBoxBufferForward.Size = new Size(864, 37);
+            textBoxBufferForward.TabIndex = 6;
+            // 
+            // textBoxBufferBackwards
+            // 
+            textBoxBufferBackwards.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            textBoxBufferBackwards.Location = new Point(249, 106);
+            textBoxBufferBackwards.MaxLength = 3;
+            textBoxBufferBackwards.Name = "textBoxBufferBackwards";
+            textBoxBufferBackwards.Size = new Size(864, 37);
+            textBoxBufferBackwards.TabIndex = 7;
             // 
             // SettingsForm
             // 
@@ -183,5 +238,10 @@
         private FlowLayoutPanel flowLayoutPanel1;
         private Button buttonApply;
         private Button buttonCancel;
+        private Label labelBufferForward;
+        private Label labelBufferBackward;
+        private ToolTip toolTip;
+        private TextBox textBoxBufferForward;
+        private TextBox textBoxBufferBackwards;
     }
 }

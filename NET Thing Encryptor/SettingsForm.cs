@@ -23,11 +23,13 @@ namespace NET_Thing_Encryptor
         {
             ArgumentNullException.ThrowIfNull(ThingData.Root);
             textBoxSaveLocation.Text = Path.GetFullPath(ThingData.Root.SaveLocation);
+            textBoxBufferForward.Text = ThingData.Root.ForwardBuffer.ToString();
+            textBoxBufferBackwards.Text = ThingData.Root.BackBuffer.ToString();
         }
 
         private async void buttonApply_Click(object sender, EventArgs e)
         {
-            if(buttonApply.Enabled == false) return;
+            if (buttonApply.Enabled == false) return;
             buttonApply.Enabled = false;
             buttonCancel.Enabled = false;
             ArgumentNullException.ThrowIfNull(ThingData.Root);
@@ -45,11 +47,13 @@ namespace NET_Thing_Encryptor
                 ThingData.Root.SaveLocation = path;
                 await ThingData.SaveRootAsync();
             }
+            // Buffers
+
         }
 
         private void buttonCancel_Click(object sender, EventArgs e)
         {
-            if(buttonCancel.Enabled == false) return;
+            if (buttonCancel.Enabled == false) return;
             this.Close();
         }
 

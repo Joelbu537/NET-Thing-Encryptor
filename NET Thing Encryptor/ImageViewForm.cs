@@ -59,6 +59,7 @@ namespace NET_Thing_Encryptor
 
             Index = selectedIndex;
         }
+        private List<Bitmap> imageBuffer = new();
         private async void RefreshImage(object? o, EventArgs e)
         {
             if (Images.Count == 0) { return; }
