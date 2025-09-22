@@ -30,6 +30,7 @@
         {
             pictureBox = new PictureBox();
             textBoxIndex = new TextBox();
+            buttonCancel = new Button();
             ((System.ComponentModel.ISupportInitialize)pictureBox).BeginInit();
             SuspendLayout();
             // 
@@ -65,12 +66,26 @@
             textBoxIndex.KeyDown += textBoxIndex_KeyDown;
             textBoxIndex.Leave += textBoxIndex_Leave;
             // 
+            // buttonCancel
+            // 
+            buttonCancel.Enabled = false;
+            buttonCancel.Location = new Point(0, 0);
+            buttonCancel.Margin = new Padding(0);
+            buttonCancel.Name = "buttonCancel";
+            buttonCancel.Size = new Size(0, 0);
+            buttonCancel.TabIndex = 1;
+            buttonCancel.UseVisualStyleBackColor = true;
+            buttonCancel.Visible = false;
+            buttonCancel.Click += buttonCancel_Click;
+            // 
             // ImageViewForm
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(31, 31, 31);
+            CancelButton = buttonCancel;
             ClientSize = new Size(2231, 1274);
+            Controls.Add(buttonCancel);
             Controls.Add(textBoxIndex);
             Controls.Add(pictureBox);
             Font = new Font("Segoe UI", 12F);
@@ -90,5 +105,6 @@
 
         private PictureBox pictureBox;
         private TextBox textBoxIndex;
+        private Button buttonCancel;
     }
 }

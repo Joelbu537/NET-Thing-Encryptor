@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ImageMagick;
+using ImageMagick.Drawing;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -6,6 +8,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -58,15 +61,24 @@ namespace NET_Thing_Encryptor
         }
         private async void RefreshImage(object? o, EventArgs e)
         {
-            if(Images.Count == 0) { return; }
+            if (Images.Count == 0) { return; }
             ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[Index].ID);
             ArgumentNullException.ThrowIfNull(imageFile);
             pictureBox.ClearImage();
 
             if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
             {
-                using var ms = new MemoryStream(imageFile.Content);
-                pictureBox.Image = Image.FromStream(ms); // WARUM SIND JPEGS UNGÜLTIG
+                using (var img = new MagickImage(imageFile.Content))
+                {
+                    img.ColorSpace = ColorSpace.RGB;
+
+                    using (var ms = new MemoryStream())
+                    {
+                        img.Write(ms, MagickFormat.Bmp);
+                        ms.Position = 0;
+                        pictureBox.Image = new Bitmap(ms);
+                    }
+                }
             }
             else
             {
@@ -118,12 +130,17 @@ namespace NET_Thing_Encryptor
 
         private void ImageViewForm_Load(object sender, EventArgs e)
         {
-            while(Images.Count == 0)
+            while (Images.Count == 0)
             {
                 Application.DoEvents();
                 Task.Delay(100).Wait();
             }
             OnIndexChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void buttonCancel_Click(object sender, EventArgs e)
+        {
+            this.Close();
         }
     }
 }
