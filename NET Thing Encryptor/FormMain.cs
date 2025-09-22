@@ -69,6 +69,8 @@ namespace NET_Thing_Encryptor
             int fileCount = 0;
             long totalSize = 0;
 
+            List<ListViewItem> items = new();
+
             foreach (ThingObjectLink o in new_content)
             {
                 Debug.WriteLine($"  - {o.Name} ({o.Type}, ID {o.ID})");
@@ -83,6 +85,12 @@ namespace NET_Thing_Encryptor
                 totalSize += o.Size;
                 item.SubItems.Add(o.CreatedAt.ToString());
 
+                items.Add(item);
+            }
+
+            items = items.OrderBy(i => i.Text).ToList();
+            foreach(ListViewItem item in items)
+            {
                 listViewMain.Items.Add(item);
             }
 
