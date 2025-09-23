@@ -12,13 +12,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Windows.Media.Core;
 
 namespace NET_Thing_Encryptor
 {
     public partial class ImageViewForm : Form
     {
         private List<ThingObjectLink> Images = new();
+        private List<Bitmap?> imageBuffer = new();
         private event EventHandler OnIndexChanged;
+        private int _oldIndex = 0;
         private int _index = 0;
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int Index
@@ -29,8 +32,10 @@ namespace NET_Thing_Encryptor
             }
             set
             {
+                value = Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0));
                 if (_index == value) { return; }
-                _index = Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0));
+                _oldIndex = _index;
+                _index = value;
                 OnIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -45,7 +50,6 @@ namespace NET_Thing_Encryptor
         }
         private async Task InitAsync(ThingFile file)
         {
-            Debug.WriteLine($"Opening ImageViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
             if (file.Type != FileType.image)
             {
                 MessageBox.Show("The provided file is not an image.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -53,42 +57,102 @@ namespace NET_Thing_Encryptor
             }
 
             List<ThingObjectLink> content = await ThingData.LoadFolderContent(file.ParentID);
-            Images = content.Where((x) => x.Type == FileType.image).ToList();
-            Debug.WriteLine($"Found {Images.Count} images!");
-            int selectedIndex = Images.IndexOf(Images.FirstOrDefault((x) => x.ID == file.ID));
+            Images = content.Where(x => x.Type == FileType.image).ToList();
 
-            Index = selectedIndex;
-        }
-        private List<Bitmap> imageBuffer = new();
-        private async void RefreshImage(object? o, EventArgs e)
-        {
-            if (Images.Count == 0) { return; }
-            pictureBox.ClearImage();
-            ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[Index].ID);
-            ArgumentNullException.ThrowIfNull(imageFile);
+            int selectedIndex = Images.FindIndex(x => x.ID == file.ID);
+            if (selectedIndex < 0) selectedIndex = 0;
 
-            if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
+            ArgumentNullException.ThrowIfNull(ThingData.Root);
+
+            // Start- und Endindex für den Buffer berechnen
+            int start = Math.Max(0, selectedIndex - ThingData.Root.BackBuffer);
+            int end = Math.Min(Images.Count - 1, selectedIndex + ThingData.Root.ForwardBuffer);
+
+            imageBuffer.Clear();
+            for (int i = start; i <= end; i++)
             {
-                using (var img = new MagickImage(imageFile.Content))
-                {
-                    img.ColorSpace = ColorSpace.RGB;
+                var bmp = await LoadBitmapAsync(Images[i].ID);
+                imageBuffer.Add(bmp);
+            }
 
-                    using (var ms = new MemoryStream())
-                    {
-                        img.Write(ms, MagickFormat.Bmp);
-                        ms.Position = 0;
-                        pictureBox.Image = new Bitmap(ms);
-                    }
-                }
-            }
-            else
-            {
-                ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
-                pictureBox.Image = (Image)pictureBox.ErrorImage.Clone();
-            }
+            // aktuelles Bild liegt jetzt bei:
+            _oldIndex = _index = selectedIndex;
+            currentBufferIndex = selectedIndex - start;
+
+            pictureBox.Image = imageBuffer[currentBufferIndex] ?? (Image)pictureBox.ErrorImage.Clone();
             textBoxIndex.Text = $"{Index + 1}/{Images.Count}";
         }
 
+        // Hilfsfunktion zum Laden einer Bitmap
+        private async Task<Bitmap?> LoadBitmapAsync(ulong id)
+        {
+            ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(id);
+            if (imageFile != null && ThingData.VerifyFile(imageFile) && imageFile.Content != null)
+            {
+                using var img = new MagickImage(imageFile.Content);
+                img.ColorSpace = ColorSpace.RGB;
+                using var ms = new MemoryStream();
+                img.Write(ms, MagickFormat.Bmp);
+                ms.Position = 0;
+                return new Bitmap(ms);
+            }
+            return (Bitmap?)pictureBox.ErrorImage.Clone();
+        }
+        private int currentBufferIndex = 0;
+
+        private void RefreshImage(object? o, EventArgs e)
+        {
+            if (Images.Count == 0) return;
+
+            pictureBox.ClearImage();
+
+            if (_oldIndex < Index)
+            {
+                // Vorwärts
+                imageBuffer[0]?.Dispose();
+                imageBuffer.RemoveAt(0);
+
+                // Platzhalter hinten einfügen
+                imageBuffer.Add(null);
+
+                currentBufferIndex = Math.Min(currentBufferIndex, imageBuffer.Count - 1);
+
+                // Bild sofort anzeigen
+                pictureBox.Image = imageBuffer[currentBufferIndex] ?? (Image)pictureBox.ErrorImage.Clone();
+
+                // Asynchron nachladen
+                _ = Task.Run(async () =>
+                {
+                    int target = Index + ThingData.Root.ForwardBuffer;
+                    var bmp = (target >= 0 && target < Images.Count) ? await LoadBitmapAsync(Images[target].ID) : null;
+                    this.Invoke(() => imageBuffer[^1] = bmp);
+                });
+            }
+            else
+            {
+                // Rückwärts
+                imageBuffer[^1]?.Dispose();
+                imageBuffer.RemoveAt(imageBuffer.Count - 1);
+
+                // Platzhalter vorne einfügen
+                imageBuffer.Insert(0, null);
+
+                currentBufferIndex = Math.Max(0, currentBufferIndex);
+
+                // Bild sofort anzeigen
+                pictureBox.Image = imageBuffer[currentBufferIndex] ?? (Image)pictureBox.ErrorImage.Clone();
+
+                // Asynchron nachladen
+                _ = Task.Run(async () =>
+                {
+                    int target = Index - ThingData.Root.BackBuffer;
+                    var bmp = (target >= 0 && target < Images.Count) ? await LoadBitmapAsync(Images[target].ID) : null;
+                    this.Invoke(() => imageBuffer[0] = bmp);
+                });
+            }
+
+            textBoxIndex.Text = $"{Index + 1}/{Images.Count}";
+        }
         private void pictureBox_MouseClick(object sender, MouseEventArgs e)
         {
             if (ClientSize.Width / 2 < e.X)
