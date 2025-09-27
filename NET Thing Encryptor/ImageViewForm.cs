@@ -70,7 +70,10 @@ namespace NET_Thing_Encryptor
             {
                 using (var img = new MagickImage(imageFile.Content))
                 {
-                    img.ColorSpace = ColorSpace.RGB;
+                    if (img.ColorSpace != ColorSpace.sRGB)
+                    {
+                        img.TransformColorSpace(ColorProfile.SRGB);
+                    }
 
                     using (var ms = new MemoryStream())
                     {

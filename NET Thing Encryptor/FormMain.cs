@@ -97,6 +97,14 @@ namespace NET_Thing_Encryptor
             labelInfoFileCount.Text = $"Files: {fileCount}";
             labelInfoFolderCount.Text = $"Folders: {folderCount}";
             labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
+            if (CurrentFolderID == 0)
+            {
+                labelInfoTotalSize.Text = "Total Size: " + new DirectoryInfo(ThingData.Root.SaveLocation).EnumerateFiles("*", SearchOption.TopDirectoryOnly).Sum(f => f.Length).Sizeify();
+            }
+            else
+            {
+                labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
+            }
         }
 
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
