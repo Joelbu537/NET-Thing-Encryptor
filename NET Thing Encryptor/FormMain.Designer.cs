@@ -42,6 +42,7 @@
             buttonNavigationRoot = new Button();
             textBoxNavigation = new TextBox();
             flowLayoutPanelInfo = new FlowLayoutPanel();
+            labelInfoVersion = new Label();
             labelInfoFileCount = new Label();
             labelInfoFolderCount = new Label();
             labelInfoTotalSize = new Label();
@@ -53,11 +54,16 @@
             columnHeaderCreated = new ColumnHeader();
             imageListFileIcons = new ImageList(components);
             toolTip = new ToolTip(components);
+            contextMenuStrip = new ContextMenuStrip(components);
+            toolStripMenuItemRename = new ToolStripMenuItem();
+            toolStripSeparator1 = new ToolStripSeparator();
+            toolStripMenuItemCopy = new ToolStripMenuItem();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
             flowLayoutPanelInfo.SuspendLayout();
             tableLayoutPanelDiv.SuspendLayout();
+            contextMenuStrip.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanelMain
@@ -246,6 +252,7 @@
             // flowLayoutPanelInfo
             // 
             flowLayoutPanelInfo.AutoSize = true;
+            flowLayoutPanelInfo.Controls.Add(labelInfoVersion);
             flowLayoutPanelInfo.Controls.Add(labelInfoFileCount);
             flowLayoutPanelInfo.Controls.Add(labelInfoFolderCount);
             flowLayoutPanelInfo.Controls.Add(labelInfoTotalSize);
@@ -257,10 +264,20 @@
             flowLayoutPanelInfo.Size = new Size(1822, 33);
             flowLayoutPanelInfo.TabIndex = 2;
             // 
+            // labelInfoVersion
+            // 
+            labelInfoVersion.AutoSize = true;
+            labelInfoVersion.Location = new Point(5, 5);
+            labelInfoVersion.Margin = new Padding(5);
+            labelInfoVersion.Name = "labelInfoVersion";
+            labelInfoVersion.Size = new Size(186, 23);
+            labelInfoVersion.TabIndex = 4;
+            labelInfoVersion.Text = "labelInfoVersion";
+            // 
             // labelInfoFileCount
             // 
             labelInfoFileCount.AutoSize = true;
-            labelInfoFileCount.Location = new Point(5, 5);
+            labelInfoFileCount.Location = new Point(201, 5);
             labelInfoFileCount.Margin = new Padding(5);
             labelInfoFileCount.Name = "labelInfoFileCount";
             labelInfoFileCount.Size = new Size(208, 23);
@@ -270,7 +287,7 @@
             // labelInfoFolderCount
             // 
             labelInfoFolderCount.AutoSize = true;
-            labelInfoFolderCount.Location = new Point(223, 5);
+            labelInfoFolderCount.Location = new Point(419, 5);
             labelInfoFolderCount.Margin = new Padding(5);
             labelInfoFolderCount.Name = "labelInfoFolderCount";
             labelInfoFolderCount.Size = new Size(230, 23);
@@ -280,7 +297,7 @@
             // labelInfoTotalSize
             // 
             labelInfoTotalSize.AutoSize = true;
-            labelInfoTotalSize.Location = new Point(463, 5);
+            labelInfoTotalSize.Location = new Point(659, 5);
             labelInfoTotalSize.Margin = new Padding(5);
             labelInfoTotalSize.Name = "labelInfoTotalSize";
             labelInfoTotalSize.Size = new Size(208, 23);
@@ -292,7 +309,7 @@
             labelInfoSaving.AutoSize = true;
             labelInfoSaving.BackColor = Color.Red;
             labelInfoSaving.ForeColor = Color.Black;
-            labelInfoSaving.Location = new Point(681, 5);
+            labelInfoSaving.Location = new Point(877, 5);
             labelInfoSaving.Margin = new Padding(5);
             labelInfoSaving.Name = "labelInfoSaving";
             labelInfoSaving.Size = new Size(109, 23);
@@ -328,6 +345,7 @@
             listViewMain.UseCompatibleStateImageBehavior = false;
             listViewMain.View = View.Details;
             listViewMain.DoubleClick += listViewMain_DoubleClick;
+            listViewMain.MouseDown += listViewMain_MouseDown;
             // 
             // columnHeaderName
             // 
@@ -356,6 +374,38 @@
             imageListFileIcons.Images.SetKeyName(4, "folder");
             imageListFileIcons.Images.SetKeyName(5, "text");
             // 
+            // contextMenuStrip
+            // 
+            contextMenuStrip.Font = new Font("Segoe UI", 12F);
+            contextMenuStrip.ImageScalingSize = new Size(24, 24);
+            contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripSeparator1, toolStripMenuItemCopy });
+            contextMenuStrip.Name = "contextMenuStrip";
+            contextMenuStrip.Size = new Size(241, 119);
+            // 
+            // toolStripMenuItemRename
+            // 
+            toolStripMenuItemRename.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripMenuItemRename.Name = "toolStripMenuItemRename";
+            toolStripMenuItemRename.Size = new Size(240, 38);
+            toolStripMenuItemRename.Text = "Rename";
+            toolStripMenuItemRename.TextAlign = ContentAlignment.MiddleLeft;
+            toolStripMenuItemRename.TextImageRelation = TextImageRelation.TextAboveImage;
+            toolStripMenuItemRename.Click += toolStripMenuItemRename_Click;
+            // 
+            // toolStripSeparator1
+            // 
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(237, 6);
+            // 
+            // toolStripMenuItemCopy
+            // 
+            toolStripMenuItemCopy.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripMenuItemCopy.Name = "toolStripMenuItemCopy";
+            toolStripMenuItemCopy.Size = new Size(240, 38);
+            toolStripMenuItemCopy.Text = "Copy";
+            toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
+            toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;
+            // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -381,6 +431,7 @@
             flowLayoutPanelInfo.ResumeLayout(false);
             flowLayoutPanelInfo.PerformLayout();
             tableLayoutPanelDiv.ResumeLayout(false);
+            contextMenuStrip.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -410,5 +461,10 @@
         private ColumnHeader columnHeaderCreated;
         private ToolTip toolTip;
         private Button buttonNavigationExport;
+        private Label labelInfoVersion;
+        private ContextMenuStrip contextMenuStrip;
+        private ToolStripMenuItem toolStripMenuItemRename;
+        private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem toolStripMenuItemCopy;
     }
 }

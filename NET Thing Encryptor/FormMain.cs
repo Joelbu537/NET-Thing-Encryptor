@@ -2,7 +2,6 @@ using Microsoft.WindowsAPICodePack.Dialogs;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 
 namespace NET_Thing_Encryptor
 {
@@ -11,6 +10,8 @@ namespace NET_Thing_Encryptor
         public event EventHandler FolderChanged;
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 1;
+
+        public int version = 43;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -48,6 +49,7 @@ namespace NET_Thing_Encryptor
         {
             Debug.WriteLine($"FormMain ist {System.Threading.Thread.CurrentThread.GetApartmentState()}");
 
+            labelInfoVersion.Text = $"V {version}";
             CurrentFolderID = 0;
         }
         private async void OnFolderChanged(object sender, EventArgs e)
@@ -88,8 +90,8 @@ namespace NET_Thing_Encryptor
                 items.Add(item);
             }
 
-            items = items.OrderBy(i => i.Text).ToList();
-            foreach(ListViewItem item in items)
+            items = items.OrderBy(i => i.Text, new NaturalStringComparer()).ToList();
+            foreach (ListViewItem item in items)
             {
                 listViewMain.Items.Add(item);
             }
@@ -367,7 +369,7 @@ namespace NET_Thing_Encryptor
                 ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
                 ArgumentNullException.ThrowIfNull(f);
 
-                if(f.Content == null || f.Content.Length == 0)
+                if (f.Content == null || f.Content.Length == 0)
                 {
                     MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
@@ -376,6 +378,48 @@ namespace NET_Thing_Encryptor
                 File.WriteAllBytes(filePath, f.Content);
             }
             ThingData.Saving--;
+        }
+
+        private void listViewMain_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                var item = listViewMain.GetItemAt(e.X, e.Y);
+                if (item != null)
+                {
+                    listViewMain.FocusedItem = item;
+                    contextMenuStrip.Show(listViewMain, e.Location);
+                }
+            }
+        }
+
+        private async void toolStripMenuItemRename_Click(object sender, EventArgs e)
+        {
+            if(listViewMain.SelectedItems.Count > 0)
+            {
+                ListViewItem item = listViewMain.SelectedItems[0];
+                CreateFolderForm form = new(item.Text);
+                if(form.ShowDialog() == DialogResult.OK)
+                {
+                    string newName = form.Name;
+                    ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
+                    ArgumentNullException.ThrowIfNull(o);
+                    o.Name = newName;
+                    await ThingData.SaveFileAsync(o);
+                    if(CurrentFolder == null)
+                    {
+                        ThingData.Root.Content.FirstOrDefault(l => l.ID == o.ID).Name = newName;
+                        await ThingData.SaveRootAsync();
+                    }
+                    else
+                    {
+                        CurrentFolder.Content.FirstOrDefault(l => l.ID == o.ID).Name = newName;
+                        await ThingData.SaveFileAsync(CurrentFolder);
+                    }
+                    CurrentFolderID = CurrentFolderID;
+                    listViewMain.SelectedItems.Clear();
+                }
+            }
         }
     }
 }

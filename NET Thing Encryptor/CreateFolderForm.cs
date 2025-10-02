@@ -16,6 +16,13 @@ namespace NET_Thing_Encryptor
         {
             InitializeComponent();
         }
+        public CreateFolderForm(string name)
+        {
+            InitializeComponent();
+            textBox.Text = name;
+            label.Text = "Change Name to:";
+            textBox1_TextChanged(null, null);
+        }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
