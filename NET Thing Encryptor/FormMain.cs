@@ -11,7 +11,7 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 1;
 
-        public int version = 43;
+        public int version = 44;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -31,18 +31,6 @@ namespace NET_Thing_Encryptor
         {
             InitializeComponent();
             FolderChanged += OnFolderChanged;
-
-            ThingData.SaveStatusChanged += (o, e) =>
-            {
-                if (ThingData.Saving > 0)
-                {
-                    labelInfoSaving.Visible = true;
-                }
-                else
-                {
-                    labelInfoSaving.Visible = false;
-                }
-            };
         }
 
         private void FormMain_Load(object sender, EventArgs e)
@@ -51,6 +39,35 @@ namespace NET_Thing_Encryptor
 
             labelInfoVersion.Text = $"V {version}";
             CurrentFolderID = 0;
+            _ = Task.Run(() =>
+            {
+                while (true)
+                {
+                    if(ThingData.Saving > 0)
+                    {
+                        if (labelInfoSaving.InvokeRequired)
+                        {
+                            labelInfoSaving.Invoke((Action)(() => labelInfoSaving.Visible = true));
+                        }
+                        else
+                        {
+                            labelInfoSaving.Visible = true;
+                        }
+                    }
+                    else
+                    {
+                        if (labelInfoSaving.InvokeRequired)
+                        {
+                            labelInfoSaving.Invoke((Action)(() => labelInfoSaving.Visible = false));
+                        }
+                        else
+                        {
+                            labelInfoSaving.Visible = false;
+                        }
+                    }
+                    Task.Delay(250).Wait();
+                }
+            });
         }
         private async void OnFolderChanged(object sender, EventArgs e)
         {
@@ -265,7 +282,7 @@ namespace NET_Thing_Encryptor
                 {
                     await ThingData.DeleteFile(deletion.ID);
                 }
-                CurrentFolderID = CurrentFolderID;
+                listViewMain.Items.RemoveAt(listViewMain.SelectedIndices[0]);
             }
         }
         private void buttonNavigationRoot_Click(object sender, EventArgs e)

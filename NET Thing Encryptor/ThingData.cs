@@ -533,9 +533,6 @@ public static class ThingData
         await fs.FlushAsync();
         fs.Close();
         Saving--;
-
-        // DEBUG
-        File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "debug.txt"), JsonSerializer.Serialize(Root));
     }
     public static ThingFolder AddToRoot(this ThingFolder folder)
     {
