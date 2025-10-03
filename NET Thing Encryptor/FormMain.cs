@@ -1,5 +1,6 @@
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System.ComponentModel;
+using System.Configuration;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -11,7 +12,7 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 1;
 
-        public int version = 44;
+        public int version = 45;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -67,7 +68,14 @@ namespace NET_Thing_Encryptor
                     }
                     Task.Delay(250).Wait();
                 }
-            });
+            }); // Save indicator clock
+            _ = Task.Run(() =>
+            {
+                foreach(ThingObjectLink link in ThingData.Root.Content)
+                {
+                    _ = GetFolderSize(link.ID);
+                }
+            }); // Recalculate Folder Sizes
         }
         private async void OnFolderChanged(object sender, EventArgs e)
         {
@@ -437,6 +445,34 @@ namespace NET_Thing_Encryptor
                     listViewMain.SelectedItems.Clear();
                 }
             }
+        }
+        private async Task<long> GetFolderSize(ulong folderID)
+        {
+            ThingFolder? folder = await ThingData.LoadFileAsync<ThingFolder>(folderID);
+            long folder_size = 0;
+            foreach(ThingObjectLink link in folder.Content)
+            {
+                if(link.Type == FileType.folder)
+                {
+                    folder_size += await GetFolderSize(link.ID);
+                }
+                else
+                {
+                    folder_size += link.Size;
+                }
+            }
+            if(folder.ParentID == 0)
+            {
+                ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
+                await ThingData.SaveRootAsync();
+            }
+            else
+            {
+                ThingFolder? parentFolder = await ThingData.LoadFileAsync<ThingFolder>(folder.ParentID);
+                parentFolder.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
+                await ThingData.SaveFileAsync(parentFolder);
+            }
+            return folder_size;
         }
     }
 }
