@@ -33,7 +33,6 @@ namespace NET_Thing_Encryptor
             InitializeComponent();
             FolderChanged += OnFolderChanged;
         }
-
         private void FormMain_Load(object sender, EventArgs e)
         {
             Debug.WriteLine($"FormMain ist {System.Threading.Thread.CurrentThread.GetApartmentState()}");
@@ -77,6 +76,7 @@ namespace NET_Thing_Encryptor
                 }
             }); // Recalculate Folder Sizes
         }
+
         private async void OnFolderChanged(object sender, EventArgs e)
         {
             Debug.WriteLine("Folder changed. Refreshing items.");
@@ -123,7 +123,7 @@ namespace NET_Thing_Encryptor
 
             labelInfoFileCount.Text = $"Files: {fileCount}";
             labelInfoFolderCount.Text = $"Folders: {folderCount}";
-            labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
+            labelInfoTotalSize.Text = $"Total size on disk: {totalSize.Sizeify()}";
             if (CurrentFolderID == 0)
             {
                 labelInfoTotalSize.Text = "Total Size: " + new DirectoryInfo(ThingData.Root.SaveLocation).EnumerateFiles("*", SearchOption.TopDirectoryOnly).Sum(f => f.Length).Sizeify();
@@ -133,7 +133,6 @@ namespace NET_Thing_Encryptor
                 labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
             }
         }
-
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
         {
             Debug.Write("Doppelklick auf ");
@@ -180,7 +179,6 @@ namespace NET_Thing_Encryptor
                 Debug.WriteLine("nichts?!");
             }
         }
-
         private void buttonNavigationBack_Click(object sender, EventArgs e)
         {
             if (CurrentFolderID != 0 && CurrentFolder != null)
@@ -259,6 +257,7 @@ namespace NET_Thing_Encryptor
                 {
                     await ThingData.MoveFolderToFolderAsync(newFolder.ID, CurrentFolderID);
                 }
+
             }
             else
             {
@@ -266,8 +265,6 @@ namespace NET_Thing_Encryptor
             }
 
             CurrentFolderID = CurrentFolderID;
-            // Implement creation dialog
-            //throw new NotImplementedException();
         }
         private async void buttonNavigationDeleteSelected_Click(object sender, EventArgs e)
         {

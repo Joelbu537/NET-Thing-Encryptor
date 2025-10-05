@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PasswordForm));
             tableLayoutPanelPassword = new TableLayoutPanel();
             textBoxPassword = new TextBox();
             labelPassword = new Label();
@@ -101,16 +102,14 @@
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1040, 172);
-            ControlBox = false;
             Controls.Add(tableLayoutPanelPassword);
             Font = new Font("Segoe UI", 12F);
-            FormBorderStyle = FormBorderStyle.None;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "PasswordForm";
-            ShowIcon = false;
-            ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterScreen;
             Text = "PasswordForm";
             TopMost = true;

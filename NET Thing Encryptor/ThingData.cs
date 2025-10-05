@@ -414,7 +414,7 @@ public static class ThingData
         }
         else
         {
-            ThingFolder? oldFolder = await LoadFileAsync(folder.ParentID) as ThingFolder; // GRRRR
+            ThingFolder? oldFolder = await LoadFileAsync(folder.ParentID) as ThingFolder; // UHHHHHHHHH Skill Issue
             ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
             link = oldFolder.Content.FirstOrDefault(x => x.ID == folder.ID);
             oldFolder.Content.Remove(link);
@@ -566,30 +566,19 @@ public static class ThingData
         }
         throw new ArgumentException("The provided ID does not correspond to a folder.", nameof(id));
     }
-    public static string Sizeify(this long size_in_bytes)
+    public static string Sizeify(this long sizeInBytes)
     {
-        string[] sizes = { "Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB", "RB", "QB" };
-        double len = size_in_bytes;
+        string[] sizes = { "Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+        double len = sizeInBytes;
         int order = 0;
+
         while (len >= 1024 && order < sizes.Length - 1)
         {
             order++;
-            len = len / 1024;
+            len /= 1024;
         }
-        string temp = String.Format("{0:0.##}", len);
-        string[] parts = temp.Split(',');
-        if (parts.Length == 1)
-        {
-            return $"{parts[0]} {sizes[order]}";
-        }
-        else if (parts[0].Length >= 3)
-        {
-            return $"{parts[0]} {sizes[order]}";
-        }
-        else
-        {
-            return $"{parts[0]},{parts[1]} {sizes[order]}";
-        }
+
+        return $"{len:0.##} {sizes[order]}";
     }
     public static void ClearImage(this PictureBox p)
     {
