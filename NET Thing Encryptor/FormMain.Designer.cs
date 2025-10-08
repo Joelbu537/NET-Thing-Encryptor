@@ -267,8 +267,8 @@
             // labelInfoVersion
             // 
             labelInfoVersion.AutoSize = true;
-            labelInfoVersion.Location = new Point(5, 5);
-            labelInfoVersion.Margin = new Padding(5);
+            labelInfoVersion.Location = new Point(8, 5);
+            labelInfoVersion.Margin = new Padding(8, 5, 8, 5);
             labelInfoVersion.Name = "labelInfoVersion";
             labelInfoVersion.Size = new Size(186, 23);
             labelInfoVersion.TabIndex = 4;
@@ -277,8 +277,8 @@
             // labelInfoFileCount
             // 
             labelInfoFileCount.AutoSize = true;
-            labelInfoFileCount.Location = new Point(201, 5);
-            labelInfoFileCount.Margin = new Padding(5);
+            labelInfoFileCount.Location = new Point(210, 5);
+            labelInfoFileCount.Margin = new Padding(8, 5, 8, 5);
             labelInfoFileCount.Name = "labelInfoFileCount";
             labelInfoFileCount.Size = new Size(208, 23);
             labelInfoFileCount.TabIndex = 0;
@@ -287,8 +287,8 @@
             // labelInfoFolderCount
             // 
             labelInfoFolderCount.AutoSize = true;
-            labelInfoFolderCount.Location = new Point(419, 5);
-            labelInfoFolderCount.Margin = new Padding(5);
+            labelInfoFolderCount.Location = new Point(434, 5);
+            labelInfoFolderCount.Margin = new Padding(8, 5, 8, 5);
             labelInfoFolderCount.Name = "labelInfoFolderCount";
             labelInfoFolderCount.Size = new Size(230, 23);
             labelInfoFolderCount.TabIndex = 1;
@@ -297,8 +297,8 @@
             // labelInfoTotalSize
             // 
             labelInfoTotalSize.AutoSize = true;
-            labelInfoTotalSize.Location = new Point(659, 5);
-            labelInfoTotalSize.Margin = new Padding(5);
+            labelInfoTotalSize.Location = new Point(680, 5);
+            labelInfoTotalSize.Margin = new Padding(8, 5, 8, 5);
             labelInfoTotalSize.Name = "labelInfoTotalSize";
             labelInfoTotalSize.Size = new Size(208, 23);
             labelInfoTotalSize.TabIndex = 2;
@@ -309,7 +309,7 @@
             labelInfoSaving.AutoSize = true;
             labelInfoSaving.BackColor = Color.Red;
             labelInfoSaving.ForeColor = Color.Black;
-            labelInfoSaving.Location = new Point(877, 5);
+            labelInfoSaving.Location = new Point(901, 5);
             labelInfoSaving.Margin = new Padding(5);
             labelInfoSaving.Name = "labelInfoSaving";
             labelInfoSaving.Size = new Size(109, 23);
@@ -380,13 +380,13 @@
             contextMenuStrip.ImageScalingSize = new Size(24, 24);
             contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripSeparator1, toolStripMenuItemCopy });
             contextMenuStrip.Name = "contextMenuStrip";
-            contextMenuStrip.Size = new Size(241, 119);
+            contextMenuStrip.Size = new Size(175, 86);
             // 
             // toolStripMenuItemRename
             // 
             toolStripMenuItemRename.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripMenuItemRename.Name = "toolStripMenuItemRename";
-            toolStripMenuItemRename.Size = new Size(240, 38);
+            toolStripMenuItemRename.Size = new Size(174, 38);
             toolStripMenuItemRename.Text = "Rename";
             toolStripMenuItemRename.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemRename.TextImageRelation = TextImageRelation.TextAboveImage;
@@ -395,13 +395,13 @@
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(237, 6);
+            toolStripSeparator1.Size = new Size(171, 6);
             // 
             // toolStripMenuItemCopy
             // 
             toolStripMenuItemCopy.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripMenuItemCopy.Name = "toolStripMenuItemCopy";
-            toolStripMenuItemCopy.Size = new Size(240, 38);
+            toolStripMenuItemCopy.Size = new Size(174, 38);
             toolStripMenuItemCopy.Text = "Copy";
             toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;

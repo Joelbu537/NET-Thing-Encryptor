@@ -19,13 +19,7 @@ public static class ThingData
     public static byte[]? Key { get; private set; }
     public static byte[]? IV { get; set; }
     public static ThingRoot? Root { get; private set; }
-    public static event EventHandler SaveStatusChanged = delegate { };
-    private static int _saving = 0;
-    public static int Saving
-    {
-        get { return _saving; } 
-        set { _saving = value; SaveStatusChanged.Invoke(null, EventArgs.Empty); }
-    }
+    public static int Saving{ get; set; }
 
     public static async Task<Stream> Encrypt(Stream input)
     {

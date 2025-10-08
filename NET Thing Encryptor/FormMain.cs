@@ -10,9 +10,9 @@ namespace NET_Thing_Encryptor
     {
         public event EventHandler FolderChanged;
         private ThingFolder? CurrentFolder;
-        private ulong _currentFolderID = 1;
+        private ulong _currentFolderID = 0;
 
-        public int version = 45;
+        public int version = 46;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -35,7 +35,7 @@ namespace NET_Thing_Encryptor
         }
         private void FormMain_Load(object sender, EventArgs e)
         {
-            Debug.WriteLine($"FormMain ist {System.Threading.Thread.CurrentThread.GetApartmentState()}");
+            Debug.WriteLine($"FormMain is {System.Threading.Thread.CurrentThread.GetApartmentState()}");
 
             labelInfoVersion.Text = $"V {version}";
             CurrentFolderID = 0;
@@ -65,9 +65,9 @@ namespace NET_Thing_Encryptor
                             labelInfoSaving.Visible = false;
                         }
                     }
-                    Task.Delay(250).Wait();
+                    Task.Delay(500).Wait();
                 }
-            }); // Save indicator clock
+            }); // Start Saving Indicator clock
             _ = Task.Run(() =>
             {
                 foreach(ThingObjectLink link in ThingData.Root.Content)
@@ -123,14 +123,10 @@ namespace NET_Thing_Encryptor
 
             labelInfoFileCount.Text = $"Files: {fileCount}";
             labelInfoFolderCount.Text = $"Folders: {folderCount}";
-            labelInfoTotalSize.Text = $"Total size on disk: {totalSize.Sizeify()}";
+            labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
             if (CurrentFolderID == 0)
             {
-                labelInfoTotalSize.Text = "Total Size: " + new DirectoryInfo(ThingData.Root.SaveLocation).EnumerateFiles("*", SearchOption.TopDirectoryOnly).Sum(f => f.Length).Sizeify();
-            }
-            else
-            {
-                labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
+                labelInfoTotalSize.Text += " - With encryption overhead: " + new DirectoryInfo(ThingData.Root.SaveLocation).EnumerateFiles("*", SearchOption.TopDirectoryOnly).Sum(f => f.Length).Sizeify();
             }
         }
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
@@ -274,18 +270,13 @@ namespace NET_Thing_Encryptor
                 Debug.WriteLine($"Deleting {item.Text}");
 
                 ThingObject? deletion = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
-                if (deletion is ThingFolder)
-                {
-                    DialogResult r = MessageBox.Show($"Are you sure you want to delete {deletion.Name} and all of its contents?",
+
+                DialogResult r = MessageBox.Show($"Are you sure you want to delete {deletion.Name} and all of its contents?",
                         "Folder deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (r == DialogResult.Yes)
-                    {
-                        await ThingData.DeleteObject(deletion);
-                    }
-                }
-                else if (deletion is ThingFile)
+
+                if (r == DialogResult.Yes)
                 {
-                    await ThingData.DeleteFile(deletion.ID);
+                    await ThingData.DeleteObject(deletion);
                 }
                 listViewMain.Items.RemoveAt(listViewMain.SelectedIndices[0]);
             }
