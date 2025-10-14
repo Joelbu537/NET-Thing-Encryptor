@@ -29,7 +29,7 @@ namespace NET_Thing_Encryptor
             }
             set
             {
-                if (_index == value) { return; }
+                if (_index == Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0))) { return; }
                 _index = Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0));
                 OnIndexChanged?.Invoke(this, EventArgs.Empty);
             }
