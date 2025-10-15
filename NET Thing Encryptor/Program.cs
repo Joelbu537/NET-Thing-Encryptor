@@ -8,6 +8,13 @@ namespace NET_Thing_Encryptor
         [STAThread]
         static void Main()
         {
+            using Mutex mutex = new Mutex(true, "NET Thing Encryptor", out bool isAlone);
+            if (!isAlone)
+            {
+                MessageBox.Show("There already is another instance of NET Thing Encryptor running!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                Process.GetCurrentProcess().Kill();
+                return;
+            }
             ApplicationConfiguration.Initialize();
             try
             {
@@ -41,6 +48,7 @@ namespace NET_Thing_Encryptor
 /*          /// TO DO \\\
  *      ListView multiselect amchen, um mehrere Items gleichzeitig exportieren und löschen zu können
  *      Dateien verschiebbar machen
- *      Dateiformate erkennen und ggf umwandeln
- *      Dateien importieren
+ *      Dateiendungen vom Namen separieren um das Exportieren nicht korrupt zu machen
+ *      Autopsperre nach 5 Minuten inaktivität (Oder Variabler Zeit in Settings)
+ *      Dateien automatisch in AppData speichern und nicht im Programmverzeichniss.
  */
