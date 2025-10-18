@@ -12,7 +12,7 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
 
-        public int version = 48;
+        public int version = 49;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -145,7 +145,7 @@ namespace NET_Thing_Encryptor
                 else if (obj is ThingFile file)
                 {
                     Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash} Type: {file.Type.ToString()}");
-                    switch (file.Type) // Warum ist es immer OTHER ?????
+                    switch (file.Type)
                     {
                         case FileType.text:
                             MessageBox.Show("Text preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -215,7 +215,7 @@ namespace NET_Thing_Encryptor
                             MessageBox.Show($"The file {file} does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             continue;
                         }
-                        ThingFile? newFile = new ThingFile(System.IO.Path.GetFileName(file), File.ReadAllBytes(file));
+                        ThingFile? newFile = new ThingFile(System.IO.Path.GetFileName(file).Replace(Path.GetExtension(file), ""), File.ReadAllBytes(file));
                         Enum.TryParse<FileType>(ThingData.GetFileType(file), true, out FileType result);
                         newFile.Type = result;
                         Enum.TryParse<FileExtension>(Path.GetExtension(file).TrimStart('.'), true, out FileExtension extResult);
@@ -387,7 +387,7 @@ namespace NET_Thing_Encryptor
                     MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-                string filePath = Path.Combine(path, f.Name);
+                string filePath = Path.Combine(path, f.Name) + '.' + f.Extension;
                 File.WriteAllBytes(filePath, f.Content);
             }
             ThingData.Saving--;
