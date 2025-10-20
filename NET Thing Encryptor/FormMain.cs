@@ -1,6 +1,5 @@
 using Microsoft.WindowsAPICodePack.Dialogs;
 using System.ComponentModel;
-using System.Configuration;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
