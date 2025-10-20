@@ -11,7 +11,7 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
 
-        public int version = 50;
+        public int version = 51;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID

@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Runtime;
 
 namespace NET_Thing_Encryptor
 {
@@ -64,21 +65,18 @@ namespace NET_Thing_Encryptor
 
                     imageFile.Clear();
 
-                    using (var img = new MagickImage(imageData))
+                    using var img = new MagickImage(imageData);
+                    if (img.ColorSpace != ColorSpace.sRGB)
                     {
-                        if (img.ColorSpace != ColorSpace.sRGB)
-                        {
-                            img.TransformColorSpace(ColorProfile.SRGB);
-                        }
-
-                        using (var ms = new MemoryStream())
-                        {
-                            img.Write(ms, MagickFormat.Bmp);
-                            ms.Position = 0;
-                            pictureBox.Image = new Bitmap(ms);
-                        }
+                        img.TransformColorSpace(ColorProfile.SRGB);
                     }
 
+                    using var ms = new MemoryStream();
+                    img.Write(ms, MagickFormat.Png32);
+                    ms.Position = 0;
+
+                    using var tempBitmap = new Bitmap(ms);
+                    pictureBox.Image = (Bitmap)tempBitmap.Clone();
                     imageData = null;
                 }
                 else
@@ -154,7 +152,7 @@ namespace NET_Thing_Encryptor
             Images?.Clear();
             Images = null;
 
-            GC.Collect();
+            GC.Collect(2, GCCollectionMode.Aggressive, true, true);
         }
     }
 }
