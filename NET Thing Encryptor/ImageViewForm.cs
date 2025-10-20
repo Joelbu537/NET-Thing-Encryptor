@@ -17,7 +17,7 @@ namespace NET_Thing_Encryptor
 {
     public partial class ImageViewForm : Form
     {
-        private List<ThingObjectLink> Images = new();
+        private List<ThingObjectLink>? Images = new();
         private event EventHandler OnIndexChanged;
         private int _index = 0;
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -66,28 +66,42 @@ namespace NET_Thing_Encryptor
             ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[Index].ID);
             ArgumentNullException.ThrowIfNull(imageFile);
 
-            if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
+            try
             {
-                using (var img = new MagickImage(imageFile.Content))
+                if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
                 {
-                    if (img.ColorSpace != ColorSpace.sRGB)
+                    var imageData = imageFile.Content;
+
+                    imageFile.Clear();
+
+                    using (var img = new MagickImage(imageData))
                     {
-                        img.TransformColorSpace(ColorProfile.SRGB);
+                        if (img.ColorSpace != ColorSpace.sRGB)
+                        {
+                            img.TransformColorSpace(ColorProfile.SRGB);
+                        }
+
+                        using (var ms = new MemoryStream())
+                        {
+                            img.Write(ms, MagickFormat.Bmp);
+                            ms.Position = 0;
+                            pictureBox.Image = new Bitmap(ms);
+                        }
                     }
 
-                    using (var ms = new MemoryStream())
-                    {
-                        img.Write(ms, MagickFormat.Bmp);
-                        ms.Position = 0;
-                        pictureBox.Image = new Bitmap(ms);
-                    }
+                    imageData = null;
+                }
+                else
+                {
+                    ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
+                    pictureBox.Image = (Image)pictureBox.ErrorImage.Clone();
                 }
             }
-            else
+            finally
             {
-                ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
-                pictureBox.Image = (Image)pictureBox.ErrorImage.Clone();
+                imageFile = null;
             }
+
             textBoxIndex.Text = $"{Index + 1}/{Images.Count}";
         }
 
@@ -140,6 +154,17 @@ namespace NET_Thing_Encryptor
                 Task.Delay(100).Wait();
             }
             OnIndexChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void ImageViewForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            OnIndexChanged -= RefreshImage;
+            pictureBox.ClearImage();
+
+            Images?.Clear();
+            Images = null;
+
+            GC.Collect();
         }
     }
 }

@@ -21,7 +21,7 @@ public static class ThingData
     public static ThingRoot? Root { get; private set; }
     public static int Saving{ get; set; }
 
-    public static async Task<Stream> Encrypt(Stream input)
+    public static async Task<MemoryStream> Encrypt(Stream input)
     {
         if (Key == null || IV == null)
             throw new InvalidOperationException("Key and IV must be set before encryption.");
@@ -38,7 +38,7 @@ public static class ThingData
         return output;
     }
 
-    public static async Task<Stream> Decrypt(Stream input)
+    public static async Task<MemoryStream> Decrypt(Stream input)
     {
         if (Key == null || IV == null)
             throw new InvalidOperationException("Key and IV must be set before decryption.");
@@ -49,7 +49,7 @@ public static class ThingData
 
         var output = new MemoryStream();
         using var cryptoStream = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read, leaveOpen: true);
-        await cryptoStream.CopyToAsync(output); /// Freezes
+        await cryptoStream.CopyToAsync(output);
 
         output.Position = 0;
         return output;

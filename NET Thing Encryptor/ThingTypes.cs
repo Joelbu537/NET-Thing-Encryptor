@@ -56,6 +56,12 @@ namespace NET_Thing_Encryptor
             MD5Hash = string.Empty;
             Content = content;
         }
+
+        public void Clear()
+        {
+            _content = null;
+            ID = 0;
+        }
     }
     public class ThingRoot : ThingObject, ICloneable
     {

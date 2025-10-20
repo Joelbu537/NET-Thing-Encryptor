@@ -79,6 +79,7 @@
             ShowIcon = false;
             Text = ".NET Thing Image Viewer";
             WindowState = FormWindowState.Maximized;
+            FormClosing += ImageViewForm_FormClosing;
             Load += ImageViewForm_Load;
             KeyDown += ImageViewForm_KeyDown;
             ((System.ComponentModel.ISupportInitialize)pictureBox).EndInit();

@@ -12,7 +12,7 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
 
-        public int version = 49;
+        public int version = 50;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -351,16 +351,16 @@ namespace NET_Thing_Encryptor
                 string path = dialog.FileName;
                 ListViewItem item = listViewMain.SelectedItems[0];
                 ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
-                if (o is ThingFolder f)
+                if (o is ThingFolder folder)
                 {
-                    foreach (ThingObjectLink link in f.Content)
+                    foreach (ThingObjectLink link in folder.Content)
                     {
                         await ExportFile(link, path);
                     }
                 }
-                else
+                else if(o is ThingFile file)
                 {
-                    MessageBox.Show("Exporting files is not implemented yet. Please export the parent folder instead!", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    await ExportFile(new ThingObjectLink(file.ID, file.Name, file.Type, 0), path);
                 }
             }
         }
