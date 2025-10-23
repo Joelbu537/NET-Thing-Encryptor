@@ -38,6 +38,7 @@
             pictureBox.BackColor = Color.Transparent;
             pictureBox.Dock = DockStyle.Fill;
             pictureBox.ErrorImage = Properties.Resources.fileError;
+            pictureBox.InitialImage = Properties.Resources.loading;
             pictureBox.Location = new Point(0, 0);
             pictureBox.Name = "pictureBox";
             pictureBox.Size = new Size(2231, 1274);

@@ -9,37 +9,62 @@ namespace NET_Thing_Encryptor
     public partial class ImageViewForm : Form
     {
         private List<ThingObjectLink>? Images = new();
-        private event EventHandler OnIndexChanged;
-        private int _index = 0;
+
+        private Task<Bitmap?>? nextBitmap;
+
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int Index
-        {
-            get
-            {
-                return _index;
-            }
-            set
-            {
-                if (_index == Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0))) { return; }
-                _index = Math.Clamp(value, 0, Math.Max(Images.Count - 1, 0));
-                OnIndexChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
+        public int Index { get; set; }
         public ImageViewForm(ThingFile file)
         {
-            OnIndexChanged += RefreshImage;
             this.KeyPreview = true;
 
             InitializeComponent();
 
             _ = InitAsync(file);
         }
+
+        private async Task<Bitmap?> LoadBitmap(int index)
+        {
+            try
+            {
+                ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[index].ID);
+                ArgumentNullException.ThrowIfNull(imageFile);
+
+                if (!ThingData.VerifyFile(imageFile) || imageFile.Content == null)
+                {
+                    throw new FileFormatException("Provided file was not an image or empty!");
+                }
+
+                var imageData = imageFile.Content;
+
+                imageFile.Clear();
+
+                return await Task.Run(() =>
+                {
+                    using var img = new MagickImage(imageData);
+                    if (img.ColorSpace != ColorSpace.sRGB)
+                        img.TransformColorSpace(ColorProfile.SRGB);
+
+                    using var ms = new MemoryStream();
+                    img.Write(ms, MagickFormat.Png32);
+                    ms.Position = 0;
+
+                    using var tempBitmap = new Bitmap(ms);
+                    return (Bitmap)tempBitmap.Clone();
+                }).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
+                return (Bitmap)pictureBox.ErrorImage.Clone();
+            }
+        }
         private async Task InitAsync(ThingFile file)
         {
             Debug.WriteLine($"Opening ImageViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
             if (file.Type != FileType.image)
             {
-                MessageBox.Show("The provided file is not an image.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("The provided file is not an image.", "Aborting", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -48,60 +73,90 @@ namespace NET_Thing_Encryptor
             Debug.WriteLine($"Found {Images.Count} images!");
             int selectedIndex = Images.IndexOf(Images.FirstOrDefault((x) => x.ID == file.ID));
 
+
+            // Load first image
+            nextBitmap = LoadBitmap(selectedIndex);
+            textBoxIndex.Text = $"{selectedIndex + 1}/{Images.Count}";
             Index = selectedIndex;
-        }
-        private async void RefreshImage(object? o, EventArgs e)
-        {
-            if (Images.Count == 0) { return; }
+
+            // Wait for loading to finish
+            pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
+            pictureBox.Image = (Image)pictureBox.InitialImage.Clone();
+            Bitmap? result = await nextBitmap;
             pictureBox.ClearImage();
-            ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[Index].ID);
-            ArgumentNullException.ThrowIfNull(imageFile);
+            pictureBox.Image = result;
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            nextBitmap = null;
 
-            try
+            // Load next image
+            if (selectedIndex + 1 < Images.Count)
             {
-                if (ThingData.VerifyFile(imageFile) && imageFile.Content != null)
+                nextBitmap = LoadBitmap(selectedIndex + 1);
+            }
+        }
+        private async Task SwitchImage(int index)
+        {
+            if (index >= Images.Count || index < 0 || index == Index) { return; }
+            if (Images.Count == 0) { return; }
+
+            Debug.WriteLine("Image is being refreshed");
+
+            pictureBox.ClearImage();
+            textBoxIndex.Text = $"{index + 1}/{Images.Count}";
+
+            if (index == Index + 1 && nextBitmap != null)
+            {
+                Debug.WriteLine("Image is next in queue");
+                if (!nextBitmap.IsCompleted)
                 {
-                    var imageData = imageFile.Content;
+                    Debug.WriteLine("Image has not loaded yet! Loading...");
+                    pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
+                    pictureBox.Image = (Image)pictureBox.InitialImage.Clone();
+                    Bitmap? b = await nextBitmap;
 
-                    imageFile.Clear();
-
-                    using var img = new MagickImage(imageData);
-                    if (img.ColorSpace != ColorSpace.sRGB)
-                    {
-                        img.TransformColorSpace(ColorProfile.SRGB);
-                    }
-
-                    using var ms = new MemoryStream();
-                    img.Write(ms, MagickFormat.Png32);
-                    ms.Position = 0;
-
-                    using var tempBitmap = new Bitmap(ms);
-                    pictureBox.Image = (Bitmap)tempBitmap.Clone();
-                    imageData = null;
+                    Debug.WriteLine("Image has loaded.");
+                    pictureBox.ClearImage();
+                    pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                    pictureBox.Image = b;
                 }
                 else
                 {
-                    ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
-                    pictureBox.Image = (Image)pictureBox.ErrorImage.Clone();
+                    Debug.WriteLine("Image has already loaded!");
+                    Bitmap? b = await nextBitmap;
+                    pictureBox.ClearImage();
+                    pictureBox.Image = b;
                 }
-            }
-            finally
-            {
-                imageFile = null;
-            }
-
-            textBoxIndex.Text = $"{Index + 1}/{Images.Count}";
-        }
-
-        private void pictureBox_MouseClick(object sender, MouseEventArgs e)
-        {
-            if (ClientSize.Width / 2 < e.X)
-            {
-                Index++;
             }
             else
             {
-                Index--;
+                Debug.WriteLine("Image is not next in queue. Loading...");
+                pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
+                pictureBox.Image = (Image)pictureBox.InitialImage.Clone();
+                Bitmap? b = await LoadBitmap(index);
+
+                Debug.WriteLine("Image has loaded.");
+                pictureBox.ClearImage();
+                pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                pictureBox.Image = b;
+            }
+
+            Index = index;
+            textBoxIndex.Text = $"{Index + 1}/{Images.Count}";
+
+            nextBitmap = null;
+            nextBitmap = LoadBitmap(index + 1);
+            Debug.WriteLine("Image refreshed!");
+        }
+
+        private async void pictureBox_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (ClientSize.Width / 2 < e.X)
+            {
+                await SwitchImage(Index + 1);
+            }
+            else
+            {
+                await SwitchImage(Index - 1);
             }
         }
         private void textBoxIndex_Leave(object sender, EventArgs e)
@@ -125,28 +180,22 @@ namespace NET_Thing_Encryptor
                 e.SuppressKeyPress = true;
             }
         }
-        private void ImageViewForm_KeyDown(object sender, KeyEventArgs e)
+        private async void ImageViewForm_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Space || e.KeyCode == Keys.D)
-                Index++;
+                await SwitchImage(Index + 1);
             if (e.KeyCode == Keys.Back || e.KeyCode == Keys.A)
-                Index--;
+                await SwitchImage(Index - 1);
             if (e.KeyCode == Keys.Escape)
                 this.Close();
         }
         private void ImageViewForm_Load(object sender, EventArgs e)
         {
-            while (Images.Count == 0)
-            {
-                Application.DoEvents();
-                Task.Delay(100).Wait();
-            }
-            OnIndexChanged?.Invoke(this, EventArgs.Empty);
+            return;
         }
 
         private void ImageViewForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            OnIndexChanged -= RefreshImage;
             pictureBox.ClearImage();
 
             Images?.Clear();
