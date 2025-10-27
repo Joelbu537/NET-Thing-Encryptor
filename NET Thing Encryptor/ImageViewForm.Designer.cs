@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImageViewForm));
             pictureBox = new PictureBox();
             textBoxIndex = new TextBox();
             ((System.ComponentModel.ISupportInitialize)pictureBox).BeginInit();
@@ -75,6 +76,7 @@
             Controls.Add(textBoxIndex);
             Controls.Add(pictureBox);
             Font = new Font("Segoe UI", 12F);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
             Name = "ImageViewForm";
             ShowIcon = false;

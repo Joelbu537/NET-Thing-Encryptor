@@ -149,17 +149,16 @@ namespace NET_Thing_Encryptor
                         case FileType.text:
                             MessageBox.Show("Text preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             break;
-                        case FileType.image:
-                            {
-                                ImageViewForm imageView = new(file);
-                                imageView.Show();
-                            }
+                        case FileType.image: 
+                            ImageViewForm imageView = new(file);
+                            imageView.Show();
                             break;
                         case FileType.audio:
                             MessageBox.Show("Audio preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             break;
                         case FileType.video:
-                            MessageBox.Show("Video preview is not implemented yet.", "Not implemented", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            VideoViewForm videoView = new(file);
+                            videoView.Show();
                             break;
                         case FileType.other:
                             MessageBox.Show("Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.", "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);

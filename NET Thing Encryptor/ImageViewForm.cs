@@ -22,49 +22,13 @@ namespace NET_Thing_Encryptor
 
             _ = InitAsync(file);
         }
-
-        private async Task<Bitmap?> LoadBitmap(int index)
-        {
-            try
-            {
-                ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[index].ID);
-                ArgumentNullException.ThrowIfNull(imageFile);
-
-                if (!ThingData.VerifyFile(imageFile) || imageFile.Content == null)
-                {
-                    throw new FileFormatException("Provided file was not an image or empty!");
-                }
-
-                var imageData = imageFile.Content;
-
-                imageFile.Clear();
-
-                return await Task.Run(() =>
-                {
-                    using var img = new MagickImage(imageData);
-                    if (img.ColorSpace != ColorSpace.sRGB)
-                        img.TransformColorSpace(ColorProfile.SRGB);
-
-                    using var ms = new MemoryStream();
-                    img.Write(ms, MagickFormat.Png32);
-                    ms.Position = 0;
-
-                    using var tempBitmap = new Bitmap(ms);
-                    return (Bitmap)tempBitmap.Clone();
-                }).ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
-                return (Bitmap)pictureBox.ErrorImage.Clone();
-            }
-        }
         private async Task InitAsync(ThingFile file)
         {
             Debug.WriteLine($"Opening ImageViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
             if (file.Type != FileType.image)
             {
                 MessageBox.Show("The provided file is not an image.", "Aborting", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.Close();
                 return;
             }
 
@@ -147,7 +111,42 @@ namespace NET_Thing_Encryptor
             nextBitmap = LoadBitmap(index + 1);
             Debug.WriteLine("Image refreshed!");
         }
+        private async Task<Bitmap?> LoadBitmap(int index)
+        {
+            try
+            {
+                ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[index].ID);
+                ArgumentNullException.ThrowIfNull(imageFile);
 
+                if (!ThingData.VerifyFile(imageFile) || imageFile.Content == null)
+                {
+                    throw new FileFormatException("Provided file was not an image or empty!");
+                }
+
+                var imageData = imageFile.Content;
+
+                imageFile.Clear();
+
+                return await Task.Run(() =>
+                {
+                    using var img = new MagickImage(imageData);
+                    if (img.ColorSpace != ColorSpace.sRGB)
+                        img.TransformColorSpace(ColorProfile.SRGB);
+
+                    using var ms = new MemoryStream();
+                    img.Write(ms, MagickFormat.Png32);
+                    ms.Position = 0;
+
+                    using var tempBitmap = new Bitmap(ms);
+                    return (Bitmap)tempBitmap.Clone();
+                }).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
+                return (Bitmap)pictureBox.ErrorImage.Clone();
+            }
+        }
         private async void pictureBox_MouseClick(object sender, MouseEventArgs e)
         {
             if (ClientSize.Width / 2 < e.X)
