@@ -31,8 +31,12 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(VideoViewForm));
             videoView = new LibVLCSharp.WinForms.VideoView();
             tableLayoutPanel = new TableLayoutPanel();
+            tableLayoutPanel1 = new TableLayoutPanel();
+            trackBar = new TrackBar();
             ((System.ComponentModel.ISupportInitialize)videoView).BeginInit();
             tableLayoutPanel.SuspendLayout();
+            tableLayoutPanel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)trackBar).BeginInit();
             SuspendLayout();
             // 
             // videoView
@@ -50,6 +54,7 @@
             tableLayoutPanel.ColumnCount = 1;
             tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel.Controls.Add(videoView, 0, 0);
+            tableLayoutPanel.Controls.Add(tableLayoutPanel1, 0, 1);
             tableLayoutPanel.Dock = DockStyle.Fill;
             tableLayoutPanel.Location = new Point(0, 0);
             tableLayoutPanel.Name = "tableLayoutPanel";
@@ -58,6 +63,34 @@
             tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
             tableLayoutPanel.Size = new Size(1898, 1024);
             tableLayoutPanel.TabIndex = 1;
+            // 
+            // tableLayoutPanel1
+            // 
+            tableLayoutPanel1.ColumnCount = 3;
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel1.Controls.Add(trackBar, 1, 0);
+            tableLayoutPanel1.Dock = DockStyle.Fill;
+            tableLayoutPanel1.Location = new Point(3, 967);
+            tableLayoutPanel1.Name = "tableLayoutPanel1";
+            tableLayoutPanel1.RowCount = 1;
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+            tableLayoutPanel1.Size = new Size(1892, 54);
+            tableLayoutPanel1.TabIndex = 1;
+            // 
+            // trackBar
+            // 
+            trackBar.Dock = DockStyle.Fill;
+            trackBar.Location = new Point(23, 3);
+            trackBar.Maximum = 1000;
+            trackBar.Name = "trackBar";
+            trackBar.Size = new Size(1846, 48);
+            trackBar.TabIndex = 0;
+            trackBar.TickStyle = TickStyle.None;
+            trackBar.MouseDown += trackBar_MouseDown;
+            trackBar.MouseUp += trackBar_MouseUp;
             // 
             // VideoViewForm
             // 
@@ -74,6 +107,9 @@
             Load += VideoViewForm_Load;
             ((System.ComponentModel.ISupportInitialize)videoView).EndInit();
             tableLayoutPanel.ResumeLayout(false);
+            tableLayoutPanel1.ResumeLayout(false);
+            tableLayoutPanel1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)trackBar).EndInit();
             ResumeLayout(false);
         }
 
@@ -81,5 +117,7 @@
 
         private LibVLCSharp.WinForms.VideoView videoView;
         private TableLayoutPanel tableLayoutPanel;
+        private TableLayoutPanel tableLayoutPanel1;
+        private TrackBar trackBar;
     }
 }
