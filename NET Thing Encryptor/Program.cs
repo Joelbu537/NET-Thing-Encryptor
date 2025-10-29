@@ -49,6 +49,6 @@ namespace NET_Thing_Encryptor
  *      ListView multiselect amchen, um mehrere Items gleichzeitig exportieren und löschen zu können
  *      Dateien verschiebbar machen
  *      Autopsperre nach 5 Minuten inaktivität (Oder Variabler Zeit in Settings)
- *      Dateien automatisch in AppData speichern und nicht im Programmverzeichniss.
+ *      Dateien automatisch in AppData speichern und nicht im Programmverzeichniss. (Auf C:\ führt das zu Access Violation Exception)
  *      Gifs abspielen lassen
  */

@@ -40,10 +40,9 @@ namespace NET_Thing_Encryptor
             }
 
             videoStream = new MemoryStream(file.Content);
-
             media = new Media(_libVLC, new StreamMediaInput(videoStream));
 
-            _mediaPlayer.Play(media); // Good enough
+            _mediaPlayer.Play(media); // Good enough rn
         }
         private void VideoViewForm_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -51,11 +50,6 @@ namespace NET_Thing_Encryptor
             _mediaPlayer?.Dispose();
             _libVLC?.Dispose();
             videoStream.Dispose();
-
-            if (tempFile != String.Empty)
-            {
-                File.Delete(tempFile);
-            }
         }
     }
 }

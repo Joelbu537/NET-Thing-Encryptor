@@ -38,12 +38,11 @@ namespace NET_Thing_Encryptor
             int selectedIndex = Images.IndexOf(Images.FirstOrDefault((x) => x.ID == file.ID));
 
 
-            // Load first image
+            // Load given image
             nextBitmap = LoadBitmap(selectedIndex);
             textBoxIndex.Text = $"{selectedIndex + 1}/{Images.Count}";
             Index = selectedIndex;
 
-            // Wait for loading to finish
             pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
             pictureBox.Image = (Image)pictureBox.InitialImage.Clone();
             Bitmap? result = await nextBitmap;
@@ -52,7 +51,7 @@ namespace NET_Thing_Encryptor
             pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             nextBitmap = null;
 
-            // Load next image
+            // Preload next
             if (selectedIndex + 1 < Images.Count)
             {
                 nextBitmap = LoadBitmap(selectedIndex + 1);
