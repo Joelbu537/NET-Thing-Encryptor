@@ -8,10 +8,11 @@ namespace NET_Thing_Encryptor
     public partial class FormMain : Form
     {
         public event EventHandler FolderChanged;
+
+        public Version Version = new(2, 0, 1);
+
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
-
-        public int version = 58;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -34,9 +35,9 @@ namespace NET_Thing_Encryptor
         }
         private void FormMain_Load(object sender, EventArgs e)
         {
-            Debug.WriteLine($"FormMain is {System.Threading.Thread.CurrentThread.GetApartmentState()}");
+            Debug.WriteLine($"FormMain is {Thread.CurrentThread.GetApartmentState()}");
 
-            labelInfoVersion.Text = $"V {version}";
+            labelInfoVersion.Text = $"V {Version}";
             CurrentFolderID = 0;
             _ = Task.Run(() =>
             {
@@ -66,7 +67,7 @@ namespace NET_Thing_Encryptor
                     }
                     Task.Delay(500).Wait();
                 }
-            }); // Start Saving Indicator clock
+            }).ConfigureAwait(false); // Start Saving Indicator clock
             _ = Task.Run(() =>
             {
                 foreach (ThingObjectLink link in ThingData.Root.Content)
@@ -416,30 +417,41 @@ namespace NET_Thing_Encryptor
         private async Task ExportFile(ThingObjectLink file, string path)
         {
             ThingData.Saving++;
-            if (file.Type == FileType.folder)
+            try
             {
-                ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(file.ID);
-                ArgumentNullException.ThrowIfNull(f);
-
-                foreach (ThingObjectLink o in f.Content)
+                if (file.Type == FileType.folder)
                 {
-                    await ExportFile(o, Path.Combine(path, f.Name));
+                    ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(file.ID);
+                    ArgumentNullException.ThrowIfNull(f);
+
+                    foreach (ThingObjectLink o in f.Content)
+                    {
+                        await ExportFile(o, Path.Combine(path, f.Name));
+                    }
+                }
+                else
+                {
+                    ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
+                    ArgumentNullException.ThrowIfNull(f);
+
+                    if (f.Content == null || f.Content.Length == 0)
+                    {
+                        MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    string filePath = Path.Combine(path, f.Name) + '.' + f.Extension;
+                    File.WriteAllBytes(filePath, f.Content);
                 }
             }
-            else
+            catch(Exception)
             {
-                ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
-                ArgumentNullException.ThrowIfNull(f);
-
-                if (f.Content == null || f.Content.Length == 0)
-                {
-                    MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                string filePath = Path.Combine(path, f.Name) + '.' + f.Extension;
-                File.WriteAllBytes(filePath, f.Content);
+                throw;
             }
-            ThingData.Saving--;
+            finally
+            {
+                ThingData.Saving--;
+            }
+
         }
 
         private void listViewMain_MouseDown(object sender, MouseEventArgs e)

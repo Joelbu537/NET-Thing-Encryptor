@@ -10,7 +10,7 @@ public static class ThingData
     public static byte[]? Key { get; private set; }
     public static byte[]? IV { get; set; }
     public static ThingRoot? Root { get; private set; }
-    public static int Saving{ get; set; }
+    public static int Saving { get; set; }
 
     public static async Task<MemoryStream> Encrypt(Stream input)
     {
@@ -293,23 +293,32 @@ public static class ThingData
     }
     public static async Task SaveFileAsync(ThingObject? obj)
     {
-        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
-        Debug.WriteLine($"Saving file {obj.Name} with ID {obj.ID} as {IDToHex(obj.ID)}");
         Saving++;
-
-        switch (obj)
+        try
         {
-            case ThingFile file:
-                await SaveFileAsyncLegacy(file);
-                break;
-            case ThingFolder folder:
-                await SaveFolderAsyncLegacy(folder);
-                break;
-            default:
-                throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
-        }
+            ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+            Debug.WriteLine($"Saving file {obj.Name} with ID {obj.ID} as {IDToHex(obj.ID)}");
 
-        Saving--;
+            switch (obj)
+            {
+                case ThingFile file:
+                    await SaveFileAsyncLegacy(file);
+                    break;
+                case ThingFolder folder:
+                    await SaveFolderAsyncLegacy(folder);
+                    break;
+                default:
+                    throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
+            }
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            Saving--;
+        }
     }
     private static async Task SaveFolderAsyncLegacy(ThingFolder? folder)
     {
@@ -352,179 +361,246 @@ public static class ThingData
     public static async Task MoveFileToFolderAsync(ThingFile file, ulong folderID)
     {
         Saving++;
-        ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
-        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-        ThingObjectLink? link;
-
-        if(file.ParentID == 0)
+        try
         {
-            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-            ArgumentNullException.ThrowIfNull(Root.Content, nameof(Root.Content));
-            link = new ThingObjectLink(file.ID, file.Name, file.Type, 0);
+            ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
+            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+            ThingObjectLink? link;
 
-            Root.Content.Remove(link);
+            if (file.ParentID == 0)
+            {
+                ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+                ArgumentNullException.ThrowIfNull(Root.Content, nameof(Root.Content));
+                link = new ThingObjectLink(file.ID, file.Name, file.Type, 0);
+
+                Root.Content.Remove(link);
+            }
+            else
+            {
+                ThingFolder? oldFolder = await LoadFileAsync(file.ParentID) as ThingFolder;
+                ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
+                link = oldFolder.Content.FirstOrDefault(x => x.ID == file.ID);
+                oldFolder.Content.Remove(link);
+                await SaveFileAsync(oldFolder);
+            }
+
+            folder.Content.Add(link);
+            await SaveFileAsync(folder);
+            file.ParentID = folder.ID;
+            await SaveFileAsync(file);
         }
-        else
+        catch(Exception)
         {
-            ThingFolder? oldFolder = await LoadFileAsync(file.ParentID) as ThingFolder;
-            ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
-            link = oldFolder.Content.FirstOrDefault(x => x.ID == file.ID);
-            oldFolder.Content.Remove(link);
-            await SaveFileAsync(oldFolder);
+            throw;
         }
-
-        folder.Content.Add(link);
-        await SaveFileAsync(folder);
-        file.ParentID = folder.ID;
-        await SaveFileAsync(file);
-        Saving--;
+        finally
+        {
+            Saving--;
+        }
     }
     public static async Task MoveFolderToFolderAsync(ulong folderID, ulong parentFolderID)
     {
         Saving++;
-        ThingFolder? parentFolder = await LoadFileAsync(parentFolderID) as ThingFolder;
-        ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
-        ThingObjectLink? link;
-
-        ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
-        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-
-        if(folder.ID == 0)
+        try
         {
-            throw new ArgumentException("Cannot add the root folder to another folder.", nameof(folder));
-        }
+            ThingFolder? parentFolder = await LoadFileAsync(parentFolderID) as ThingFolder;
+            ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
+            ThingObjectLink? link;
 
-        if(folder.ParentID == 0)
+            ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
+            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+
+            if (folder.ID == 0)
+            {
+                throw new ArgumentException("Cannot add the root folder to another folder.", nameof(folder));
+            }
+
+            if (folder.ParentID == 0)
+            {
+                link = Root.Content.FirstOrDefault(x => x.ID == folder.ID);
+                Root.Content.Remove(link);
+            }
+            else
+            {
+                ThingFolder? oldFolder = await LoadFileAsync(folder.ParentID) as ThingFolder; // UHHHHHHHHH Skill Issue
+                ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
+                link = oldFolder.Content.FirstOrDefault(x => x.ID == folder.ID);
+                oldFolder.Content.Remove(link);
+                await SaveFileAsync(oldFolder);
+            }
+
+            parentFolder.Content.Add(link);
+            await SaveFileAsync(parentFolder);
+            folder.ParentID = parentFolder.ID;
+            await SaveFileAsync(folder);
+        }
+        catch(Exception)
         {
-            link = Root.Content.FirstOrDefault(x => x.ID == folder.ID);
-            Root.Content.Remove(link);
+            throw;
         }
-        else
+        finally
         {
-            ThingFolder? oldFolder = await LoadFileAsync(folder.ParentID) as ThingFolder; // UHHHHHHHHH Skill Issue
-            ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
-            link = oldFolder.Content.FirstOrDefault(x => x.ID == folder.ID);
-            oldFolder.Content.Remove(link);
-            await SaveFileAsync(oldFolder);
+            Saving--;
         }
-
-
-        parentFolder.Content.Add(link);
-        await SaveFileAsync(parentFolder);
-        folder.ParentID = parentFolder.ID;
-        await SaveFileAsync(folder);
-        Saving--;
     }
     public static async Task DeleteFile(ulong fileID)
     {
         Saving++;
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ThingFile? file = await LoadFileAsync(fileID) as ThingFile;
-        ArgumentNullException.ThrowIfNull(file, nameof(file));
-        Debug.WriteLine("Attempting to delete file: " + file.Name);
-        string filePath = GetFilePath(fileID);
-        if (File.Exists(filePath))
+        try
         {
-            File.Delete(filePath);
+            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+            ThingFile? file = await LoadFileAsync(fileID) as ThingFile;
+            ArgumentNullException.ThrowIfNull(file, nameof(file));
+            Debug.WriteLine("Attempting to delete file: " + file.Name);
+            string filePath = GetFilePath(fileID);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+            ThingFolder? folder = await LoadFileAsync(file.ParentID) as ThingFolder;
+            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+            folder.Content.RemoveAll(x => x.ID == file.ID);
+            await SaveFileAsync(folder);
         }
-        ThingFolder? folder = await LoadFileAsync(file.ParentID) as ThingFolder;
-        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-        folder.Content.RemoveAll(x => x.ID == file.ID);
-        await SaveFileAsync(folder);
-        Saving--;
+        catch(Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            Saving--;
+        }
     }
     public static async Task DeleteFolder(ulong folderID)
     {
         Saving++;
-        if(folderID == 0)
+        try
         {
-            throw new ArgumentException("Cannot delete the root folder.", nameof(folderID));
+            if (folderID == 0)
+            {
+                throw new ArgumentException("Cannot delete the root folder.", nameof(folderID));
+            }
+            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+            ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
+            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+            Debug.Write("Attempting to delete folder: " + folder.Name + "...  ");
+            if (folder.Content.Count != 0)
+            {
+                throw new InvalidOperationException("Cannot delete a folder that contains files or subfolders.");
+            }
+            string folderPath = GetFilePath(folderID);
+            if (folder.ParentID != 0)
+            {
+                ThingFolder? parentFolder = await LoadFileAsync(folder.ParentID) as ThingFolder;
+                ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
+                parentFolder.Content.RemoveAll(x => x.ID == folder.ID);
+                await SaveFileAsync(parentFolder);
+            }
+            else
+            {
+                Root.Content.RemoveAll(x => x.ID == folder.ID);
+                await SaveRootAsync();
+            }
+            if (File.Exists(folderPath))
+            {
+                File.Delete(folderPath);
+            }
         }
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
-        ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-        Debug.Write("Attempting to delete folder: " + folder.Name + "...  ");
-        if (folder.Content.Count != 0)
+        catch(Exception)
         {
-            throw new InvalidOperationException("Cannot delete a folder that contains files or subfolders.");
+            throw;
         }
-        string folderPath = GetFilePath(folderID);
-        if (folder.ParentID != 0)
+        finally
         {
-            ThingFolder? parentFolder = await LoadFileAsync(folder.ParentID) as ThingFolder;
-            ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
-            parentFolder.Content.RemoveAll(x => x.ID == folder.ID);
-            await SaveFileAsync(parentFolder);
+            Saving--;
         }
-        else
-        {
-            Root.Content.RemoveAll(x => x.ID == folder.ID);
-            await SaveRootAsync();
-        }
-        if (File.Exists(folderPath))
-        {
-            File.Delete(folderPath);
-        }
-        Saving--;
-        Debug.WriteLine("Success");
     }
     public static async Task DeleteObject(ulong id)
     {
         Saving++;
-        ThingObject? obj = await LoadFileAsync(id);
-        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
-        await DeleteObject(obj);
-        Saving--;
+        try
+        {
+            ThingObject? obj = await LoadFileAsync(id);
+            ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+            await DeleteObject(obj);
+        }
+        catch(Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            Saving--;
+        }
     }
     public static async Task DeleteObject(ThingObject obj)
     {
         Saving++;
-        if (obj is ThingFile file)
+        try
         {
-            await DeleteFile(file.ID);
-        }
-        else if(obj is ThingFolder folder)
-        {
-            foreach(ThingObjectLink link in folder.Content.ToList())
+            if (obj is ThingFile file)
             {
-                if(link.Type == FileType.folder)
-                {
-                    await DeleteObject(link.ID);
-                }
-                else
-                {
-                    await DeleteFile(link.ID);
-                }
+                await DeleteFile(file.ID);
             }
-            await DeleteFolder(folder.ID);
+            else if (obj is ThingFolder folder)
+            {
+                foreach (ThingObjectLink link in folder.Content.ToList())
+                {
+                    if (link.Type == FileType.folder)
+                    {
+                        await DeleteObject(link.ID);
+                    }
+                    else
+                    {
+                        await DeleteFile(link.ID);
+                    }
+                }
+                await DeleteFolder(folder.ID);
+            }
+            else
+            {
+                throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
+            }
         }
-        else
+        catch(Exception)
         {
-            throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
+            throw;
         }
-        Saving--;
+        finally
+        {
+            Saving--;
+        }
     }
     public static async Task SaveRootAsync()
     {
         Saving++;
-        Debug.WriteLine("Saving Root data to file.");
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ThingRoot tempRoot = (ThingRoot)Root.Clone();
-        tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
-        tempRoot.Content = null;
-        string rootContent = JsonSerializer.Serialize(tempRoot);
-        string rootPath = GetFilePath(0);
-        Debug.WriteLine($"Root path: {rootPath}");
-        using FileStream fs = File.Create(rootPath);
-        await fs.WriteAsync(Encoding.UTF8.GetBytes(rootContent));
-        await fs.FlushAsync();
-        fs.Close();
-        Saving--;
+        try
+        {
+            Debug.WriteLine("Saving Root data to file.");
+            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
+            ThingRoot tempRoot = (ThingRoot)Root.Clone();
+            tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
+            tempRoot.Content = null;
+            string rootContent = JsonSerializer.Serialize(tempRoot);
+            string rootPath = GetFilePath(0);
+            Debug.WriteLine($"Root path: {rootPath}");
+            using FileStream fs = File.Create(rootPath);
+            await fs.WriteAsync(Encoding.UTF8.GetBytes(rootContent));
+            await fs.FlushAsync();
+        }
+        catch (Exception)
+        {
+            throw;
+        }
+        finally
+        {
+            Saving--;
+        }
     }
     public static ThingFolder AddToRoot(this ThingFolder folder)
     {
-        ArgumentNullException.ThrowIfNull(ThingData.Root, "Root cannot be null.");
-        ThingData.Root.Content?.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.folder, 0));
+        ArgumentNullException.ThrowIfNull(Root, "Root cannot be null.");
+        Root.Content?.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.folder, 0));
         return folder;
     }
     public static async Task<List<ThingObjectLink>> LoadFolderContent(ulong id)
