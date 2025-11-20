@@ -111,7 +111,6 @@
             MinimizeBox = false;
             Name = "PasswordForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "PasswordForm";
             TopMost = true;
             tableLayoutPanelPassword.ResumeLayout(false);
             tableLayoutPanelPassword.PerformLayout();

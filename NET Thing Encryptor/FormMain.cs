@@ -9,8 +9,6 @@ namespace NET_Thing_Encryptor
     {
         public event EventHandler FolderChanged;
 
-        public Version Version = new(2, 0, 1);
-
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
 
@@ -37,7 +35,7 @@ namespace NET_Thing_Encryptor
         {
             Debug.WriteLine($"FormMain is {Thread.CurrentThread.GetApartmentState()}");
 
-            labelInfoVersion.Text = $"V {Version}";
+            labelInfoVersion.Text = $"v{Program.Version}";
             CurrentFolderID = 0;
             _ = Task.Run(() =>
             {

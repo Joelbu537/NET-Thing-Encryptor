@@ -15,6 +15,7 @@ namespace NET_Thing_Encryptor
         public PasswordForm()
         {
             InitializeComponent();
+            this.Text = $"Enter Password - NET Thing Encryptor v{Program.Version}";
         }
 
         private void textBoxPassword_TextChanged(object sender, EventArgs e)
