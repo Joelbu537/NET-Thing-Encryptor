@@ -33,6 +33,7 @@
             textBoxPassword = new TextBox();
             labelPassword = new Label();
             buttonContinue = new Button();
+            buttonCancel = new Button();
             tableLayoutPanelPassword.SuspendLayout();
             SuspendLayout();
             // 
@@ -96,9 +97,14 @@
             buttonContinue.UseVisualStyleBackColor = true;
             buttonContinue.Click += buttonContinue_Click;
             // 
+            // buttonCancel
+            // 
+            buttonCancel.Click += buttonCancel_Click;
+            // 
             // PasswordForm
             // 
             AcceptButton = buttonContinue;
+            CancelButton = buttonCancel;
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1040, 172);
@@ -123,5 +129,6 @@
         private TextBox textBoxPassword;
         private Label labelPassword;
         private Button buttonContinue;
+        private Button buttonCancel;
     }
 }

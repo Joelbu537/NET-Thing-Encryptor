@@ -15,6 +15,7 @@ namespace NET_Thing_Encryptor
         public PasswordForm()
         {
             InitializeComponent();
+            
             this.Text = $"Enter Password - NET Thing Encryptor v{Program.Version}";
         }
 
@@ -52,6 +53,12 @@ namespace NET_Thing_Encryptor
                     textBoxPassword.Focus();
                 }
             }
+        }
+        private async void buttonCancel_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+            this.Close();
+            return;
         }
     }
 }
