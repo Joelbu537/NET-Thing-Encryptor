@@ -4,7 +4,7 @@ namespace NET_Thing_Encryptor
     internal static class Program
     {
         private static ThingRoot? Root = ThingData.Root;
-        public static Version Version = new(2, 1, 1);
+        public static Version Version = new(2, 1, 2);
 
         [STAThread]
         static void Main()
@@ -36,14 +36,13 @@ namespace NET_Thing_Encryptor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"The Program was forced to stop.\n" +
-                    $"Try restarting the program, your pc, deleting Application Data and reinstalling the application.\n\n" +
+                MessageBox.Show($"The Program was forced to stop." +
+                    "\n\n" +
                     $"Exception: {ex.GetType().FullName} : {ex.Message}\n" +
                     $"StackTrace: {ex.StackTrace}",
                     "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
-
         }
     }
 }
