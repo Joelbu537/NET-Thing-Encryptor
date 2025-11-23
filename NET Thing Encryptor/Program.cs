@@ -4,7 +4,7 @@ namespace NET_Thing_Encryptor
     internal static class Program
     {
         private static ThingRoot? Root = ThingData.Root;
-        public static Version Version = new(2, 1, 0);
+        public static Version Version = new(2, 1, 1);
 
         [STAThread]
         static void Main()
@@ -17,6 +17,7 @@ namespace NET_Thing_Encryptor
                 return;
             }
             ApplicationConfiguration.Initialize();
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             try
             {
                 if (ThingData.LoadMainData().Result)
