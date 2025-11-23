@@ -4,7 +4,7 @@ namespace NET_Thing_Encryptor
     internal static class Program
     {
         private static ThingRoot? Root = ThingData.Root;
-        public static Version Version = new(2, 0, 2);
+        public static Version Version = new(2, 1, 0);
 
         [STAThread]
         static void Main()

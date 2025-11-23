@@ -266,12 +266,21 @@ public static class ThingData
 
             using FileStream fs = File.OpenRead(filePath);
             using var decrypted = await Decrypt(fs).ConfigureAwait(false);
+            decrypted.Position = 0;
+            string json = Encoding.UTF8.GetString(decrypted.ToArray());
 
-            var options = new JsonSerializerOptions
+            var options = new JsonSerializerOptions { WriteIndented = true };
+
+            ThingObject? obj;
+            if (!json.Contains("\"$type\""))
             {
-                WriteIndented = true
-            };
-            ThingObject? obj = await JsonSerializer.DeserializeAsync<ThingObject>(decrypted, options).ConfigureAwait(false); //// GRRRRRR NEUE INSTANZ :X
+                // alte Datei ohne Discriminator -> als ThingFile versuchen
+                obj = JsonSerializer.Deserialize<ThingFile>(json, options);
+            }
+            else
+            {
+                obj = JsonSerializer.Deserialize<ThingObject>(json, options);
+            }
 
             ArgumentNullException.ThrowIfNull(obj, nameof(obj));
             obj.ID = id;
@@ -333,9 +342,9 @@ public static class ThingData
         string folderContent = JsonSerializer.Serialize<ThingObject>(folder, options);
 
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(folderContent));
-        using var encrypted = await Encrypt(input);
+        await using var encrypted = await Encrypt(input);
 
-        using FileStream fs = File.Create(folderPath);
+        await using FileStream fs = File.Create(folderPath);
         await encrypted.CopyToAsync(fs);
     }
     private static async Task SaveFileAsyncLegacy(ThingFile file)
@@ -349,8 +358,9 @@ public static class ThingData
             WriteIndented = true
         };
 
-        await using var plainStream = new MemoryStream();
-        await JsonSerializer.SerializeAsync(plainStream, file, options);
+        await using MemoryStream plainStream = new MemoryStream();
+
+        await JsonSerializer.SerializeAsync<ThingObject>(plainStream, file, options);
         plainStream.Position = 0;
 
         await using var encrypted = await Encrypt(plainStream);
