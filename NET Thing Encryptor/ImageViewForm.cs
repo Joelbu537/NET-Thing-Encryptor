@@ -140,7 +140,7 @@ namespace NET_Thing_Encryptor
                     return (Bitmap)tempBitmap.Clone();
                 }).ConfigureAwait(false);
             }
-            catch (Exception exception)
+            catch (Exception)
             {
                 ArgumentNullException.ThrowIfNull(pictureBox.ErrorImage);
                 return (Bitmap)pictureBox.ErrorImage.Clone();
@@ -186,12 +186,7 @@ namespace NET_Thing_Encryptor
                 await SwitchImage(Index - 1);
             else if (e.KeyCode == Keys.Escape)
                 this.Close();
-        }
-        private void ImageViewForm_Load(object sender, EventArgs e)
-        {
-            return;
-        }
-
+        } 
         private void ImageViewForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             pictureBox.ClearImage();
