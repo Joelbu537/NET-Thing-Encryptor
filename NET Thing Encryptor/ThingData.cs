@@ -80,9 +80,9 @@ public static class ThingData
                 password,
                 salt,
                 iterations: 10000,
-                hashAlgorithm: HashAlgorithmName.SHA256,
+                hashAlgorithm: HashAlgorithmName.SHA256, 
                 outputLength: 48
-            );
+                );
 
         AesInstance.Key = key[..32];
         AesInstance.IV = key[32..];

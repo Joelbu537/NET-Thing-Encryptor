@@ -32,10 +32,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.9.4" />
-    <PackageReference Include="LibVLCSharp.WinForms" Version="3.9.4" />
-    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.9.1" />
-    <PackageReference Include="Magick.NET.Core" Version="14.9.1" />
+    <PackageReference Include="LibVLCSharp" Version="3.9.5" />
+    <PackageReference Include="LibVLCSharp.WinForms" Version="3.9.5" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.10.1" />
+    <PackageReference Include="Magick.NET.Core" Version="14.10.1" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Core" Version="1.1.5" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
