@@ -37,7 +37,7 @@ namespace NET_Thing_Encryptor
             Debug.WriteLine("Read " + data.Length + " bytes.");
 
             string text = Encoding.UTF8.GetString(data);
-            File.WriteAllText($"{ThingData.IDToHex(ID)} - Emergency Copy at {DateTime.Now.ToString().Replace(':', '-')}.txt", text);
+            _ = File.WriteAllTextAsync(Path.Combine(Directory.GetCurrentDirectory(), $"Emeregency Editor Backups\\{ThingData.IDToHex(ID)} - Emergency Copy at {DateTime.Now.ToString().Replace(':', '-')}.txt"), text);
             MessageBox.Show("A DECRYPTED emergency copy of this file has been saved in the program folder as a plain text backup.", "Security compromised!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             MD5 = ThingData.ComputeMD5Hash(data);
             textBox.Text = text;
