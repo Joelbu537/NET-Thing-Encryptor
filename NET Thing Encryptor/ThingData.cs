@@ -7,22 +7,17 @@ namespace NET_Thing_Encryptor;
 public static class ThingData
 {
     private const string Magic = "NET Thing Encryptor";
-    public static byte[]? Key { get; private set; }
-    public static byte[]? IV { get; set; }
+    public static Aes? AesInstance { get; private set; } = Aes.Create();
     public static ThingRoot? Root { get; private set; }
     public static int Saving { get; set; }
 
     public static async Task<MemoryStream> Encrypt(Stream input)
     {
-        if (Key == null || IV == null)
+        if (AesInstance.Key == null)
             throw new InvalidOperationException("Key and IV must be set before encryption.");
 
-        var aes = Aes.Create();
-        aes.Key = Key;
-        aes.IV = IV;
-
         var output = new MemoryStream();
-        using var cryptoStream = new CryptoStream(output, aes.CreateEncryptor(), CryptoStreamMode.Write, leaveOpen: true);
+        using var cryptoStream = new CryptoStream(output, AesInstance.CreateEncryptor(), CryptoStreamMode.Write, leaveOpen: true);
         await input.CopyToAsync(cryptoStream);
         await cryptoStream.FlushFinalBlockAsync();
         output.Position = 0;
@@ -31,15 +26,11 @@ public static class ThingData
 
     public static async Task<MemoryStream> Decrypt(Stream input)
     {
-        if (Key == null || IV == null)
+        if (AesInstance.Key == null)
             throw new InvalidOperationException("Key and IV must be set before decryption.");
 
-        var aes = Aes.Create();
-        aes.Key = Key;
-        aes.IV = IV;
-
         var output = new MemoryStream();
-        using var cryptoStream = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read, leaveOpen: true);
+        using var cryptoStream = new CryptoStream(input, AesInstance.CreateDecryptor(), CryptoStreamMode.Read, leaveOpen: true);
         await cryptoStream.CopyToAsync(output);
 
         output.Position = 0;
@@ -89,12 +80,12 @@ public static class ThingData
                 password,
                 salt,
                 iterations: 10000,
-                hashAlgorithm: HashAlgorithmName.SHA256,
+                hashAlgorithm: HashAlgorithmName.SHA256, 
                 outputLength: 48
-            );
+                );
 
-        Key = key[..32];
-        IV = key[32..];
+        AesInstance.Key = key[..32];
+        AesInstance.IV = key[32..];
 
         if (!string.IsNullOrEmpty(Root.ContentEncrypted))
         {
@@ -123,8 +114,8 @@ public static class ThingData
         }
 
         Debug.WriteLine("Password incorrect, resetting Key and IV.");
-        Key = null;
-        IV = null;
+        AesInstance.Key = null;
+        AesInstance.IV = null;
         return false;
     }
     public async static Task<bool> LoadMainData()
