@@ -131,7 +131,7 @@ namespace NET_Thing_Encryptor
                     using var img = new MagickImage(imageData);
                     if (img.ColorSpace != ColorSpace.sRGB)
                         img.TransformColorSpace(ColorProfile.SRGB);
-
+                    
                     using var ms = new MemoryStream();
                     img.Write(ms, MagickFormat.Png32);
                     ms.Position = 0;

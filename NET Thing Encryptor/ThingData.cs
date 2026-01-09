@@ -114,8 +114,8 @@ public static class ThingData
         }
 
         Debug.WriteLine("Password incorrect, resetting Key and IV.");
-        AesInstance.Key = null;
-        AesInstance.IV = null;
+        Array.Clear(AesInstance.Key);
+        Array.Clear(AesInstance.IV);
         return false;
     }
     public async static Task<bool> LoadMainData()

@@ -14,6 +14,9 @@ namespace NET_Thing_Encryptor
 {
     public partial class VideoViewForm : Form
     {
+        private Bitmap pause_icon_bmp = Properties.Resources.pause_icon;
+        private Bitmap play_icon_bmp = Properties.Resources.play_icon;
+
         private readonly LibVLC _libVlc;
         private readonly MediaPlayer _mediaPlayer;
         private readonly MemoryStream? _videoStream;
@@ -48,6 +51,7 @@ namespace NET_Thing_Encryptor
             trackBar.Value = 0;
             _mediaPlayer.Play(_media); // Good enough rn
             _positionUpdateTimer.Start();
+            PlayPlayer();
         }
 
         private void PositionUpdateTimer_Tick(object sender, EventArgs e)
@@ -65,14 +69,14 @@ namespace NET_Thing_Encryptor
         private void trackBar_MouseDown(object sender, MouseEventArgs e)
         {
             _isUserDragging = true;
-            _mediaPlayer.Pause();
+            PausePlayer();
         }
 
         private void trackBar_MouseUp(object sender, MouseEventArgs e)
         {
             _isUserDragging = false;
             UpdateVideoPosition();
-            _mediaPlayer.Play();
+            PlayPlayer();
         }
         private void UpdateVideoPosition()
         {
@@ -90,6 +94,47 @@ namespace NET_Thing_Encryptor
             _mediaPlayer.Dispose();
             _libVlc?.Dispose();
             _videoStream?.Dispose();
+        }
+
+        private void buttonPause_Click(object sender, EventArgs e)
+        {
+            TogglePlayer();
+        }
+
+        private void PausePlayer()
+        {
+            _mediaPlayer.Pause();
+
+            if (buttonPause.BackgroundImage != null)
+            {
+                buttonPause.BackgroundImage.Dispose();
+                buttonPause.BackgroundImage = null;
+            }
+
+            buttonPause.BackgroundImage = (Bitmap)pause_icon_bmp.Clone();
+        }
+
+        private void PlayPlayer()
+        {
+            _mediaPlayer.Play();
+
+            if (buttonPause.BackgroundImage != null)
+            {
+                buttonPause.BackgroundImage.Dispose();
+                buttonPause.BackgroundImage = null;
+            }
+
+            buttonPause.BackgroundImage = (Bitmap)play_icon_bmp.Clone();
+        }
+
+        private void TogglePlayer()
+        {
+            if (_mediaPlayer.IsPlaying)
+            {
+                PausePlayer();
+                return;
+            }
+            PlayPlayer();
         }
     }
 }
