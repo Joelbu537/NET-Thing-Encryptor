@@ -121,6 +121,7 @@ namespace NET_Thing_Encryptor
                 _exportLocation = value;
             }
         }
+        public bool DarkMode { get; set; }
 
         public string ContentEncrypted { get; set; }
         public List<ThingObjectLink>? Content { get; set; }

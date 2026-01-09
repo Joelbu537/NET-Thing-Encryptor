@@ -54,6 +54,8 @@ namespace NET_Thing_Encryptor
             }
             ThingData.Root.ExportLocation = pathExport;
 
+            // Dark Mode
+            ThingData.Root.DarkMode = checkBoxDarkMode.Checked;
 
             await ThingData.SaveRootAsync();
             this.Close();

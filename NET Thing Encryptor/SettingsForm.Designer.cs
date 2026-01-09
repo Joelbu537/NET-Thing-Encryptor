@@ -39,6 +39,8 @@
             label0 = new Label();
             textBoxSaveLocation = new TextBox();
             buttonSaveLocation = new Button();
+            label3 = new Label();
+            checkBoxDarkMode = new CheckBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
             buttonApply = new Button();
             buttonCancel = new Button();
@@ -78,6 +80,8 @@
             tableLayoutPanel.Controls.Add(label0, 0, 0);
             tableLayoutPanel.Controls.Add(textBoxSaveLocation, 1, 0);
             tableLayoutPanel.Controls.Add(buttonSaveLocation, 2, 0);
+            tableLayoutPanel.Controls.Add(label3, 0, 3);
+            tableLayoutPanel.Controls.Add(checkBoxDarkMode, 1, 3);
             tableLayoutPanel.Dock = DockStyle.Fill;
             tableLayoutPanel.Location = new Point(11, 4);
             tableLayoutPanel.Margin = new Padding(11, 4, 4, 4);
@@ -186,6 +190,29 @@
             buttonSaveLocation.UseVisualStyleBackColor = true;
             buttonSaveLocation.Click += buttonSaveLocation_Click;
             // 
+            // label3
+            // 
+            label3.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            label3.AutoSize = true;
+            label3.Location = new Point(4, 150);
+            label3.Margin = new Padding(4, 0, 4, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(201, 28);
+            label3.TabIndex = 10;
+            label3.Text = "Dark Mode?";
+            label3.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // checkBoxDarkMode
+            // 
+            checkBoxDarkMode.AutoSize = true;
+            checkBoxDarkMode.Dock = DockStyle.Fill;
+            checkBoxDarkMode.Location = new Point(212, 144);
+            checkBoxDarkMode.Name = "checkBoxDarkMode";
+            checkBoxDarkMode.Size = new Size(807, 41);
+            checkBoxDarkMode.TabIndex = 11;
+            checkBoxDarkMode.Text = "Dark Mode!";
+            checkBoxDarkMode.UseVisualStyleBackColor = true;
+            // 
             // flowLayoutPanel1
             // 
             flowLayoutPanel1.AutoSize = true;
@@ -263,5 +290,7 @@
         private Label label2;
         private Button buttonImportLocation;
         private TextBox textBoxImportLocation;
+        private Label label3;
+        private CheckBox checkBoxDarkMode;
     }
 }
