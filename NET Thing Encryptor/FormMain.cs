@@ -54,7 +54,7 @@ namespace NET_Thing_Encryptor
                 buttonNavigationExport.FlatAppearance.BorderColor = Program.ButtonBorder;
                 buttonNavigationSettings.BackColor = Program.DarkColor;
                 buttonNavigationSettings.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationRoot.BackColor = Program.DarkColor;Ha
+                buttonNavigationRoot.BackColor = Program.DarkColor;
                 buttonNavigationRoot.FlatAppearance.BorderColor = Program.ButtonBorder;
             }
             FolderChanged += OnFolderChanged;
