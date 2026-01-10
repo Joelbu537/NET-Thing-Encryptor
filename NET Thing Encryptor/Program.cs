@@ -4,7 +4,10 @@ namespace NET_Thing_Encryptor
     internal static class Program
     {
         private static ThingRoot? Root = ThingData.Root;
-        public static Version Version = new(2, 1, 2);
+        public static Version Version = new(2, 2, 1);
+        public static Color DarkColor = Color.FromArgb(unchecked((int)0xFF1E1E1E));
+        public static Color ButtonBorder = Color.FromArgb(unchecked((int)0xFF646464));
+            
 
         [STAThread]
         static void Main()

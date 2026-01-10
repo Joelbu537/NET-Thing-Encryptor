@@ -56,8 +56,8 @@
             toolTip = new ToolTip(components);
             contextMenuStrip = new ContextMenuStrip(components);
             toolStripMenuItemRename = new ToolStripMenuItem();
-            toolStripMenuItemCopy = new ToolStripMenuItem();
             toolStripMenuItemEmergencyEditor = new ToolStripMenuItem();
+            toolStripMenuItemCopy = new ToolStripMenuItem();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
@@ -125,6 +125,7 @@
             buttonNavigationBack.BackColor = Color.Transparent;
             buttonNavigationBack.BackgroundImage = Properties.Resources.imageres_return;
             buttonNavigationBack.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationBack.FlatStyle = FlatStyle.Flat;
             buttonNavigationBack.Location = new Point(3, 3);
             buttonNavigationBack.MinimumSize = new Size(48, 48);
             buttonNavigationBack.Name = "buttonNavigationBack";
@@ -141,6 +142,7 @@
             buttonNavigationCreateFile.BackColor = Color.Transparent;
             buttonNavigationCreateFile.BackgroundImage = Properties.Resources.imageres_new_file;
             buttonNavigationCreateFile.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationCreateFile.FlatStyle = FlatStyle.Flat;
             buttonNavigationCreateFile.Location = new Point(57, 3);
             buttonNavigationCreateFile.MinimumSize = new Size(48, 48);
             buttonNavigationCreateFile.Name = "buttonNavigationCreateFile";
@@ -158,6 +160,7 @@
             buttonNavigationCreateFolder.BackColor = Color.Transparent;
             buttonNavigationCreateFolder.BackgroundImage = Properties.Resources.imageres_folder_empty;
             buttonNavigationCreateFolder.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationCreateFolder.FlatStyle = FlatStyle.Flat;
             buttonNavigationCreateFolder.Location = new Point(111, 3);
             buttonNavigationCreateFolder.MinimumSize = new Size(48, 48);
             buttonNavigationCreateFolder.Name = "buttonNavigationCreateFolder";
@@ -175,6 +178,7 @@
             buttonNavigationDeleteSelected.BackColor = Color.Transparent;
             buttonNavigationDeleteSelected.BackgroundImage = Properties.Resources.imageres_cross_red;
             buttonNavigationDeleteSelected.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationDeleteSelected.FlatStyle = FlatStyle.Flat;
             buttonNavigationDeleteSelected.Location = new Point(165, 3);
             buttonNavigationDeleteSelected.MinimumSize = new Size(48, 48);
             buttonNavigationDeleteSelected.Name = "buttonNavigationDeleteSelected";
@@ -192,6 +196,7 @@
             buttonNavigationExport.BackColor = Color.Transparent;
             buttonNavigationExport.BackgroundImage = Properties.Resources.imageres_export;
             buttonNavigationExport.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationExport.FlatStyle = FlatStyle.Flat;
             buttonNavigationExport.Location = new Point(219, 3);
             buttonNavigationExport.MinimumSize = new Size(48, 48);
             buttonNavigationExport.Name = "buttonNavigationExport";
@@ -209,6 +214,7 @@
             buttonNavigationSettings.BackColor = Color.Transparent;
             buttonNavigationSettings.BackgroundImage = Properties.Resources.shell32_gear;
             buttonNavigationSettings.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationSettings.FlatStyle = FlatStyle.Flat;
             buttonNavigationSettings.Location = new Point(273, 3);
             buttonNavigationSettings.MinimumSize = new Size(48, 48);
             buttonNavigationSettings.Name = "buttonNavigationSettings";
@@ -226,6 +232,7 @@
             buttonNavigationRoot.BackColor = Color.Transparent;
             buttonNavigationRoot.BackgroundImage = Properties.Resources.imageres_explorer;
             buttonNavigationRoot.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonNavigationRoot.FlatStyle = FlatStyle.Flat;
             buttonNavigationRoot.Location = new Point(344, 3);
             buttonNavigationRoot.Margin = new Padding(20, 3, 3, 3);
             buttonNavigationRoot.MinimumSize = new Size(48, 48);
@@ -336,6 +343,7 @@
             listViewMain.Columns.AddRange(new ColumnHeader[] { columnHeaderName, columnHeaderSize, columnHeaderCreated });
             listViewMain.Dock = DockStyle.Fill;
             listViewMain.FullRowSelect = true;
+            listViewMain.HeaderStyle = ColumnHeaderStyle.Nonclickable;
             listViewMain.Location = new Point(3, 3);
             listViewMain.MultiSelect = false;
             listViewMain.Name = "listViewMain";
@@ -350,7 +358,7 @@
             // columnHeaderName
             // 
             columnHeaderName.Text = "Name";
-            columnHeaderName.Width = 600;
+            columnHeaderName.Width = 1000;
             // 
             // columnHeaderSize
             // 
@@ -360,7 +368,7 @@
             // columnHeaderCreated
             // 
             columnHeaderCreated.Text = "Created At";
-            columnHeaderCreated.Width = 300;
+            columnHeaderCreated.Width = 400;
             // 
             // imageListFileIcons
             // 
@@ -380,7 +388,7 @@
             contextMenuStrip.ImageScalingSize = new Size(24, 24);
             contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripMenuItemEmergencyEditor, toolStripMenuItemCopy });
             contextMenuStrip.Name = "contextMenuStrip";
-            contextMenuStrip.Size = new Size(276, 151);
+            contextMenuStrip.Size = new Size(276, 118);
             // 
             // toolStripMenuItemRename
             // 
@@ -392,6 +400,14 @@
             toolStripMenuItemRename.TextImageRelation = TextImageRelation.TextAboveImage;
             toolStripMenuItemRename.Click += toolStripMenuItemRename_Click;
             // 
+            // toolStripMenuItemEmergencyEditor
+            // 
+            toolStripMenuItemEmergencyEditor.Name = "toolStripMenuItemEmergencyEditor";
+            toolStripMenuItemEmergencyEditor.Size = new Size(275, 38);
+            toolStripMenuItemEmergencyEditor.Text = "Emergency Editor";
+            toolStripMenuItemEmergencyEditor.TextImageRelation = TextImageRelation.TextAboveImage;
+            toolStripMenuItemEmergencyEditor.Click += toolStripMenuItemEmergencyEditor_Click;
+            // 
             // toolStripMenuItemCopy
             // 
             toolStripMenuItemCopy.DisplayStyle = ToolStripItemDisplayStyle.Text;
@@ -400,14 +416,6 @@
             toolStripMenuItemCopy.Text = "Copy";
             toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;
-            // 
-            // toolStripMenuItemEmergencyEditor
-            // 
-            toolStripMenuItemEmergencyEditor.Name = "toolStripMenuItemEmergencyEditor";
-            toolStripMenuItemEmergencyEditor.Size = new Size(275, 38);
-            toolStripMenuItemEmergencyEditor.Text = "Emergency Editor";
-            toolStripMenuItemEmergencyEditor.TextImageRelation = TextImageRelation.TextAboveImage;
-            toolStripMenuItemEmergencyEditor.Click += toolStripMenuItemEmergencyEditor_Click;
             // 
             // FormMain
             // 

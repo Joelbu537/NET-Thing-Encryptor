@@ -210,7 +210,7 @@
             checkBoxDarkMode.Name = "checkBoxDarkMode";
             checkBoxDarkMode.Size = new Size(807, 41);
             checkBoxDarkMode.TabIndex = 11;
-            checkBoxDarkMode.Text = "Dark Mode!";
+            checkBoxDarkMode.Text = "Dark Mode! (Requires restart)";
             checkBoxDarkMode.UseVisualStyleBackColor = true;
             // 
             // flowLayoutPanel1

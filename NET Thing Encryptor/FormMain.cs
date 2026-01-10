@@ -29,6 +29,34 @@ namespace NET_Thing_Encryptor
         public FormMain()
         {
             InitializeComponent();
+            if (ThingData.Root.DarkMode)
+            {
+                tableLayoutPanelMain.BackColor = Program.DarkColor;
+                tableLayoutPanelMain.ForeColor = SystemColors.Control;
+
+                listViewMain.BackColor = Program.DarkColor;
+                listViewMain.ForeColor = SystemColors.Control;
+                listViewMain.BorderStyle = BorderStyle.FixedSingle;
+
+                textBoxNavigation.BackColor = Program.DarkColor;
+                textBoxNavigation.ForeColor = SystemColors.Control;
+                textBoxNavigation.BorderStyle = BorderStyle.FixedSingle;
+
+                buttonNavigationBack.BackColor = Program.DarkColor;
+                buttonNavigationBack.FlatAppearance.BorderColor = Program.ButtonBorder;
+                buttonNavigationCreateFile.BackColor = Program.DarkColor;
+                buttonNavigationCreateFile.FlatAppearance.BorderColor = Program.ButtonBorder;
+                buttonNavigationCreateFolder.BackColor = Program.DarkColor;
+                buttonNavigationCreateFolder.FlatAppearance.BorderColor = Program.ButtonBorder;
+                buttonNavigationDeleteSelected.BackColor = Program.DarkColor;
+                buttonNavigationDeleteSelected.FlatAppearance.BorderColor = Program.ButtonBorder;
+                buttonNavigationExport.BackColor = Program.DarkColor;
+                buttonNavigationExport.FlatAppearance.BorderColor = Program.ButtonBorder;
+                buttonNavigationSettings.BackColor = Program.DarkColor;
+                buttonNavigationSettings.FlatAppearance.BorderColor = Program.ButtonBorder;
+                buttonNavigationRoot.BackColor = Program.DarkColor;Ha
+                buttonNavigationRoot.FlatAppearance.BorderColor = Program.ButtonBorder;
+            }
             FolderChanged += OnFolderChanged;
         }
         private void FormMain_Load(object sender, EventArgs e)
@@ -531,5 +559,6 @@ namespace NET_Thing_Encryptor
                 form.Show();
             }
         }
+        
     }
 }
