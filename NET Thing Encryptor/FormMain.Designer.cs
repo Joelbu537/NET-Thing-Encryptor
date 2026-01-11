@@ -58,6 +58,7 @@
             toolStripMenuItemRename = new ToolStripMenuItem();
             toolStripMenuItemEmergencyEditor = new ToolStripMenuItem();
             toolStripMenuItemCopy = new ToolStripMenuItem();
+            labelMe = new Label();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
@@ -110,11 +111,12 @@
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationDeleteSelected);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationExport);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationSettings);
+            flowLayoutPanelNavigationButtons.Controls.Add(labelMe);
             flowLayoutPanelNavigationButtons.Controls.Add(buttonNavigationRoot);
             flowLayoutPanelNavigationButtons.Dock = DockStyle.Fill;
             flowLayoutPanelNavigationButtons.Location = new Point(3, 3);
             flowLayoutPanelNavigationButtons.Name = "flowLayoutPanelNavigationButtons";
-            flowLayoutPanelNavigationButtons.Size = new Size(395, 54);
+            flowLayoutPanelNavigationButtons.Size = new Size(401, 54);
             flowLayoutPanelNavigationButtons.TabIndex = 1;
             flowLayoutPanelNavigationButtons.WrapContents = false;
             // 
@@ -233,7 +235,7 @@
             buttonNavigationRoot.BackgroundImage = Properties.Resources.imageres_explorer;
             buttonNavigationRoot.BackgroundImageLayout = ImageLayout.Stretch;
             buttonNavigationRoot.FlatStyle = FlatStyle.Flat;
-            buttonNavigationRoot.Location = new Point(344, 3);
+            buttonNavigationRoot.Location = new Point(350, 3);
             buttonNavigationRoot.Margin = new Padding(20, 3, 3, 3);
             buttonNavigationRoot.MinimumSize = new Size(48, 48);
             buttonNavigationRoot.Name = "buttonNavigationRoot";
@@ -247,11 +249,11 @@
             // textBoxNavigation
             // 
             textBoxNavigation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            textBoxNavigation.Location = new Point(421, 10);
+            textBoxNavigation.Location = new Point(427, 10);
             textBoxNavigation.Margin = new Padding(20, 3, 20, 3);
             textBoxNavigation.Name = "textBoxNavigation";
             textBoxNavigation.ReadOnly = true;
-            textBoxNavigation.Size = new Size(1381, 39);
+            textBoxNavigation.Size = new Size(1375, 39);
             textBoxNavigation.TabIndex = 2;
             textBoxNavigation.Text = "/Root";
             toolTip.SetToolTip(textBoxNavigation, "Current directory");
@@ -417,6 +419,15 @@
             toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;
             // 
+            // labelMe
+            // 
+            labelMe.Anchor = AnchorStyles.Left;
+            labelMe.AutoSize = true;
+            labelMe.Location = new Point(327, 11);
+            labelMe.Name = "labelMe";
+            labelMe.Size = new Size(0, 32);
+            labelMe.TabIndex = 8;
+            // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
@@ -477,5 +488,6 @@
         private ToolStripMenuItem toolStripMenuItemRename;
         private ToolStripMenuItem toolStripMenuItemCopy;
         private ToolStripMenuItem toolStripMenuItemEmergencyEditor;
+        private Label labelMe;
     }
 }

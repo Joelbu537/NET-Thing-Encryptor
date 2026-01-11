@@ -29,6 +29,7 @@ namespace NET_Thing_Encryptor
         public FormMain()
         {
             InitializeComponent();
+            labelMe.Text = Program.Objective as string;
             if (ThingData.Root.DarkMode)
             {
                 tableLayoutPanelMain.BackColor = Program.DarkColor;
