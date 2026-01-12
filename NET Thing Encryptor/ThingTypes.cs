@@ -189,6 +189,7 @@ namespace NET_Thing_Encryptor
         png,
         jpeg,
         gif,
+        avif,
 
         //Text
         txt,

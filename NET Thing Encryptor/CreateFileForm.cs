@@ -77,6 +77,7 @@ namespace NET_Thing_Encryptor
                 case ".mp3":
                 case ".wav":
                 case ".ogg":
+                case ".avif":
                     return "audio";
                 case ".mp4":
                 case ".avi":
