@@ -11,6 +11,7 @@ namespace NET_Thing_Encryptor
 
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
+        private bool recalculating_FS_size;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -95,13 +96,7 @@ namespace NET_Thing_Encryptor
                     Task.Delay(500).Wait();
                 }
             }).ConfigureAwait(false); // Start Saving Indicator clock
-            _ = Task.Run(() =>
-            {
-                foreach (ThingObjectLink link in ThingData.Root.Content)
-                {
-                    _ = GetFolderSize(link.ID);
-                }
-            }); // Recalculate Folder Sizes
+            RecalculateFileSystemSize(); // Recalculate Folder Sizes
         }
 
         private async void OnFolderChanged(object sender, EventArgs e)
@@ -111,6 +106,7 @@ namespace NET_Thing_Encryptor
             if (CurrentFolderID == 0)
             {
                 CurrentFolder = null;
+                RecalculateFileSystemSize(); // Maybe optimize so it only runs when changes to the MD5 or something were made? Set a flag if changes were made...
             }
             else
             {
@@ -560,6 +556,20 @@ namespace NET_Thing_Encryptor
                 form.Show();
             }
         }
-        
+
+        private void RecalculateFileSystemSize()
+        {
+            if (recalculating_FS_size) return;
+            recalculating_FS_size = true;
+            _ = Task.Run(() =>
+            {
+                
+                foreach (ThingObjectLink link in ThingData.Root.Content)
+                {
+                    _ = GetFolderSize(link.ID);
+                }
+            });
+            recalculating_FS_size = false;
+        }
     }
 }

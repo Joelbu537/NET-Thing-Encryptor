@@ -164,15 +164,7 @@ namespace NET_Thing_Encryptor
             PreviewContent = previewContent;
         }
     }
-    public enum FileType
-    {
-        other,
-        audio,
-        image,
-        text,
-        video,
-        folder
-    }
+
     public enum FileExtension
     {
         //Videos

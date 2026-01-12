@@ -73,11 +73,11 @@ namespace NET_Thing_Encryptor
                 case ".jpeg":
                 case ".png":
                 case ".gif":
+                case ".avif":
                     return "image";
                 case ".mp3":
                 case ".wav":
                 case ".ogg":
-                case ".avif":
                     return "audio";
                 case ".mp4":
                 case ".avi":
