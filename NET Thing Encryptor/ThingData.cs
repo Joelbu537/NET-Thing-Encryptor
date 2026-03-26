@@ -118,20 +118,20 @@ public static class ThingData
         Array.Clear(AesInstance.IV);
         return false;
     }
-    public async static Task<bool> LoadMainData()
+    public static async Task<bool> LoadMainData()
     {
     Retry:
         try
         {
-            if(!Directory.Exists(Path.Combine(AppContext.BaseDirectory, "Data")))
+            if(!Directory.Exists(Path.Combine(Environment.CurrentDirectory, "Data")))
             {
                 Debug.WriteLine("\\Data Directory not found, creating it.");
-                Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, @"Data"));
+                Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, @"Data"));
             }
-            if (File.Exists(Path.Combine(AppContext.BaseDirectory, @"Data\0.nte")))
+            if (File.Exists(Path.Combine(Environment.CurrentDirectory, @"Data\0.nte")))
             {
                 Debug.WriteLine("Main data file found, attempting to load.");
-                using FileStream fs = File.OpenRead(Path.Combine(AppContext.BaseDirectory, @"Data\0.nte"));
+                using FileStream fs = File.OpenRead(Path.Combine(Environment.CurrentDirectory, @"Data\0.nte"));
                 ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
