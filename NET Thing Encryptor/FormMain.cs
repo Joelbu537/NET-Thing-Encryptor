@@ -421,11 +421,12 @@ namespace NET_Thing_Encryptor
 
             if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
             {
-                string path = dialog.FileName;
+                string path = dialog.FileName; // The Folder to export to
                 ListViewItem item = listViewMain.SelectedItems[0];
                 ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
                 if (o is ThingFolder folder)
                 {
+                    path = Path.Combine(dialog.FileName, o.Name);
                     foreach (ThingObjectLink link in folder.Content)
                     {
                         await ExportFile(link, path);
@@ -449,7 +450,7 @@ namespace NET_Thing_Encryptor
 
                     foreach (ThingObjectLink o in f.Content)
                     {
-                        await ExportFile(o, Path.Combine(path, f.Name));
+                        await ExportFile(o, Path.Combine(path, f.Name)); // Export folder + file name
                     }
                 }
                 else
@@ -462,8 +463,9 @@ namespace NET_Thing_Encryptor
                         MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
-                    string filePath = Path.Combine(path, f.Name) + '.' + f.Extension;
-                    File.WriteAllBytes(filePath, f.Content);
+                    string filePath = Path.Combine(path, f.Name) + '.' + f.Extension; // Recursive == Folder + file name (previous iteration) + file name (this iteration) + extension! WTF!
+                    if (!Directory.Exists(Path.GetDirectoryName(filePath))) Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                    await File.WriteAllBytesAsync(filePath, f.Content);
                 }
             }
             catch(Exception)
