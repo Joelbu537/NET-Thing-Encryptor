@@ -185,7 +185,6 @@
             ShowIcon = false;
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Create new File";
-            Load += CreateFileForm_Load;
             tableLayoutPanel.ResumeLayout(false);
             tableLayoutPanel.PerformLayout();
             flowLayoutPanelControlls.ResumeLayout(false);

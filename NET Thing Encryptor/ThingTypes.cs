@@ -46,8 +46,11 @@ namespace NET_Thing_Encryptor
             }
         }
         public string MD5Hash { get; private set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public FileType Type { get; set; }
-        public FileExtension Extension { get; set; }
+
+        public string Extension { get; set; } = string.Empty;
         public ThingFile(string name, byte[] content)
         {
             Name = name;
@@ -151,6 +154,8 @@ namespace NET_Thing_Encryptor
     {
         public ulong ID { get; set; }
         public string Name { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public FileType Type { get; set; }
         public DateOnly CreatedAt { get; set; } = DateOnly.FromDateTime(DateTime.Now);
         public long Size { get; set; } = 0;
@@ -165,30 +170,4 @@ namespace NET_Thing_Encryptor
         }
     }
 
-    public enum FileExtension
-    {
-        //Videos
-        mp4,
-        mov,
-        avi,
-
-        //Audio
-        mp3,
-        wav,
-        ogg,
-
-        //Images
-        png,
-        jpeg,
-        gif,
-        avif,
-
-        //Text
-        txt,
-        json,
-        xml,
-
-        //Other
-        other
-    }
 }

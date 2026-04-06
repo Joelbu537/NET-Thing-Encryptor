@@ -249,6 +249,7 @@ namespace NET_Thing_Encryptor
                             "*.sgi;" +                                                  // Silicon Graphics
                             "*.pcd;" +                                                  // Kodak PhotoCD
                             "*.eps;*.ps;" +                                             // PostScript
+                            "*.avif;*.av1" +                                            // AVIF
                             "*.jpg;*.jpeg;*.png;*.gif;*.tiff;*.tif;*.webp;*.heic;*.pdf" // Defaults
                         ),
                         new CommonFileDialogFilter("Video files", "*.*"),
@@ -278,11 +279,10 @@ namespace NET_Thing_Encryptor
                             MessageBox.Show($"The file {file} does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             continue;
                         }
-                        ThingFile? newFile = new ThingFile(System.IO.Path.GetFileName(file).Replace(Path.GetExtension(file), ""), File.ReadAllBytes(file));
-                        Enum.TryParse<FileType>(ThingData.GetFileType(file), true, out FileType result);
+                        ThingFile? newFile = new ThingFile(Path.GetFileName(file).Replace(Path.GetExtension(file), ""), File.ReadAllBytes(file));
+                        Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true, out FileType result);
                         newFile.Type = result;
-                        Enum.TryParse<FileExtension>(Path.GetExtension(file).TrimStart('.'), true, out FileExtension extResult);
-                        newFile.Extension = extResult;
+                        newFile.Extension = Path.GetExtension(file).TrimStart('.');
 
                         await ThingData.MoveFileToFolderAsync(newFile, CurrentFolderID);
                         await ThingData.SaveFileAsync(newFile);
@@ -378,7 +378,13 @@ namespace NET_Thing_Encryptor
                     // Closing forbidden
                     case CloseReason.UserClosing:
                         e.Cancel = true;
-                        MessageBox.Show("Please wait until the saving process has finished!", "Saving in progress", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        if (MessageBox.Show(
+                                "Please wait until the saving process has finished! If you decide to close the program now, data might be lost.",
+                                "Saving in progress", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning) ==
+                            DialogResult.OK)
+                        {
+                            e.Cancel = false;
+                        }
                         break;
                     case CloseReason.WindowsShutDown:
                         ShutdownBlockReasonCreate(this.Handle, "Saving changes...");
@@ -463,7 +469,7 @@ namespace NET_Thing_Encryptor
                         MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
-                    string filePath = Path.Combine(path, f.Name) + '.' + f.Extension; // Recursive == Folder + file name (previous iteration) + file name (this iteration) + extension! WTF!
+                    string filePath = Path.Combine(path, f.Name) + (string.IsNullOrWhiteSpace(f.Extension) ? string.Empty : "." + f.Extension); // Recursive == Folder + file name (previous iteration) + file name (this iteration) + extension
                     if (!Directory.Exists(Path.GetDirectoryName(filePath))) Directory.CreateDirectory(Path.GetDirectoryName(filePath));
                     await File.WriteAllBytesAsync(filePath, f.Content);
                 }

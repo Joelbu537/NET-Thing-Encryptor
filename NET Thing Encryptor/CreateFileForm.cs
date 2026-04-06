@@ -20,17 +20,6 @@ namespace NET_Thing_Encryptor
             this.currentFolder = currentFolder;
             InitializeComponent();
         }
-
-        private void comboBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void CreateFileForm_Load(object sender, EventArgs e)
-        {
-
-        }
-
         private void buttonAddFiles_Click(object sender, EventArgs e)
         {
             var dialog = new CommonOpenFileDialog
@@ -129,8 +118,7 @@ namespace NET_Thing_Encryptor
                     ThingFile? file = new ThingFile(System.IO.Path.GetFileName(filePath), File.ReadAllBytes(filePath));
                     Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
                     file.Type = result;
-                    Enum.TryParse<FileExtension>(Path.GetExtension(filePath).TrimStart('.'), true, out FileExtension extResult);
-                    file.Extension = extResult;
+                     file.Extension = Path.GetExtension(filePath).TrimStart('.');
                     await ThingData.MoveFileToFolderAsync(file, currentFolder.ID);
                     await ThingData.SaveFileAsync(file);
                 }
