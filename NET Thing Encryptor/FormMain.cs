@@ -169,36 +169,39 @@ namespace NET_Thing_Encryptor
                     }
                     else if (obj is ThingFile file)
                     {
-                        Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash} Type: {file.Type.ToString()}");
-                        switch (file.Type)
+                        _ = Task.Run(() =>
                         {
-                            case FileType.text:
-                                MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                break;
-                            case FileType.image:
-                                ImageViewForm imageView = new(file);
-                                imageView.Show();
-                                break;
-                            case FileType.audio:
-                                MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                break;
-                            case FileType.video:
-                                VideoViewForm videoView = new(file);
-                                videoView.Show();
-                                break;
-                            case FileType.other:
-                                MessageBox.Show(
-                                    "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
-                                    "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                break;
-                            default:
-                                throw new InvalidEnumArgumentException("Unknown internal file type.");
-                        }
+                            Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash} Type: {file.Type.ToString()}");
+                            switch (file.Type)
+                            {
+                                case FileType.text:
+                                    MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    break;
+                                case FileType.image:
+                                    ImageViewForm imageView = new(file);
+                                    imageView.Show();
+                                    break;
+                                case FileType.audio:
+                                    MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    break;
+                                case FileType.video:
+                                    VideoViewForm videoView = new(file);
+                                    videoView.Show();
+                                    break;
+                                case FileType.other:
+                                    MessageBox.Show(
+                                        "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
+                                        "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    break;
+                                default:
+                                    throw new InvalidEnumArgumentException("Unknown internal file type.");
+                            }
+                        }).ConfigureAwait(false);
                     }
                 }
-                catch (Exception exception)
+                catch (Exception)
                 {
                     /*ThingObjectLink? missingLink = CurrentFolder.Content.FirstOrDefault(x => x.ID == ulong.Parse(item.Name));
                     CurrentFolder.Content.Remove(missingLink);
@@ -446,7 +449,6 @@ namespace NET_Thing_Encryptor
         }
         private async Task ExportFile(ThingObjectLink file, string path)
         {
-            ThingData.Saving++;
             try
             {
                 if (file.Type == FileType.folder)
@@ -477,10 +479,6 @@ namespace NET_Thing_Encryptor
             catch(Exception)
             {
                 throw;
-            }
-            finally
-            {
-                ThingData.Saving--;
             }
 
         }
