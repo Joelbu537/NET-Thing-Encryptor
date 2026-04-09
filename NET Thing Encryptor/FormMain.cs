@@ -275,30 +275,45 @@ namespace NET_Thing_Encryptor
                 {
                     List<string> selectedFiles = dialog.FileNames.ToList();
 
-                    foreach (string file in selectedFiles)
+                    foreach (string file in selectedFiles) // Turn this whole loop into a pile of tasks. Fuck read/write speed.
                     {
                         if (!File.Exists(file))
                         {
                             MessageBox.Show($"The file {file} does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             continue;
                         }
-                        ThingFile? newFile = new ThingFile(Path.GetFileName(file).Replace(Path.GetExtension(file), ""), File.ReadAllBytes(file));
-                        Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true, out FileType result);
-                        newFile.Type = result;
-                        newFile.Extension = Path.GetExtension(file).TrimStart('.');
 
-                        await ThingData.MoveFileToFolderAsync(newFile, CurrentFolderID);
-                        await ThingData.SaveFileAsync(newFile);
+                        ThingData.Saving++;
+                        try
+                        {
+                            ThingFile? newFile =
+                                new ThingFile(Path.GetFileName(file).Replace(Path.GetExtension(file), ""),
+                                    File.ReadAllBytes(file));
+                            Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true,
+                                out FileType result);
+                            newFile.Type = result;
+                            newFile.Extension = Path.GetExtension(file).TrimStart('.');
 
-                        ThingFolder? currentFolderTemp = await ThingData.LoadFileAsync<ThingFolder>(CurrentFolder.ID);
+                            await ThingData.MoveFileToFolderAsync(newFile, CurrentFolderID);
+                            await ThingData.SaveFileAsync(newFile);
 
-                        ThingObjectLink? link = currentFolderTemp.Content.Where(l => l.ID == newFile.ID).FirstOrDefault();
-                        ArgumentNullException.ThrowIfNull(link, "Imported file link not found in folder after import.");
+                            ThingFolder? currentFolderTemp =
+                                await ThingData.LoadFileAsync<ThingFolder>(CurrentFolder.ID);
+
+                            ThingObjectLink? link = currentFolderTemp.Content.Where(l => l.ID == newFile.ID)
+                                .FirstOrDefault();
+                            ArgumentNullException.ThrowIfNull(link,
+                                "Imported file link not found in folder after import.");
 
 
-                        link.Size = (long)(new FileInfo(file).Length);
-                        link.Type = result;
-                        await ThingData.SaveFileAsync(currentFolderTemp);
+                            link.Size = (long)(new FileInfo(file).Length);
+                            link.Type = result;
+                            await ThingData.SaveFileAsync(currentFolderTemp);
+                        }
+                        finally
+                        {
+                            ThingData.Saving--;
+                        }
                     }
                     CurrentFolderID = CurrentFolderID;
                 }
