@@ -63,7 +63,14 @@ namespace NET_Thing_Encryptor
         }
         private void FormMain_Load(object sender, EventArgs e)
         {
-            Debug.WriteLine($"FormMain is {Thread.CurrentThread.GetApartmentState()}");
+            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+            {
+                Debug.WriteLine("FormMain is Single Threaded Apartment\n");
+            }
+            else
+            {
+                Debug.WriteLine("FormMain is Multi Threaded Apartment, which is very bad and should NOT happen!\n");
+            }
 
             labelInfoVersion.Text = $"v{Program.Version}";
             CurrentFolderID = 0;
@@ -110,33 +117,40 @@ namespace NET_Thing_Encryptor
             }
             else
             {
-                CurrentFolder = await ThingData.LoadFileAsync(CurrentFolderID) as ThingFolder ?? throw new ArgumentException();
+                CurrentFolder = await ThingData.LoadFileAsync<ThingFolder>(CurrentFolderID);
             }
-            List<ThingObjectLink> new_content = await ThingData.LoadFolderContent(CurrentFolderID);
-            Debug.WriteLine($"Loaded folder contains {new_content.Count} items:");
+            List<ThingObjectLink> newContent = await ThingData.LoadFolderContent(CurrentFolderID);
+
+            Debug.WriteLine($"Loaded folder contains {newContent.Count} items:");
+            Debug.WriteLine(new string('-', 80));
+            foreach (ThingObjectLink o in newContent)
+            {
+                Debug.WriteLine($"  - {o.Name} {o.Type}  ID {o.ID} ({ThingData.IDToHex(o.ID)})");
+
+            }
+            Debug.WriteLine(new string('-', 80) + '\n');
 
             int folderCount = 0;
             int fileCount = 0;
             long totalSize = 0;
-
             List<ListViewItem> items = new();
 
-            foreach (ThingObjectLink o in new_content)
+            foreach (ThingObjectLink o in newContent)
             {
-                Debug.WriteLine($"  - {o.Name} ({o.Type}, ID {o.ID})");
                 if (o.Type == FileType.folder) folderCount++;
                 else fileCount++;
 
-                ListViewItem item = new ListViewItem(o.Name);
+                ListViewItem item = new ListViewItem(text: o.Name);
                 item.Name = o.ID.ToString();
                 item.ImageKey = o.Type.ToString();
 
-                item.SubItems.Add(o.Size.Sizeify().ToString());
+                item.SubItems.Add(o.Size.Sizeify());
                 totalSize += o.Size;
                 item.SubItems.Add(o.CreatedAt.ToString());
 
                 items.Add(item);
             }
+
 
             items = items.OrderBy(i => i.Text, new NaturalStringComparer()).ToList();
             foreach (ListViewItem item in items)
@@ -154,14 +168,14 @@ namespace NET_Thing_Encryptor
         }
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
         {
-            Debug.Write("Doppelklick auf ");
+            Debug.Write("Double click on ");
             if (listViewMain.SelectedItems.Count > 0)
             {
                 ListViewItem item = listViewMain.SelectedItems[0];
-                Debug.WriteLine($"{item.Text} mit ID {item.Name}");
+                Debug.WriteLine($"{item.Text} mit ID {item.Name} ({ThingData.IDToHex(Convert.ToUInt64(item.Name))}");
                 try
                 {
-                    ThingObject? obj = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
+                    ThingObject? obj = await ThingData.LoadFileAsync(ulong.Parse(item.Name)); // Loads a file after it has been double clicked.
                     if (obj is ThingFolder folder)
                     {
                         CurrentFolderID = folder.ID;
@@ -169,36 +183,33 @@ namespace NET_Thing_Encryptor
                     }
                     else if (obj is ThingFile file)
                     {
-                        _ = Task.Run(() =>
+                        Debug.WriteLine($"File: {file.Name} Type: {file.Type.ToString()} ID {file.ID} ({ThingData.IDToHex(file.ID)})");
+                        switch (file.Type)
                         {
-                            Debug.WriteLine($"File: {file.Name} MD5: {file.MD5Hash} Type: {file.Type.ToString()}");
-                            switch (file.Type)
-                            {
-                                case FileType.text:
-                                    MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
-                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                    break;
-                                case FileType.image:
-                                    ImageViewForm imageView = new(file);
-                                    imageView.Show();
-                                    break;
-                                case FileType.audio:
-                                    MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
-                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                    break;
-                                case FileType.video:
-                                    VideoViewForm videoView = new(file);
-                                    videoView.Show();
-                                    break;
-                                case FileType.other:
-                                    MessageBox.Show(
-                                        "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
-                                        "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                    break;
-                                default:
-                                    throw new InvalidEnumArgumentException("Unknown internal file type.");
-                            }
-                        }).ConfigureAwait(false);
+                            case FileType.text:
+                                MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                break;
+                            case FileType.image:
+                                ImageViewForm imageView = new(file);
+                                imageView.Show();
+                                break;
+                            case FileType.audio:
+                                MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                break;
+                            case FileType.video:
+                                VideoViewForm videoView = new(file);
+                                videoView.Show();
+                                break;
+                            case FileType.other:
+                                MessageBox.Show(
+                                    "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
+                                    "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                break;
+                            default:
+                                throw new InvalidEnumArgumentException("Unknown internal file type.");
+                        }
                     }
                 }
                 catch (Exception)
@@ -328,7 +339,7 @@ namespace NET_Thing_Encryptor
                 await ThingData.SaveFileAsync(newFolder);
                 if (CurrentFolderID == 0)
                 {
-                    await ThingData.SaveRootAsync();
+                    await ThingData.SaveRootAsync(); // New Folder-Parent needs to acknowledge its childs existence
                 }
                 else
                 {
@@ -350,16 +361,14 @@ namespace NET_Thing_Encryptor
                 ListViewItem item = listViewMain.SelectedItems[0];
                 Debug.WriteLine($"Deleting {item.Text}");
 
-                ThingObject? deletion = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
-
-                DialogResult r = MessageBox.Show($"Are you sure you want to delete {deletion.Name} and all of its contents?",
-                        "Folder deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                DialogResult r = MessageBox.Show($"Are you sure you want to delete {item.Text} and all of its contents?",
+                        "Confirmation required", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 
                 if (r == DialogResult.Yes)
                 {
-                    await ThingData.DeleteObject(deletion);
+                    await ThingData.DeleteObject(ulong.Parse(item.Name));
                 }
-                listViewMain.Items.RemoveAt(listViewMain.SelectedIndices[0]);
+                listViewMain.Items.RemoveAt(listViewMain.SelectedIndices[0]); // Remove link
             }
         }
         private void buttonNavigationRoot_Click(object sender, EventArgs e)
@@ -527,7 +536,7 @@ namespace NET_Thing_Encryptor
                     if (CurrentFolder == null)
                     {
                         ThingData.Root.Content.FirstOrDefault(l => l.ID == o.ID).Name = newName;
-                        await ThingData.SaveRootAsync();
+                        await ThingData.SaveRootAsync(); // Parent needs to acknowledge renaming of child
                     }
                     else
                     {
@@ -541,6 +550,7 @@ namespace NET_Thing_Encryptor
         }
         private async Task<long> GetFolderSize(ulong folderID)
         {
+
             ThingFolder? folder = await ThingData.LoadFileAsync<ThingFolder>(folderID);
             long folder_size = 0;
             foreach (ThingObjectLink link in folder.Content)
@@ -554,17 +564,25 @@ namespace NET_Thing_Encryptor
                     folder_size += link.Size;
                 }
             }
-            if (folder.ParentID == 0)
+
+            if (folder.ParentID == 0) // Wenn Root parent ist UND die größe des Childs in Root (parent) veränmdert ist ist
             {
-                ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
-                await ThingData.SaveRootAsync();
+                if (ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size != folder_size)
+                {
+                    ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
+                    await ThingData.SaveRootAsync();
+                }
             }
             else
             {
                 ThingFolder? parentFolder = await ThingData.LoadFileAsync<ThingFolder>(folder.ParentID);
-                parentFolder.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
-                await ThingData.SaveFileAsync(parentFolder);
+                if (parentFolder.Content.FirstOrDefault(l => l.ID == folder.ID).Size != folder_size)
+                {
+                    parentFolder.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
+                    await ThingData.SaveFileAsync(parentFolder);
+                }
             }
+
             return folder_size;
         }
 

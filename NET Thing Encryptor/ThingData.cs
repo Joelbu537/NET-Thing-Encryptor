@@ -92,24 +92,24 @@ public static class ThingData
             try
             {
                 string? temp = await Decrypt(Root.ContentEncrypted);
-                Debug.WriteLine(temp);
+                //Debug.WriteLine(temp);
 
                 if (temp.StartsWith(Magic)) //PWD korrekt
                 {
                     string? subtemp = temp.Substring(Magic.Length);
                     Root.Content = JsonSerializer.Deserialize<List<ThingObjectLink>>(subtemp);
-                    Debug.WriteLine("Password correct, main data loaded successfully.");
+                    Debug.WriteLine("Password correct");
                     return true;
                 }
             }
             catch(CryptographicException)
             {
-                Debug.WriteLine("Decryption FAILED.");
+                Debug.WriteLine("Password incorrect, decryption FAILED.");
             }
         }
         else
         {
-            Debug.WriteLine("No content encrypted found, assuming first run or no password set.");
+            Debug.WriteLine("No main file found, assuming first run or no password set.");
             return true;
         }
 
@@ -125,19 +125,19 @@ public static class ThingData
         {
             if(!Directory.Exists(Path.Combine(Environment.CurrentDirectory, "Data")))
             {
-                Debug.WriteLine("\\Data Directory not found, creating it.");
+                Debug.WriteLine("\\Data directory not found, creating it.");
                 Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, @"Data"));
             }
             if (File.Exists(Path.Combine(Environment.CurrentDirectory, @"Data\0.nte")))
             {
-                Debug.WriteLine("Main data file found, attempting to load.");
+                Debug.WriteLine("Main file found, attempting to load.");
                 using FileStream fs = File.OpenRead(Path.Combine(Environment.CurrentDirectory, @"Data\0.nte"));
                 ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
                 root.Content = new List<ThingObjectLink>();
                 Root = root;
-                Debug.WriteLine("Root loaded successfully.");
+                Debug.WriteLine("Main file loaded successfully.");
             }
             else
             {
@@ -184,7 +184,9 @@ public static class ThingData
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"An unexpected error occurred while loading the main data: {ex.Message}");
+            MessageBox.Show($"An unexpected error occurred while loading the main data: {ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Debug.WriteLine($"");
             throw new Exception($"An error occurred while loading the main data. (Type: {ex.GetType().FullName})", ex);
         }
         return false;
@@ -245,7 +247,13 @@ public static class ThingData
     }
     public static async Task<ThingObject?> LoadFileAsync(ulong id)
     {
-        Debug.WriteLine($"Loading file with ID: {id}");
+        if (id == 0)
+        {
+            Debug.WriteLine("Folder ID is 0, which is unexpected.");
+            Debugger.Break();
+        }
+
+        Debug.WriteLine($"Loading file {id} ({IDToHex(id)})");
         if (id == 0)
             throw new ArgumentException("Cannot load root element.", nameof(id));
 
@@ -253,7 +261,7 @@ public static class ThingData
         try
         {
             filePath = GetFilePath(id);
-            Debug.WriteLine($"File path resolved to: {filePath}");
+            //Debug.WriteLine($"File path resolved to: {filePath}");
 
             using FileStream fs = File.OpenRead(filePath);
             using var decrypted = await Decrypt(fs).ConfigureAwait(false);
@@ -288,7 +296,7 @@ public static class ThingData
         {
             return tObj;
         }
-        throw new InvalidCastException($"The object with ID {id} is not of type {typeof(T).Name}.");
+        throw new InvalidCastException($"The object with ID {id} does not match the expected type {typeof(T).Name}, got {obj?.GetType().Name} instead");
     }
     public static async Task SaveFileAsync(ThingObject? obj)
     {
@@ -296,7 +304,7 @@ public static class ThingData
         try
         {
             ArgumentNullException.ThrowIfNull(obj, nameof(obj));
-            Debug.WriteLine($"Saving file {obj.Name} with ID {obj.ID} as {IDToHex(obj.ID)}");
+            Debug.WriteLine($"Saving file {obj.Name} - ID {obj.ID} ({IDToHex(obj.ID)})");
 
             switch (obj)
             {
@@ -521,23 +529,8 @@ public static class ThingData
         try
         {
             ThingObject? obj = await LoadFileAsync(id);
-            ArgumentNullException.ThrowIfNull(obj, nameof(obj));
-            await DeleteObject(obj);
-        }
-        catch(Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            Saving--;
-        }
-    }
-    public static async Task DeleteObject(ThingObject obj)
-    {
-        Saving++;
-        try
-        {
+            ArgumentNullException.ThrowIfNull(obj);
+
             if (obj is ThingFile file)
             {
                 await DeleteFile(file.ID);
@@ -562,10 +555,6 @@ public static class ThingData
                 throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
             }
         }
-        catch(Exception)
-        {
-            throw;
-        }
         finally
         {
             Saving--;
@@ -576,14 +565,13 @@ public static class ThingData
         Saving++;
         try
         {
-            Debug.WriteLine("Saving Root data to file.");
+            Debug.WriteLine("Saving Root to main file");
             ArgumentNullException.ThrowIfNull(Root, nameof(Root));
             ThingRoot tempRoot = (ThingRoot)Root.Clone();
             tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
             tempRoot.Content = null;
             string rootContent = JsonSerializer.Serialize(tempRoot);
             string rootPath = GetFilePath(0);
-            Debug.WriteLine($"Root path: {rootPath}");
             using FileStream fs = File.Create(rootPath);
             await fs.WriteAsync(Encoding.UTF8.GetBytes(rootContent));
             await fs.FlushAsync();

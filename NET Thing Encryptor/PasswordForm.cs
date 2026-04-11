@@ -54,11 +54,10 @@ namespace NET_Thing_Encryptor
                 }
             }
         }
-        private async void buttonCancel_Click(object sender, EventArgs e)
+        private void buttonCancel_Click(object sender, EventArgs e)
         {
             Application.Exit();
             this.Close();
-            return;
         }
     }
 }
