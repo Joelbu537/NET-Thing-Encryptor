@@ -117,7 +117,7 @@ namespace NET_Thing_Encryptor
                 ThingFile? imageFile = await ThingData.LoadFileAsync<ThingFile>(Images[index].ID);
                 ArgumentNullException.ThrowIfNull(imageFile);
 
-                if (!ThingData.VerifyFile(imageFile) || imageFile.Content == null)
+                if (imageFile.Content is null || imageFile.MD5Hash != ThingData.ComputeMD5Hash(imageFile.Content))
                 {
                     throw new FileFormatException("Provided file was not an image or empty!");
                 }

@@ -13,7 +13,7 @@ public static class ThingData
 
     public static async Task<MemoryStream> Encrypt(Stream input)
     {
-        if (AesInstance.Key == null)
+        if (AesInstance.Key is null || AesInstance.IV is null)
             throw new InvalidOperationException("Key and IV must be set before encryption.");
 
         var output = new MemoryStream();
@@ -213,17 +213,9 @@ public static class ThingData
             RandomNumberGenerator.Fill(buffer);
             tempID = BitConverter.ToUInt64(buffer, 0);
         }
-        while (tempID != 0 && File.Exists((Root.SaveLocation == null) ? ThingData.IDToHex(tempID) : Path.Combine(Root.SaveLocation, ThingData.IDToHex(tempID))));
+        while (tempID != 0 && File.Exists((Root.SaveLocation == null) ? IDToHex(tempID) : Path.Combine(Root.SaveLocation, IDToHex(tempID))));
         return tempID;
 
-    }
-    public static bool VerifyFile(ThingFile file)
-    {
-        if (ComputeMD5Hash(file.Content) == file.MD5Hash)
-        {
-            return true;
-        }
-        return false;
     }
     public static string GetFilePath(ulong id, bool create = false)
     {
@@ -247,47 +239,39 @@ public static class ThingData
     }
     public static async Task<ThingObject?> LoadFileAsync(ulong id)
     {
-        if (id == 0)
-        {
-            Debug.WriteLine("Folder ID is 0, which is unexpected.");
-            Debugger.Break();
-        }
-
         Debug.WriteLine($"Loading file {id} ({IDToHex(id)})");
         if (id == 0)
+        {
+            Debug.WriteLine("Folder ID is 0, which is forbidden.");
+            Debugger.Break();
             throw new ArgumentException("Cannot load root element.", nameof(id));
+        }
 
         string filePath = string.Empty;
-        try
+
+        filePath = GetFilePath(id);
+        //Debug.WriteLine($"File path resolved to: {filePath}");
+
+        using FileStream fs = File.OpenRead(filePath);
+        using var decrypted = await Decrypt(fs).ConfigureAwait(false);
+        decrypted.Position = 0;
+        string json = Encoding.UTF8.GetString(decrypted.ToArray());
+
+        var options = new JsonSerializerOptions { WriteIndented = true };
+
+        ThingObject? obj;
+        if (!json.Contains("\"$type\""))
         {
-            filePath = GetFilePath(id);
-            //Debug.WriteLine($"File path resolved to: {filePath}");
-
-            using FileStream fs = File.OpenRead(filePath);
-            using var decrypted = await Decrypt(fs).ConfigureAwait(false);
-            decrypted.Position = 0;
-            string json = Encoding.UTF8.GetString(decrypted.ToArray());
-
-            var options = new JsonSerializerOptions { WriteIndented = true };
-
-            ThingObject? obj;
-            if (!json.Contains("\"$type\""))
-            {
-                obj = JsonSerializer.Deserialize<ThingFile>(json, options);
-            }
-            else
-            {
-                obj = JsonSerializer.Deserialize<ThingObject>(json, options);
-            }
-
-            ArgumentNullException.ThrowIfNull(obj, nameof(obj));
-            obj.ID = id;
-            return obj;
+            obj = JsonSerializer.Deserialize<ThingFile>(json, options);
         }
-        catch (FileNotFoundException)
+        else
         {
-            throw new FileNotFoundException("File not found.", filePath);
+            obj = JsonSerializer.Deserialize<ThingObject>(json, options);
         }
+
+        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+        obj.ID = id;
+        return obj;
     }
     public static async Task<T?> LoadFileAsync<T>(ulong id) where T : ThingObject
     {

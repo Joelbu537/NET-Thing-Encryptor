@@ -39,6 +39,7 @@
             buttonNavigationDeleteSelected = new Button();
             buttonNavigationExport = new Button();
             buttonNavigationSettings = new Button();
+            labelMe = new Label();
             buttonNavigationRoot = new Button();
             textBoxNavigation = new TextBox();
             flowLayoutPanelInfo = new FlowLayoutPanel();
@@ -58,7 +59,7 @@
             toolStripMenuItemRename = new ToolStripMenuItem();
             toolStripMenuItemEmergencyEditor = new ToolStripMenuItem();
             toolStripMenuItemCopy = new ToolStripMenuItem();
-            labelMe = new Label();
+            buttonExitApplication = new Button();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
@@ -83,15 +84,17 @@
             tableLayoutPanelMain.RowStyles.Add(new RowStyle());
             tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanelMain.RowStyles.Add(new RowStyle());
-            tableLayoutPanelMain.Size = new Size(1828, 944);
+            tableLayoutPanelMain.Size = new Size(1850, 1000);
             tableLayoutPanelMain.TabIndex = 0;
             // 
             // tableLayoutPanelNavigation
             // 
             tableLayoutPanelNavigation.AutoSize = true;
-            tableLayoutPanelNavigation.ColumnCount = 2;
+            tableLayoutPanelNavigation.ColumnCount = 3;
             tableLayoutPanelNavigation.ColumnStyles.Add(new ColumnStyle());
             tableLayoutPanelNavigation.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanelNavigation.ColumnStyles.Add(new ColumnStyle());
+            tableLayoutPanelNavigation.Controls.Add(buttonExitApplication, 2, 0);
             tableLayoutPanelNavigation.Controls.Add(flowLayoutPanelNavigationButtons, 0, 0);
             tableLayoutPanelNavigation.Controls.Add(textBoxNavigation, 1, 0);
             tableLayoutPanelNavigation.Dock = DockStyle.Fill;
@@ -99,7 +102,7 @@
             tableLayoutPanelNavigation.Name = "tableLayoutPanelNavigation";
             tableLayoutPanelNavigation.RowCount = 1;
             tableLayoutPanelNavigation.RowStyles.Add(new RowStyle());
-            tableLayoutPanelNavigation.Size = new Size(1822, 60);
+            tableLayoutPanelNavigation.Size = new Size(1844, 60);
             tableLayoutPanelNavigation.TabIndex = 0;
             // 
             // flowLayoutPanelNavigationButtons
@@ -227,6 +230,15 @@
             buttonNavigationSettings.UseVisualStyleBackColor = false;
             buttonNavigationSettings.Click += buttonNavigationSettings_Click;
             // 
+            // labelMe
+            // 
+            labelMe.Anchor = AnchorStyles.Left;
+            labelMe.AutoSize = true;
+            labelMe.Location = new Point(327, 11);
+            labelMe.Name = "labelMe";
+            labelMe.Size = new Size(0, 32);
+            labelMe.TabIndex = 8;
+            // 
             // buttonNavigationRoot
             // 
             buttonNavigationRoot.Anchor = AnchorStyles.Left;
@@ -253,7 +265,7 @@
             textBoxNavigation.Margin = new Padding(20, 3, 20, 3);
             textBoxNavigation.Name = "textBoxNavigation";
             textBoxNavigation.ReadOnly = true;
-            textBoxNavigation.Size = new Size(1375, 39);
+            textBoxNavigation.Size = new Size(1343, 39);
             textBoxNavigation.TabIndex = 2;
             textBoxNavigation.Text = "/Root";
             toolTip.SetToolTip(textBoxNavigation, "Current directory");
@@ -268,9 +280,9 @@
             flowLayoutPanelInfo.Controls.Add(labelInfoSaving);
             flowLayoutPanelInfo.Dock = DockStyle.Fill;
             flowLayoutPanelInfo.Font = new Font("Consolas", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            flowLayoutPanelInfo.Location = new Point(3, 908);
+            flowLayoutPanelInfo.Location = new Point(3, 964);
             flowLayoutPanelInfo.Name = "flowLayoutPanelInfo";
-            flowLayoutPanelInfo.Size = new Size(1822, 33);
+            flowLayoutPanelInfo.Size = new Size(1844, 33);
             flowLayoutPanelInfo.TabIndex = 2;
             // 
             // labelInfoVersion
@@ -337,7 +349,7 @@
             tableLayoutPanelDiv.Name = "tableLayoutPanelDiv";
             tableLayoutPanelDiv.RowCount = 1;
             tableLayoutPanelDiv.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanelDiv.Size = new Size(1822, 833);
+            tableLayoutPanelDiv.Size = new Size(1844, 889);
             tableLayoutPanelDiv.TabIndex = 3;
             // 
             // listViewMain
@@ -349,7 +361,7 @@
             listViewMain.Location = new Point(3, 3);
             listViewMain.MultiSelect = false;
             listViewMain.Name = "listViewMain";
-            listViewMain.Size = new Size(1178, 827);
+            listViewMain.Size = new Size(1192, 883);
             listViewMain.SmallImageList = imageListFileIcons;
             listViewMain.TabIndex = 3;
             listViewMain.UseCompatibleStateImageBehavior = false;
@@ -419,22 +431,32 @@
             toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;
             // 
-            // labelMe
+            // buttonExitApplication
             // 
-            labelMe.Anchor = AnchorStyles.Left;
-            labelMe.AutoSize = true;
-            labelMe.Location = new Point(327, 11);
-            labelMe.Name = "labelMe";
-            labelMe.Size = new Size(0, 32);
-            labelMe.TabIndex = 8;
+            buttonExitApplication.Anchor = AnchorStyles.Left;
+            buttonExitApplication.AutoSize = true;
+            buttonExitApplication.BackColor = Color.Transparent;
+            buttonExitApplication.BackgroundImage = Properties.Resources.imageres_cross_red;
+            buttonExitApplication.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonExitApplication.FlatStyle = FlatStyle.Flat;
+            buttonExitApplication.Location = new Point(1793, 6);
+            buttonExitApplication.MinimumSize = new Size(48, 48);
+            buttonExitApplication.Name = "buttonExitApplication";
+            buttonExitApplication.Size = new Size(48, 48);
+            buttonExitApplication.TabIndex = 7;
+            buttonExitApplication.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonExitApplication, "Close Application");
+            buttonExitApplication.UseVisualStyleBackColor = false;
+            buttonExitApplication.Click += buttonExitApplication_Click;
             // 
             // FormMain
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1828, 944);
+            ClientSize = new Size(1850, 1000);
             Controls.Add(tableLayoutPanelMain);
             Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            FormBorderStyle = FormBorderStyle.None;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
             MinimumSize = new Size(1850, 1000);
@@ -489,5 +511,6 @@
         private ToolStripMenuItem toolStripMenuItemCopy;
         private ToolStripMenuItem toolStripMenuItemEmergencyEditor;
         private Label labelMe;
+        private Button buttonExitApplication;
     }
 }

@@ -59,6 +59,7 @@ namespace NET_Thing_Encryptor
                 buttonNavigationRoot.BackColor = Program.DarkColor;
                 buttonNavigationRoot.FlatAppearance.BorderColor = Program.ButtonBorder;
             }
+
             FolderChanged += OnFolderChanged;
         }
         private void FormMain_Load(object sender, EventArgs e)
@@ -500,7 +501,7 @@ namespace NET_Thing_Encryptor
                     await File.WriteAllBytesAsync(filePath, f.Content);
                 }
             }
-            catch(Exception)
+            catch (Exception)
             {
                 throw;
             }
@@ -602,13 +603,19 @@ namespace NET_Thing_Encryptor
             recalculating_FS_size = true;
             _ = Task.Run(() =>
             {
-                
-                foreach (ThingObjectLink link in ThingData.Root.Content)
+
+                foreach (ThingObjectLink link in ThingData.Root!.Content!)
                 {
                     _ = GetFolderSize(link.ID);
                 }
+
+                recalculating_FS_size = false;
             });
-            recalculating_FS_size = false;
+        }
+
+        private void buttonExitApplication_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
         }
     }
 }
