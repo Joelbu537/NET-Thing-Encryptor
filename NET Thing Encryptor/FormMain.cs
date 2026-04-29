@@ -185,32 +185,7 @@ namespace NET_Thing_Encryptor
                     else if (obj is ThingFile file)
                     {
                         Debug.WriteLine($"File: {file.Name} Type: {file.Type.ToString()} ID {file.ID} ({ThingData.IDToHex(file.ID)})");
-                        switch (file.Type)
-                        {
-                            case FileType.text:
-                                MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                break;
-                            case FileType.image:
-                                ImageViewForm imageView = new(file);
-                                imageView.Show();
-                                break;
-                            case FileType.audio:
-                                MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
-                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                break;
-                            case FileType.video:
-                                VideoViewForm videoView = new(file);
-                                videoView.Show();
-                                break;
-                            case FileType.other:
-                                MessageBox.Show(
-                                    "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
-                                    "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                break;
-                            default:
-                                throw new InvalidEnumArgumentException("Unknown internal file type.");
-                        }
+                        await OpenFile(file);
                     }
                 }
                 catch (Exception)
@@ -615,7 +590,75 @@ namespace NET_Thing_Encryptor
 
         private void buttonExitApplication_Click(object sender, EventArgs e)
         {
-            Application.Exit();
+            this.Close();
+        }
+
+        private void contextMenuStrip_Opening(object sender, CancelEventArgs e)
+        {
+
+        }
+
+        private List<ThingObjectLink> allFiles = new();
+        private async void toolStripMenuItemOpenRandom_Click(object sender, EventArgs e)
+        {
+            if (allFiles.Count == 0)
+            {
+                foreach (ThingObjectLink link in ThingData.Root!.Content!)
+                {
+                    await recursiveFolderSearcher(await ThingData.LoadFileAsync<ThingFolder>(link.ID));
+                }
+            }
+            
+            Random r = new();
+            await OpenFile(await ThingData.LoadFileAsync<ThingFile>(allFiles[r.Next(allFiles.Count)].ID));
+        }
+
+        private async Task recursiveFolderSearcher(ThingFolder folder)
+        {
+
+            foreach (ThingObjectLink link in folder.Content)
+            {
+                if (link.Type != FileType.folder && link.Type != FileType.other)
+                {
+                     allFiles.Add(link);
+                }
+                else if (link.Type == FileType.folder)
+                {
+                    ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(link.ID);
+                    ArgumentNullException.ThrowIfNull(f);
+                    recursiveFolderSearcher(f);
+                }
+            }
+        }
+
+        public async Task OpenFile(ThingFile file)
+        {
+            switch (file.Type)
+            {
+                case FileType.text:
+                    MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    break;
+                case FileType.image:
+                    ImageViewForm imageView = new(file);
+                    imageView.Show();
+                    break;
+                case FileType.audio:
+                    MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    break;
+                case FileType.video:
+                    VideoViewForm videoView = new(file);
+                    videoView.Show();
+                    break;
+                case FileType.other:
+                    MessageBox.Show(
+                        "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
+                        "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    break;
+                default:
+                    throw new InvalidEnumArgumentException("Unknown internal file type.");
+            }
         }
     }
 }

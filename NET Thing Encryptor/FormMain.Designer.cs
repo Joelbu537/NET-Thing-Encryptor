@@ -32,6 +32,7 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMain));
             tableLayoutPanelMain = new TableLayoutPanel();
             tableLayoutPanelNavigation = new TableLayoutPanel();
+            buttonExitApplication = new Button();
             flowLayoutPanelNavigationButtons = new FlowLayoutPanel();
             buttonNavigationBack = new Button();
             buttonNavigationCreateFile = new Button();
@@ -59,7 +60,7 @@
             toolStripMenuItemRename = new ToolStripMenuItem();
             toolStripMenuItemEmergencyEditor = new ToolStripMenuItem();
             toolStripMenuItemCopy = new ToolStripMenuItem();
-            buttonExitApplication = new Button();
+            toolStripMenuItemOpenRandom = new ToolStripMenuItem();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
             flowLayoutPanelNavigationButtons.SuspendLayout();
@@ -104,6 +105,24 @@
             tableLayoutPanelNavigation.RowStyles.Add(new RowStyle());
             tableLayoutPanelNavigation.Size = new Size(1844, 60);
             tableLayoutPanelNavigation.TabIndex = 0;
+            // 
+            // buttonExitApplication
+            // 
+            buttonExitApplication.Anchor = AnchorStyles.Left;
+            buttonExitApplication.AutoSize = true;
+            buttonExitApplication.BackColor = Color.Transparent;
+            buttonExitApplication.BackgroundImage = Properties.Resources.imageres_cross_red;
+            buttonExitApplication.BackgroundImageLayout = ImageLayout.Stretch;
+            buttonExitApplication.FlatStyle = FlatStyle.Flat;
+            buttonExitApplication.Location = new Point(1793, 6);
+            buttonExitApplication.MinimumSize = new Size(48, 48);
+            buttonExitApplication.Name = "buttonExitApplication";
+            buttonExitApplication.Size = new Size(48, 48);
+            buttonExitApplication.TabIndex = 7;
+            buttonExitApplication.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonExitApplication, "Close Application");
+            buttonExitApplication.UseVisualStyleBackColor = false;
+            buttonExitApplication.Click += buttonExitApplication_Click;
             // 
             // flowLayoutPanelNavigationButtons
             // 
@@ -400,15 +419,16 @@
             // 
             contextMenuStrip.Font = new Font("Segoe UI", 12F);
             contextMenuStrip.ImageScalingSize = new Size(24, 24);
-            contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripMenuItemEmergencyEditor, toolStripMenuItemCopy });
+            contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripMenuItemEmergencyEditor, toolStripMenuItemCopy, toolStripMenuItemOpenRandom });
             contextMenuStrip.Name = "contextMenuStrip";
-            contextMenuStrip.Size = new Size(276, 118);
+            contextMenuStrip.Size = new Size(282, 189);
+            contextMenuStrip.Opening += contextMenuStrip_Opening;
             // 
             // toolStripMenuItemRename
             // 
             toolStripMenuItemRename.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripMenuItemRename.Name = "toolStripMenuItemRename";
-            toolStripMenuItemRename.Size = new Size(275, 38);
+            toolStripMenuItemRename.Size = new Size(281, 38);
             toolStripMenuItemRename.Text = "Rename";
             toolStripMenuItemRename.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemRename.TextImageRelation = TextImageRelation.TextAboveImage;
@@ -417,7 +437,7 @@
             // toolStripMenuItemEmergencyEditor
             // 
             toolStripMenuItemEmergencyEditor.Name = "toolStripMenuItemEmergencyEditor";
-            toolStripMenuItemEmergencyEditor.Size = new Size(275, 38);
+            toolStripMenuItemEmergencyEditor.Size = new Size(281, 38);
             toolStripMenuItemEmergencyEditor.Text = "Emergency Editor";
             toolStripMenuItemEmergencyEditor.TextImageRelation = TextImageRelation.TextAboveImage;
             toolStripMenuItemEmergencyEditor.Click += toolStripMenuItemEmergencyEditor_Click;
@@ -426,28 +446,17 @@
             // 
             toolStripMenuItemCopy.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripMenuItemCopy.Name = "toolStripMenuItemCopy";
-            toolStripMenuItemCopy.Size = new Size(275, 38);
+            toolStripMenuItemCopy.Size = new Size(281, 38);
             toolStripMenuItemCopy.Text = "Copy";
             toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;
             // 
-            // buttonExitApplication
+            // toolStripMenuItemOpenRandom
             // 
-            buttonExitApplication.Anchor = AnchorStyles.Left;
-            buttonExitApplication.AutoSize = true;
-            buttonExitApplication.BackColor = Color.Transparent;
-            buttonExitApplication.BackgroundImage = Properties.Resources.imageres_cross_red;
-            buttonExitApplication.BackgroundImageLayout = ImageLayout.Stretch;
-            buttonExitApplication.FlatStyle = FlatStyle.Flat;
-            buttonExitApplication.Location = new Point(1793, 6);
-            buttonExitApplication.MinimumSize = new Size(48, 48);
-            buttonExitApplication.Name = "buttonExitApplication";
-            buttonExitApplication.Size = new Size(48, 48);
-            buttonExitApplication.TabIndex = 7;
-            buttonExitApplication.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolTip.SetToolTip(buttonExitApplication, "Close Application");
-            buttonExitApplication.UseVisualStyleBackColor = false;
-            buttonExitApplication.Click += buttonExitApplication_Click;
+            toolStripMenuItemOpenRandom.Name = "toolStripMenuItemOpenRandom";
+            toolStripMenuItemOpenRandom.Size = new Size(281, 38);
+            toolStripMenuItemOpenRandom.Text = "Open random File";
+            toolStripMenuItemOpenRandom.Click += toolStripMenuItemOpenRandom_Click;
             // 
             // FormMain
             // 
@@ -512,5 +521,6 @@
         private ToolStripMenuItem toolStripMenuItemEmergencyEditor;
         private Label labelMe;
         private Button buttonExitApplication;
+        private ToolStripMenuItem toolStripMenuItemOpenRandom;
     }
 }
