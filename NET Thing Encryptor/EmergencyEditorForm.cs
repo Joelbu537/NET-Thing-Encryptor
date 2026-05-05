@@ -39,13 +39,13 @@ namespace NET_Thing_Encryptor
             string text = Encoding.UTF8.GetString(data);
             _ = File.WriteAllTextAsync(Path.Combine(Directory.GetCurrentDirectory(), $"Emeregency Editor Backups\\{ThingData.IDToHex(ID)} - Emergency Copy at {DateTime.Now.ToString().Replace(':', '-')}.txt"), text);
             MessageBox.Show("A DECRYPTED emergency copy of this file has been saved in the program folder as a plain text backup.", "Security compromised!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            MD5 = ThingData.ComputeMD5Hash(data);
+            MD5 = ThingData.GetMD5Hash(data);
             textBox.Text = text;
         }
 
         private async void EmergencyEditorForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (MD5 != ThingData.ComputeMD5Hash(Encoding.UTF8.GetBytes(textBox.Text)))
+            if (MD5 != ThingData.GetMD5Hash(Encoding.UTF8.GetBytes(textBox.Text)))
             {
                 var result = MessageBox.Show("The file has been modified. Do you want to save the changes?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (result == DialogResult.Yes)

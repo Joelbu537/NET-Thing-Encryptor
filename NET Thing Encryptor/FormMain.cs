@@ -185,7 +185,7 @@ namespace NET_Thing_Encryptor
                     else if (obj is ThingFile file)
                     {
                         Debug.WriteLine($"File: {file.Name} Type: {file.Type.ToString()} ID {file.ID} ({ThingData.IDToHex(file.ID)})");
-                        await OpenFile(file);
+                        OpenFile(file);
                     }
                 }
                 catch (Exception)
@@ -485,15 +485,26 @@ namespace NET_Thing_Encryptor
 
         private void listViewMain_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Right)
+            if (e.Button != MouseButtons.Right)
             {
-                var item = listViewMain.GetItemAt(e.X, e.Y);
-                if (item != null)
-                {
-                    listViewMain.FocusedItem = item;
-                    contextMenuStrip.Show(listViewMain, e.Location);
-                }
+                return;
             }
+
+            ListViewItem? item = listViewMain.GetItemAt(e.X, e.Y);
+            bool itemSelected = item != null;
+            listViewMain.SelectedItems.Clear();
+
+            if (itemSelected) // An item got right-clicked
+            {
+                item.Selected = true;
+                item.Focused = true;
+            }
+
+            toolStripMenuItemCopy.Enabled = itemSelected;
+            toolStripMenuItemEmergencyEditor.Enabled = itemSelected;
+            toolStripMenuItemRename.Enabled = itemSelected;
+
+            contextMenuStrip.Show(listViewMain, e.Location);
         }
 
         private async void toolStripMenuItemRename_Click(object sender, EventArgs e)
@@ -598,27 +609,28 @@ namespace NET_Thing_Encryptor
 
         }
 
-        private List<ThingObjectLink> allFiles = new();
-        private async void toolStripMenuItemOpenRandom_Click(object sender, EventArgs e)
+        private List<ThingObjectLink> allFiles = [];
+        private async void ToolStripMenuItemOpenRandom_Click(object sender, EventArgs e)
         {
-            if (allFiles.Count == 0)
+            if (allFiles.Count is 0)
             {
                 foreach (ThingObjectLink link in ThingData.Root!.Content!)
                 {
-                    await recursiveFolderSearcher(await ThingData.LoadFileAsync<ThingFolder>(link.ID));
+                    await RecursiveFolderSearcher(await ThingData.LoadFileAsync<ThingFolder>(link.ID));
                 }
             }
-            
+
             Random r = new();
-            await OpenFile(await ThingData.LoadFileAsync<ThingFile>(allFiles[r.Next(allFiles.Count)].ID));
+
+            ulong randomID = allFiles[r.Next(allFiles.Count)].ID;
+            OpenFile(await ThingData.LoadFileAsync<ThingFile>(randomID));
         }
 
-        private async Task recursiveFolderSearcher(ThingFolder folder)
+        private async Task RecursiveFolderSearcher(ThingFolder folder)
         {
-
             foreach (ThingObjectLink link in folder.Content)
             {
-                if (link.Type != FileType.folder && link.Type != FileType.other)
+                if (link.Type is not FileType.folder and not FileType.other && link.Name is "0") // "0" is used by me for collections of images, where 0 is the first image in order and I do not want to open any other images but the first ones.
                 {
                      allFiles.Add(link);
                 }
@@ -626,12 +638,12 @@ namespace NET_Thing_Encryptor
                 {
                     ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(link.ID);
                     ArgumentNullException.ThrowIfNull(f);
-                    recursiveFolderSearcher(f);
+                    RecursiveFolderSearcher(f);
                 }
             }
         }
 
-        public async Task OpenFile(ThingFile file)
+        public static void OpenFile(ThingFile file)
         {
             switch (file.Type)
             {

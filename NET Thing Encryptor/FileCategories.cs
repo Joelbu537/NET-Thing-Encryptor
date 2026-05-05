@@ -53,17 +53,4 @@ namespace NET_Thing_Encryptor
         video,
         folder
     }
-
-    /*  This is supposed to be the new enum for when the FileCategories class is fully implemented
-
-    public enum FileType
-    {
-        other,
-        folder,
-        image,
-        video,
-        text,
-        audio
-    }
-    */
 }

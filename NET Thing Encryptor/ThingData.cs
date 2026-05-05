@@ -7,7 +7,7 @@ namespace NET_Thing_Encryptor;
 public static class ThingData
 {
     private const string Magic = "NET Thing Encryptor";
-    public static Aes? AesInstance { get; private set; } = Aes.Create();
+    private static Aes? AesInstance { get; } = Aes.Create();
     public static ThingRoot? Root { get; private set; }
     public static int Saving { get; set; }
 
@@ -58,18 +58,17 @@ public static class ThingData
         return Encoding.UTF8.GetString(((MemoryStream)decrypted).ToArray());
     }
 
-    public static string ComputeMD5Hash(byte[] input)
+    public static string GetMD5Hash(byte[] input)
     {
-        using (MD5 md5 = MD5.Create())
-        {
-            byte[] hashBytes = md5.ComputeHash(input);
+        using MD5 md5 = MD5.Create();
 
-            StringBuilder sb = new StringBuilder();
-            foreach (byte b in hashBytes)
-                sb.Append(b.ToString("x2"));
+        byte[] hashBytes = md5.ComputeHash(input);
 
-            return sb.ToString();
-        }
+        StringBuilder sb = new StringBuilder();
+        foreach (byte b in hashBytes)
+            sb.Append(b.ToString("x2"));
+
+        return sb.ToString();
     }
     public static async Task<bool> AttemptDecrypt(string password)
     {
@@ -435,7 +434,7 @@ public static class ThingData
             Saving--;
         }
     }
-    public static async Task DeleteFile(ulong fileID)
+    private static async Task DeleteFile(ulong fileID)
     {
         Saving++;
         try
@@ -463,7 +462,7 @@ public static class ThingData
             Saving--;
         }
     }
-    public static async Task DeleteFolder(ulong folderID)
+    private static async Task DeleteFolder(ulong folderID)
     {
         Saving++;
         try

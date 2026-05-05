@@ -60,6 +60,7 @@
             toolStripMenuItemRename = new ToolStripMenuItem();
             toolStripMenuItemEmergencyEditor = new ToolStripMenuItem();
             toolStripMenuItemCopy = new ToolStripMenuItem();
+            toolStripSeparator1 = new ToolStripSeparator();
             toolStripMenuItemOpenRandom = new ToolStripMenuItem();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelNavigation.SuspendLayout();
@@ -156,6 +157,7 @@
             buttonNavigationBack.Size = new Size(48, 48);
             buttonNavigationBack.TabIndex = 0;
             buttonNavigationBack.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolTip.SetToolTip(buttonNavigationBack, "Return to parent directory");
             buttonNavigationBack.UseVisualStyleBackColor = false;
             buttonNavigationBack.Click += buttonNavigationBack_Click;
             // 
@@ -173,7 +175,7 @@
             buttonNavigationCreateFile.Size = new Size(48, 48);
             buttonNavigationCreateFile.TabIndex = 5;
             buttonNavigationCreateFile.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolTip.SetToolTip(buttonNavigationCreateFile, "Create new file");
+            toolTip.SetToolTip(buttonNavigationCreateFile, "Import file");
             buttonNavigationCreateFile.UseVisualStyleBackColor = false;
             buttonNavigationCreateFile.Click += buttonNavigationCreateFile_Click;
             // 
@@ -209,7 +211,7 @@
             buttonNavigationDeleteSelected.Size = new Size(48, 48);
             buttonNavigationDeleteSelected.TabIndex = 4;
             buttonNavigationDeleteSelected.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolTip.SetToolTip(buttonNavigationDeleteSelected, "Delete");
+            toolTip.SetToolTip(buttonNavigationDeleteSelected, "Delete selected");
             buttonNavigationDeleteSelected.UseVisualStyleBackColor = false;
             buttonNavigationDeleteSelected.Click += buttonNavigationDeleteSelected_Click;
             // 
@@ -227,7 +229,7 @@
             buttonNavigationExport.Size = new Size(48, 48);
             buttonNavigationExport.TabIndex = 7;
             buttonNavigationExport.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolTip.SetToolTip(buttonNavigationExport, "Export to file system");
+            toolTip.SetToolTip(buttonNavigationExport, "Export selected to file system");
             buttonNavigationExport.UseVisualStyleBackColor = false;
             buttonNavigationExport.Click += buttonNavigationExport_Click;
             // 
@@ -360,8 +362,8 @@
             // tableLayoutPanelDiv
             // 
             tableLayoutPanelDiv.ColumnCount = 2;
-            tableLayoutPanelDiv.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
-            tableLayoutPanelDiv.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
+            tableLayoutPanelDiv.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanelDiv.ColumnStyles.Add(new ColumnStyle());
             tableLayoutPanelDiv.Controls.Add(listViewMain, 0, 0);
             tableLayoutPanelDiv.Dock = DockStyle.Fill;
             tableLayoutPanelDiv.Location = new Point(3, 69);
@@ -380,7 +382,7 @@
             listViewMain.Location = new Point(3, 3);
             listViewMain.MultiSelect = false;
             listViewMain.Name = "listViewMain";
-            listViewMain.Size = new Size(1192, 883);
+            listViewMain.Size = new Size(1838, 883);
             listViewMain.SmallImageList = imageListFileIcons;
             listViewMain.TabIndex = 3;
             listViewMain.UseCompatibleStateImageBehavior = false;
@@ -419,9 +421,9 @@
             // 
             contextMenuStrip.Font = new Font("Segoe UI", 12F);
             contextMenuStrip.ImageScalingSize = new Size(24, 24);
-            contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripMenuItemEmergencyEditor, toolStripMenuItemCopy, toolStripMenuItemOpenRandom });
+            contextMenuStrip.Items.AddRange(new ToolStripItem[] { toolStripMenuItemRename, toolStripMenuItemEmergencyEditor, toolStripMenuItemCopy, toolStripSeparator1, toolStripMenuItemOpenRandom });
             contextMenuStrip.Name = "contextMenuStrip";
-            contextMenuStrip.Size = new Size(282, 189);
+            contextMenuStrip.Size = new Size(282, 162);
             contextMenuStrip.Opening += contextMenuStrip_Opening;
             // 
             // toolStripMenuItemRename
@@ -451,12 +453,17 @@
             toolStripMenuItemCopy.TextAlign = ContentAlignment.MiddleLeft;
             toolStripMenuItemCopy.TextImageRelation = TextImageRelation.TextAboveImage;
             // 
+            // toolStripSeparator1
+            // 
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(278, 6);
+            // 
             // toolStripMenuItemOpenRandom
             // 
             toolStripMenuItemOpenRandom.Name = "toolStripMenuItemOpenRandom";
             toolStripMenuItemOpenRandom.Size = new Size(281, 38);
             toolStripMenuItemOpenRandom.Text = "Open random File";
-            toolStripMenuItemOpenRandom.Click += toolStripMenuItemOpenRandom_Click;
+            toolStripMenuItemOpenRandom.Click += ToolStripMenuItemOpenRandom_Click;
             // 
             // FormMain
             // 
@@ -522,5 +529,6 @@
         private Label labelMe;
         private Button buttonExitApplication;
         private ToolStripMenuItem toolStripMenuItemOpenRandom;
+        private ToolStripSeparator toolStripSeparator1;
     }
 }

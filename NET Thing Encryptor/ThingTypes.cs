@@ -42,7 +42,7 @@ namespace NET_Thing_Encryptor
                     throw new ArgumentException("Content cannot be null or empty.", nameof(value));
                 }
                 _content = value;
-                MD5Hash = ThingData.ComputeMD5Hash(value);
+                MD5Hash = ThingData.GetMD5Hash(value);
             }
         }
         public string MD5Hash { get; private set; }

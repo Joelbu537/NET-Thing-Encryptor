@@ -1,17 +1,17 @@
 using System.Diagnostics;
 namespace NET_Thing_Encryptor
 {
-    internal static class Program
+    public static class Program
     {
         private static ThingRoot? Root = ThingData.Root;
-        public static Version Version = new(2, 3, 7);
+        public static Version Version = new(2, 4, 0);
         public static Color DarkColor = Color.FromArgb(unchecked((int)0xFF1E1E1E));
         public static Color ButtonBorder = Color.FromArgb(unchecked((int)0xFF646464));
         public static object Objective = (object)new String("\x4D\x61\x64\x65\x20\x62\x79\x20\x4A\x6F\x65\x6C\x62\x75");
             
 
         [STAThread]
-        static void Main()
+        private static void Main()
         {
 #if DEBUG
             Debug.WriteLine("Running in DEBUG mode.");
