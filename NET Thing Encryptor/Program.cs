@@ -11,7 +11,7 @@ namespace NET_Thing_Encryptor
             
 
         [STAThread]
-        private static void Main()
+        private static async Task Main()
         {
 #if DEBUG
             Debug.WriteLine("Running in DEBUG mode.");
@@ -28,12 +28,12 @@ namespace NET_Thing_Encryptor
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
             try
             {
-                if (ThingData.LoadMainData().Result)
+                if (await ThingData.LoadMainData())
                 {
                     using var pw = new PasswordForm();
                     if (pw.ShowDialog() == DialogResult.OK)
                     {
-                        ThingData.SaveRootAsync().Wait();
+                        await ThingData.SaveRootAsync();
                         Application.Run(new FormMain());
                     }
                 }
@@ -50,10 +50,10 @@ namespace NET_Thing_Encryptor
         }
     }
 }
-/*          /// TO DO \\\
- *      ListView multiselect amchen, um mehrere Items gleichzeitig exportieren und löschen zu können
+/*          /// TO DO \\
+ *      ListView multiselect amchen, um mehrere Items gleichzeitig exportieren und lï¿½schen zu kï¿½nnen
  *      Dateien verschiebbar machen
- *      Autopsperre nach 5 Minuten inaktivität (Oder Variabler Zeit in Settings)
- *      Dateien automatisch in AppData speichern und nicht im Programmverzeichniss. (Auf C:\ führt das zu Access Violation Exception)
+ *      Autopsperre nach 5 Minuten inaktivitï¿½t (Oder Variabler Zeit in Settings)
+ *      Dateien automatisch in AppData speichern und nicht im Programmverzeichniss. (Auf C:\ fï¿½hrt das zu Access Violation Exception)
  *      Gifs abspielen lassen
  */

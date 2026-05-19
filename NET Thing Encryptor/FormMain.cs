@@ -75,7 +75,7 @@ namespace NET_Thing_Encryptor
 
             labelInfoVersion.Text = $"v{Program.Version}";
             CurrentFolderID = 0;
-            _ = Task.Run(() =>
+            _ = Task.Run(async () =>
             {
                 while (true)
                 {
@@ -101,9 +101,9 @@ namespace NET_Thing_Encryptor
                             labelInfoSaving.Visible = false;
                         }
                     }
-                    Task.Delay(500).Wait();
+                    await Task.Delay(500).ConfigureAwait(false);
                 }
-            }).ConfigureAwait(false); // Start Saving Indicator clock
+            }); // Start Saving Indicator clock
             RecalculateFileSystemSize(); // Recalculate Folder Sizes
         }
 
@@ -471,7 +471,7 @@ namespace NET_Thing_Encryptor
                         MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
-                    string filePath = Path.Combine(path, f.Name) + (string.IsNullOrWhiteSpace(f.Extension) ? string.Empty : "." + f.Extension); // Recursive == Folder + file name (previous iteration) + file name (this iteration) + extension
+                    string filePath = Path.Combine(path, f.Name) + (string.IsNullOrWhiteSpace(f.Extension) ? string.Empty : "." + f.Extension); // Recursive == Folder + file name (previous iteration)
                     if (!Directory.Exists(Path.GetDirectoryName(filePath))) Directory.CreateDirectory(Path.GetDirectoryName(filePath));
                     await File.WriteAllBytesAsync(filePath, f.Content);
                 }
@@ -552,7 +552,7 @@ namespace NET_Thing_Encryptor
                 }
             }
 
-            if (folder.ParentID == 0) // Wenn Root parent ist UND die größe des Childs in Root (parent) veränmdert ist ist
+            if (folder.ParentID == 0) // Wenn Root parent ist UND die grï¿½ï¿½e des Childs in Root (parent) verï¿½nmdert ist ist
             {
                 if (ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size != folder_size)
                 {
@@ -587,15 +587,19 @@ namespace NET_Thing_Encryptor
         {
             if (recalculating_FS_size) return;
             recalculating_FS_size = true;
-            _ = Task.Run(() =>
+            _ = Task.Run(async () =>
             {
-
-                foreach (ThingObjectLink link in ThingData.Root!.Content!)
+                try
                 {
-                    _ = GetFolderSize(link.ID);
+                    foreach (ThingObjectLink link in ThingData.Root!.Content!)
+                    {
+                        await GetFolderSize(link.ID);
+                    }
                 }
-
-                recalculating_FS_size = false;
+                finally
+                {
+                    recalculating_FS_size = false;
+                }
             });
         }
 
@@ -630,7 +634,7 @@ namespace NET_Thing_Encryptor
         {
             foreach (ThingObjectLink link in folder.Content)
             {
-                if (link.Type is not FileType.folder and not FileType.other && link.Name is "0") // "0" is used by me for collections of images, where 0 is the first image in order and I do not want to open any other images but the first ones.
+                if (link.Type is not FileType.folder and not FileType.other && link.Name is "0") // "0" is used by me for collections of images, where 0 is the first image in order and I do not want it to show in random view
                 {
                      allFiles.Add(link);
                 }
@@ -638,7 +642,7 @@ namespace NET_Thing_Encryptor
                 {
                     ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(link.ID);
                     ArgumentNullException.ThrowIfNull(f);
-                    RecursiveFolderSearcher(f);
+                    await RecursiveFolderSearcher(f);
                 }
             }
         }
