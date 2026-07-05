@@ -18,7 +18,13 @@ namespace NET_Thing_Encryptor
         [
             new FileCategorie(FileType.image, new List<string> { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".svg", ".webp", ".avif" }),
             new FileCategorie(FileType.video, new List<string> { ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv" }),
-            new FileCategorie(FileType.text, new List<string> { ".txt", ".cs", ".java", ".py", ".js", ".html", ".css", ".cpp", ".rb" }),
+            new FileCategorie(FileType.text, new List<string>
+            {
+                ".txt", ".md", ".log", ".json", ".xml", ".csv", ".ini", ".config",
+                ".yaml", ".yml", ".cs", ".java", ".py", ".js", ".ts", ".jsx", ".tsx",
+                ".html", ".css", ".scss", ".cpp", ".c", ".h", ".rb", ".sql", ".sh",
+                ".ps1", ".bat", ".cmd"
+            }),
             new FileCategorie(FileType.audio, new List<string> { ".mp3", ".wav", ".aac", ".flac", ".ogg", ".wma" }),
         ];
 

@@ -625,8 +625,8 @@ namespace NET_Thing_Encryptor
             switch (file.Type)
             {
                 case FileType.text:
-                    MessageBox.Show("Text preview is not implemented yet.", "Not implemented",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    TextEditorForm textEditor = new(file);
+                    textEditor.Show();
                     break;
                 case FileType.image:
                     ImageViewForm imageView = new(file);

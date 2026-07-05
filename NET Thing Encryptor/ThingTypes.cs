@@ -37,10 +37,7 @@ namespace NET_Thing_Encryptor
             get { return _content; }
             set
             {
-                if(value == null || value.Length == 0)
-                {
-                    throw new ArgumentException("Content cannot be null or empty.", nameof(value));
-                }
+                ArgumentNullException.ThrowIfNull(value);
                 _content = value;
                 MD5Hash = ThingData.GetMD5Hash(value);
             }

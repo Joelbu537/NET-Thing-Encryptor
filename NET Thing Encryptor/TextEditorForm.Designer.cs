@@ -1,6 +1,6 @@
 namespace NET_Thing_Encryptor
 {
-    partial class EmergencyEditorForm
+    partial class TextEditorForm
     {
         private System.ComponentModel.IContainer components = null;
 
@@ -15,105 +15,59 @@ namespace NET_Thing_Encryptor
 
         private void InitializeComponent()
         {
-            rootLayout = new TableLayoutPanel();
-            warningPanel = new Panel();
-            labelWarning = new Label();
             toolStrip = new ToolStrip();
             toolStripButtonReadOnly = new ToolStripButton();
             toolStripSeparatorReadOnly = new ToolStripSeparator();
             toolStripButtonSave = new ToolStripButton();
             toolStripSeparator1 = new ToolStripSeparator();
-            toolStripButtonFormat = new ToolStripButton();
-            toolStripButtonValidate = new ToolStripButton();
+            toolStripButtonUndo = new ToolStripButton();
+            toolStripButtonRedo = new ToolStripButton();
             toolStripSeparator2 = new ToolStripSeparator();
             toolStripLabelFont = new ToolStripLabel();
             toolStripComboBoxFontFamily = new ToolStripComboBox();
             toolStripLabelFontSize = new ToolStripLabel();
             toolStripComboBoxFontSize = new ToolStripComboBox();
-            toolStripSeparatorFont = new ToolStripSeparator();
-            toolStripButtonExportDecrypted = new ToolStripButton();
+            toolStripSeparator3 = new ToolStripSeparator();
+            toolStripLabelSearch = new ToolStripLabel();
+            toolStripTextBoxSearch = new ToolStripTextBox();
+            toolStripButtonFindNext = new ToolStripButton();
             editor = new RichTextBox();
             statusStrip = new StatusStrip();
             statusLabelState = new ToolStripStatusLabel();
-            statusLabelJson = new ToolStripStatusLabel();
             statusLabelPosition = new ToolStripStatusLabel();
             statusLabelCharacters = new ToolStripStatusLabel();
-            statusLabelBackup = new ToolStripStatusLabel();
-            rootLayout.SuspendLayout();
-            warningPanel.SuspendLayout();
+            statusLabelEncoding = new ToolStripStatusLabel();
             toolStrip.SuspendLayout();
             statusStrip.SuspendLayout();
             SuspendLayout();
             //
-            // rootLayout
-            //
-            rootLayout.ColumnCount = 1;
-            rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            rootLayout.Controls.Add(warningPanel, 0, 0);
-            rootLayout.Controls.Add(toolStrip, 0, 1);
-            rootLayout.Controls.Add(editor, 0, 2);
-            rootLayout.Controls.Add(statusStrip, 0, 3);
-            rootLayout.Dock = DockStyle.Fill;
-            rootLayout.Location = new Point(0, 0);
-            rootLayout.Margin = new Padding(0);
-            rootLayout.Name = "rootLayout";
-            rootLayout.RowCount = 4;
-            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            rootLayout.Size = new Size(1200, 800);
-            rootLayout.TabIndex = 0;
-            //
-            // warningPanel
-            //
-            warningPanel.BackColor = Color.FromArgb(92, 32, 32);
-            warningPanel.Controls.Add(labelWarning);
-            warningPanel.Dock = DockStyle.Fill;
-            warningPanel.Location = new Point(0, 0);
-            warningPanel.Margin = new Padding(0);
-            warningPanel.Name = "warningPanel";
-            warningPanel.Padding = new Padding(14, 8, 14, 8);
-            warningPanel.Size = new Size(1200, 58);
-            warningPanel.TabIndex = 0;
-            //
-            // labelWarning
-            //
-            labelWarning.Dock = DockStyle.Fill;
-            labelWarning.Font = new Font("Segoe UI Semibold", 9.5F);
-            labelWarning.ForeColor = Color.White;
-            labelWarning.Location = new Point(14, 8);
-            labelWarning.Name = "labelWarning";
-            labelWarning.Size = new Size(1172, 42);
-            labelWarning.TabIndex = 0;
-            labelWarning.Text = "⚠ Emergency mode — You are editing the decrypted internal JSON. Invalid changes can make this object unreadable. An encrypted backup is created automatically.";
-            labelWarning.TextAlign = ContentAlignment.MiddleLeft;
-            //
             // toolStrip
             //
             toolStrip.BackColor = Color.FromArgb(38, 38, 38);
-            toolStrip.Dock = DockStyle.Fill;
             toolStrip.GripStyle = ToolStripGripStyle.Hidden;
+            toolStrip.ImageScalingSize = new Size(20, 20);
             toolStrip.Items.AddRange(new ToolStripItem[] {
                 toolStripButtonReadOnly,
                 toolStripSeparatorReadOnly,
                 toolStripButtonSave,
                 toolStripSeparator1,
-                toolStripButtonFormat,
-                toolStripButtonValidate,
+                toolStripButtonUndo,
+                toolStripButtonRedo,
                 toolStripSeparator2,
                 toolStripLabelFont,
                 toolStripComboBoxFontFamily,
                 toolStripLabelFontSize,
                 toolStripComboBoxFontSize,
-                toolStripSeparatorFont,
-                toolStripButtonExportDecrypted
+                toolStripSeparator3,
+                toolStripLabelSearch,
+                toolStripTextBoxSearch,
+                toolStripButtonFindNext
             });
-            toolStrip.Location = new Point(0, 58);
+            toolStrip.Location = new Point(0, 0);
             toolStrip.Name = "toolStrip";
             toolStrip.Padding = new Padding(8, 5, 8, 5);
-            toolStrip.Size = new Size(1200, 42);
-            toolStrip.TabIndex = 1;
+            toolStrip.Size = new Size(1200, 40);
+            toolStrip.TabIndex = 0;
             //
             // toolStripButtonReadOnly
             //
@@ -123,9 +77,9 @@ namespace NET_Thing_Encryptor
             toolStripButtonReadOnly.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripButtonReadOnly.ForeColor = Color.FromArgb(255, 205, 120);
             toolStripButtonReadOnly.Name = "toolStripButtonReadOnly";
-            toolStripButtonReadOnly.Size = new Size(86, 29);
+            toolStripButtonReadOnly.Size = new Size(86, 27);
             toolStripButtonReadOnly.Text = "Read only";
-            toolStripButtonReadOnly.ToolTipText = "Toggle emergency editing";
+            toolStripButtonReadOnly.ToolTipText = "Toggle editing";
             toolStripButtonReadOnly.Click += toolStripButtonReadOnly_Click;
             //
             // toolStripButtonSave
@@ -133,36 +87,34 @@ namespace NET_Thing_Encryptor
             toolStripButtonSave.DisplayStyle = ToolStripItemDisplayStyle.Text;
             toolStripButtonSave.ForeColor = Color.White;
             toolStripButtonSave.Name = "toolStripButtonSave";
-            toolStripButtonSave.Size = new Size(72, 29);
+            toolStripButtonSave.Size = new Size(72, 27);
             toolStripButtonSave.Text = "Save";
-            toolStripButtonSave.ToolTipText = "Save valid JSON (Ctrl+S)";
+            toolStripButtonSave.ToolTipText = "Save (Ctrl+S)";
             toolStripButtonSave.Click += toolStripButtonSave_Click;
             //
-            // toolStripButtonFormat
+            // toolStripButtonUndo
             //
-            toolStripButtonFormat.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            toolStripButtonFormat.ForeColor = Color.White;
-            toolStripButtonFormat.Name = "toolStripButtonFormat";
-            toolStripButtonFormat.Size = new Size(103, 29);
-            toolStripButtonFormat.Text = "Format JSON";
-            toolStripButtonFormat.ToolTipText = "Format JSON (Ctrl+Shift+F)";
-            toolStripButtonFormat.Click += toolStripButtonFormat_Click;
+            toolStripButtonUndo.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripButtonUndo.ForeColor = Color.White;
+            toolStripButtonUndo.Name = "toolStripButtonUndo";
+            toolStripButtonUndo.Size = new Size(58, 27);
+            toolStripButtonUndo.Text = "Undo";
+            toolStripButtonUndo.Click += toolStripButtonUndo_Click;
             //
-            // toolStripButtonValidate
+            // toolStripButtonRedo
             //
-            toolStripButtonValidate.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            toolStripButtonValidate.ForeColor = Color.White;
-            toolStripButtonValidate.Name = "toolStripButtonValidate";
-            toolStripButtonValidate.Size = new Size(104, 29);
-            toolStripButtonValidate.Text = "Validate JSON";
-            toolStripButtonValidate.ToolTipText = "Validate JSON (F5)";
-            toolStripButtonValidate.Click += toolStripButtonValidate_Click;
+            toolStripButtonRedo.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripButtonRedo.ForeColor = Color.White;
+            toolStripButtonRedo.Name = "toolStripButtonRedo";
+            toolStripButtonRedo.Size = new Size(57, 27);
+            toolStripButtonRedo.Text = "Redo";
+            toolStripButtonRedo.Click += toolStripButtonRedo_Click;
             //
             // toolStripLabelFont
             //
             toolStripLabelFont.ForeColor = Color.FromArgb(210, 210, 210);
             toolStripLabelFont.Name = "toolStripLabelFont";
-            toolStripLabelFont.Size = new Size(40, 29);
+            toolStripLabelFont.Size = new Size(40, 27);
             toolStripLabelFont.Text = "Font";
             //
             // toolStripComboBoxFontFamily
@@ -172,14 +124,14 @@ namespace NET_Thing_Encryptor
             toolStripComboBoxFontFamily.FlatStyle = FlatStyle.Flat;
             toolStripComboBoxFontFamily.ForeColor = Color.White;
             toolStripComboBoxFontFamily.Name = "toolStripComboBoxFontFamily";
-            toolStripComboBoxFontFamily.Size = new Size(145, 32);
+            toolStripComboBoxFontFamily.Size = new Size(150, 30);
             toolStripComboBoxFontFamily.SelectedIndexChanged += toolStripComboBoxFont_SelectedIndexChanged;
             //
             // toolStripLabelFontSize
             //
             toolStripLabelFontSize.ForeColor = Color.FromArgb(210, 210, 210);
             toolStripLabelFontSize.Name = "toolStripLabelFontSize";
-            toolStripLabelFontSize.Size = new Size(36, 29);
+            toolStripLabelFontSize.Size = new Size(36, 27);
             toolStripLabelFontSize.Text = "Size";
             //
             // toolStripComboBoxFontSize
@@ -188,18 +140,35 @@ namespace NET_Thing_Encryptor
             toolStripComboBoxFontSize.FlatStyle = FlatStyle.Flat;
             toolStripComboBoxFontSize.ForeColor = Color.White;
             toolStripComboBoxFontSize.Name = "toolStripComboBoxFontSize";
-            toolStripComboBoxFontSize.Size = new Size(62, 32);
+            toolStripComboBoxFontSize.Size = new Size(62, 30);
             toolStripComboBoxFontSize.SelectedIndexChanged += toolStripComboBoxFont_SelectedIndexChanged;
             toolStripComboBoxFontSize.KeyDown += toolStripComboBoxFontSize_KeyDown;
             //
-            // toolStripButtonExportDecrypted
+            // toolStripLabelSearch
             //
-            toolStripButtonExportDecrypted.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            toolStripButtonExportDecrypted.ForeColor = Color.FromArgb(255, 205, 120);
-            toolStripButtonExportDecrypted.Name = "toolStripButtonExportDecrypted";
-            toolStripButtonExportDecrypted.Size = new Size(178, 29);
-            toolStripButtonExportDecrypted.Text = "Export unencrypted copy…";
-            toolStripButtonExportDecrypted.Click += toolStripButtonExportDecrypted_Click;
+            toolStripLabelSearch.ForeColor = Color.FromArgb(210, 210, 210);
+            toolStripLabelSearch.Name = "toolStripLabelSearch";
+            toolStripLabelSearch.Size = new Size(44, 27);
+            toolStripLabelSearch.Text = "Find";
+            //
+            // toolStripTextBoxSearch
+            //
+            toolStripTextBoxSearch.BackColor = Color.FromArgb(55, 55, 55);
+            toolStripTextBoxSearch.BorderStyle = BorderStyle.FixedSingle;
+            toolStripTextBoxSearch.ForeColor = Color.White;
+            toolStripTextBoxSearch.Name = "toolStripTextBoxSearch";
+            toolStripTextBoxSearch.Size = new Size(220, 30);
+            toolStripTextBoxSearch.KeyDown += toolStripTextBoxSearch_KeyDown;
+            //
+            // toolStripButtonFindNext
+            //
+            toolStripButtonFindNext.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            toolStripButtonFindNext.ForeColor = Color.White;
+            toolStripButtonFindNext.Name = "toolStripButtonFindNext";
+            toolStripButtonFindNext.Size = new Size(77, 27);
+            toolStripButtonFindNext.Text = "Find next";
+            toolStripButtonFindNext.ToolTipText = "Find next (F3)";
+            toolStripButtonFindNext.Click += toolStripButtonFindNext_Click;
             //
             // editor
             //
@@ -208,15 +177,14 @@ namespace NET_Thing_Encryptor
             editor.BorderStyle = BorderStyle.None;
             editor.DetectUrls = false;
             editor.Dock = DockStyle.Fill;
-            editor.Font = new Font("Consolas", 10.5F);
+            editor.Font = new Font("Consolas", 11F);
             editor.ForeColor = Color.FromArgb(235, 235, 235);
-            editor.Location = new Point(0, 100);
-            editor.Margin = new Padding(0);
+            editor.Location = new Point(0, 40);
             editor.Name = "editor";
             editor.ReadOnly = true;
             editor.ScrollBars = RichTextBoxScrollBars.Vertical;
-            editor.Size = new Size(1200, 670);
-            editor.TabIndex = 2;
+            editor.Size = new Size(1200, 732);
+            editor.TabIndex = 1;
             editor.Text = "";
             editor.WordWrap = true;
             editor.SelectionChanged += editor_SelectionChanged;
@@ -225,106 +193,94 @@ namespace NET_Thing_Encryptor
             // statusStrip
             //
             statusStrip.BackColor = Color.FromArgb(37, 37, 38);
-            statusStrip.Dock = DockStyle.Fill;
             statusStrip.Items.AddRange(new ToolStripItem[] {
                 statusLabelState,
-                statusLabelJson,
                 statusLabelPosition,
                 statusLabelCharacters,
-                statusLabelBackup
+                statusLabelEncoding
             });
-            statusStrip.Location = new Point(0, 770);
+            statusStrip.Location = new Point(0, 772);
             statusStrip.Name = "statusStrip";
-            statusStrip.Size = new Size(1200, 30);
+            statusStrip.Size = new Size(1200, 28);
             statusStrip.SizingGrip = false;
-            statusStrip.TabIndex = 3;
+            statusStrip.TabIndex = 2;
             //
             // statusLabelState
             //
             statusLabelState.ForeColor = Color.FromArgb(210, 210, 210);
             statusLabelState.Name = "statusLabelState";
-            statusLabelState.Size = new Size(553, 24);
+            statusLabelState.Size = new Size(807, 22);
             statusLabelState.Spring = true;
-            statusLabelState.Text = "Loading…";
+            statusLabelState.Text = "Saved";
             statusLabelState.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // statusLabelJson
-            //
-            statusLabelJson.ForeColor = Color.FromArgb(210, 210, 210);
-            statusLabelJson.Name = "statusLabelJson";
-            statusLabelJson.Size = new Size(88, 24);
-            statusLabelJson.Text = "Unknown";
             //
             // statusLabelPosition
             //
             statusLabelPosition.ForeColor = Color.FromArgb(210, 210, 210);
             statusLabelPosition.Name = "statusLabelPosition";
-            statusLabelPosition.Size = new Size(85, 24);
+            statusLabelPosition.Size = new Size(85, 22);
             statusLabelPosition.Text = "Ln 1, Col 1";
             //
             // statusLabelCharacters
             //
             statusLabelCharacters.ForeColor = Color.FromArgb(210, 210, 210);
             statusLabelCharacters.Name = "statusLabelCharacters";
-            statusLabelCharacters.Size = new Size(103, 24);
+            statusLabelCharacters.Size = new Size(103, 22);
             statusLabelCharacters.Text = "0 characters";
             //
-            // statusLabelBackup
+            // statusLabelEncoding
             //
-            statusLabelBackup.ForeColor = Color.FromArgb(190, 190, 190);
-            statusLabelBackup.Name = "statusLabelBackup";
-            statusLabelBackup.Size = new Size(244, 24);
-            statusLabelBackup.Text = "Encrypted backup: pending";
+            statusLabelEncoding.ForeColor = Color.FromArgb(210, 210, 210);
+            statusLabelEncoding.Name = "statusLabelEncoding";
+            statusLabelEncoding.Size = new Size(88, 22);
+            statusLabelEncoding.Text = "UTF-8";
             //
-            // EmergencyEditorForm
+            // TextEditorForm
             //
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(30, 30, 30);
             ClientSize = new Size(1200, 800);
-            Controls.Add(rootLayout);
-            MinimumSize = new Size(720, 480);
-            Name = "EmergencyEditorForm";
+            Controls.Add(editor);
+            Controls.Add(statusStrip);
+            Controls.Add(toolStrip);
+            MinimumSize = new Size(640, 420);
+            Name = "TextEditorForm";
             ShowIcon = false;
-            Text = "Emergency Editor";
-            WindowState = FormWindowState.Maximized;
-            FormClosing += EmergencyEditorForm_FormClosing;
-            Load += EmergencyEditorForm_Load;
-            KeyDown += EmergencyEditorForm_KeyDown;
-            rootLayout.ResumeLayout(false);
-            warningPanel.ResumeLayout(false);
+            Text = "Text Editor";
+            FormClosing += TextEditorForm_FormClosing;
+            KeyDown += TextEditorForm_KeyDown;
             toolStrip.ResumeLayout(false);
             toolStrip.PerformLayout();
             statusStrip.ResumeLayout(false);
             statusStrip.PerformLayout();
             ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
 
-        private TableLayoutPanel rootLayout;
-        private Panel warningPanel;
-        private Label labelWarning;
         private ToolStrip toolStrip;
         private ToolStripButton toolStripButtonReadOnly;
         private ToolStripSeparator toolStripSeparatorReadOnly;
         private ToolStripButton toolStripButtonSave;
         private ToolStripSeparator toolStripSeparator1;
-        private ToolStripButton toolStripButtonFormat;
-        private ToolStripButton toolStripButtonValidate;
+        private ToolStripButton toolStripButtonUndo;
+        private ToolStripButton toolStripButtonRedo;
         private ToolStripSeparator toolStripSeparator2;
         private ToolStripLabel toolStripLabelFont;
         private ToolStripComboBox toolStripComboBoxFontFamily;
         private ToolStripLabel toolStripLabelFontSize;
         private ToolStripComboBox toolStripComboBoxFontSize;
-        private ToolStripSeparator toolStripSeparatorFont;
-        private ToolStripButton toolStripButtonExportDecrypted;
+        private ToolStripSeparator toolStripSeparator3;
+        private ToolStripLabel toolStripLabelSearch;
+        private ToolStripTextBox toolStripTextBoxSearch;
+        private ToolStripButton toolStripButtonFindNext;
         private RichTextBox editor;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabelState;
-        private ToolStripStatusLabel statusLabelJson;
         private ToolStripStatusLabel statusLabelPosition;
         private ToolStripStatusLabel statusLabelCharacters;
-        private ToolStripStatusLabel statusLabelBackup;
+        private ToolStripStatusLabel statusLabelEncoding;
     }
 }
