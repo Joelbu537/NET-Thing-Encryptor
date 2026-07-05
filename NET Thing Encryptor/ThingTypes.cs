@@ -13,7 +13,7 @@ namespace NET_Thing_Encryptor
     [JsonDerivedType(typeof(ThingFile), "file")]
     public abstract class ThingObject
     {
-        public string? Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public ulong ID { get; set; }
         public ulong ParentID { get; set; }
     }
@@ -68,6 +68,8 @@ namespace NET_Thing_Encryptor
     }
     public class ThingRoot : ThingObject, ICloneable
     {
+        public const int MaximumImageViewerBufferCount = 20;
+
         public byte[] Salt { get; set; }
         private string? _saveLocation;
         public string SaveLocation 
@@ -126,6 +128,22 @@ namespace NET_Thing_Encryptor
         }
         public bool DarkMode { get; set; }
 
+        private int _imageViewerPreviousBufferCount = 1;
+        public int ImageViewerPreviousBufferCount
+        {
+            get => _imageViewerPreviousBufferCount;
+            set => _imageViewerPreviousBufferCount =
+                Math.Clamp(value, 0, MaximumImageViewerBufferCount);
+        }
+
+        private int _imageViewerNextBufferCount = 2;
+        public int ImageViewerNextBufferCount
+        {
+            get => _imageViewerNextBufferCount;
+            set => _imageViewerNextBufferCount =
+                Math.Clamp(value, 0, MaximumImageViewerBufferCount);
+        }
+
         public string ContentEncrypted { get; set; }
         public List<ThingObjectLink>? Content { get; set; }
 
@@ -136,7 +154,6 @@ namespace NET_Thing_Encryptor
             ParentID = 0;
 
             Salt = new byte[32];
-            SaveLocation = null;
             ContentEncrypted = string.Empty;
             Content = new();
         }

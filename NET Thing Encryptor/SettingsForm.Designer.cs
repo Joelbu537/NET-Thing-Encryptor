@@ -41,11 +41,17 @@
             buttonSaveLocation = new Button();
             label3 = new Label();
             checkBoxDarkMode = new CheckBox();
+            labelPreviousImageBuffer = new Label();
+            numericPreviousImageBuffer = new NumericUpDown();
+            labelNextImageBuffer = new Label();
+            numericNextImageBuffer = new NumericUpDown();
             flowLayoutPanel1 = new FlowLayoutPanel();
             buttonApply = new Button();
             buttonCancel = new Button();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numericPreviousImageBuffer).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)numericNextImageBuffer).BeginInit();
             flowLayoutPanel1.SuspendLayout();
             SuspendLayout();
             // 
@@ -82,6 +88,10 @@
             tableLayoutPanel.Controls.Add(buttonSaveLocation, 2, 0);
             tableLayoutPanel.Controls.Add(label3, 0, 3);
             tableLayoutPanel.Controls.Add(checkBoxDarkMode, 1, 3);
+            tableLayoutPanel.Controls.Add(labelPreviousImageBuffer, 0, 4);
+            tableLayoutPanel.Controls.Add(numericPreviousImageBuffer, 1, 4);
+            tableLayoutPanel.Controls.Add(labelNextImageBuffer, 0, 5);
+            tableLayoutPanel.Controls.Add(numericNextImageBuffer, 1, 5);
             tableLayoutPanel.Dock = DockStyle.Fill;
             tableLayoutPanel.Location = new Point(11, 4);
             tableLayoutPanel.Margin = new Padding(11, 4, 4, 4);
@@ -212,6 +222,50 @@
             checkBoxDarkMode.TabIndex = 11;
             checkBoxDarkMode.Text = "Dark Mode! (Requires restart)";
             checkBoxDarkMode.UseVisualStyleBackColor = true;
+            //
+            // labelPreviousImageBuffer
+            //
+            labelPreviousImageBuffer.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            labelPreviousImageBuffer.AutoSize = true;
+            labelPreviousImageBuffer.Location = new Point(4, 197);
+            labelPreviousImageBuffer.Margin = new Padding(4, 0, 4, 0);
+            labelPreviousImageBuffer.Name = "labelPreviousImageBuffer";
+            labelPreviousImageBuffer.Size = new Size(201, 28);
+            labelPreviousImageBuffer.TabIndex = 12;
+            labelPreviousImageBuffer.Text = "Buffered previous images";
+            labelPreviousImageBuffer.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // numericPreviousImageBuffer
+            //
+            numericPreviousImageBuffer.Anchor = AnchorStyles.Left;
+            numericPreviousImageBuffer.Location = new Point(212, 194);
+            numericPreviousImageBuffer.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            numericPreviousImageBuffer.Name = "numericPreviousImageBuffer";
+            numericPreviousImageBuffer.Size = new Size(120, 34);
+            numericPreviousImageBuffer.TabIndex = 13;
+            numericPreviousImageBuffer.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            //
+            // labelNextImageBuffer
+            //
+            labelNextImageBuffer.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            labelNextImageBuffer.AutoSize = true;
+            labelNextImageBuffer.Location = new Point(4, 244);
+            labelNextImageBuffer.Margin = new Padding(4, 0, 4, 0);
+            labelNextImageBuffer.Name = "labelNextImageBuffer";
+            labelNextImageBuffer.Size = new Size(201, 28);
+            labelNextImageBuffer.TabIndex = 14;
+            labelNextImageBuffer.Text = "Buffered next images";
+            labelNextImageBuffer.TextAlign = ContentAlignment.MiddleLeft;
+            //
+            // numericNextImageBuffer
+            //
+            numericNextImageBuffer.Anchor = AnchorStyles.Left;
+            numericNextImageBuffer.Location = new Point(212, 241);
+            numericNextImageBuffer.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            numericNextImageBuffer.Name = "numericNextImageBuffer";
+            numericNextImageBuffer.Size = new Size(120, 34);
+            numericNextImageBuffer.TabIndex = 15;
+            numericNextImageBuffer.Value = new decimal(new int[] { 2, 0, 0, 0 });
             // 
             // flowLayoutPanel1
             // 
@@ -269,6 +323,8 @@
             tableLayoutPanel1.PerformLayout();
             tableLayoutPanel.ResumeLayout(false);
             tableLayoutPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numericPreviousImageBuffer).EndInit();
+            ((System.ComponentModel.ISupportInitialize)numericNextImageBuffer).EndInit();
             flowLayoutPanel1.ResumeLayout(false);
             flowLayoutPanel1.PerformLayout();
             ResumeLayout(false);
@@ -292,5 +348,9 @@
         private TextBox textBoxImportLocation;
         private Label label3;
         private CheckBox checkBoxDarkMode;
+        private Label labelPreviousImageBuffer;
+        private NumericUpDown numericPreviousImageBuffer;
+        private Label labelNextImageBuffer;
+        private NumericUpDown numericNextImageBuffer;
     }
 }

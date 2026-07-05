@@ -197,12 +197,6 @@
         #endregion
 
         private TableLayoutPanel tableLayoutPanel;
-        private FlowLayoutPanel flowLayoutPanel;
-        private Label labelSelect;
-        private ComboBox comboBox;
-        private TableLayoutPanel tableLayoutPanelImage;
-        private FlowLayoutPanel flowLayoutPanelImage;
-        private ListView listViewImage;
         private FlowLayoutPanel flowLayoutPanelActions;
         private Button buttonImport;
         private Button buttonCancel;

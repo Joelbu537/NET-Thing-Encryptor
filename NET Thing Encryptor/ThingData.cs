@@ -2,37 +2,98 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Collections.Concurrent;
 
 namespace NET_Thing_Encryptor;
 public static class ThingData
 {
     private const string Magic = "NET Thing Encryptor";
-    private static Aes? AesInstance { get; } = Aes.Create();
+    private static readonly byte[] EncryptedFileHeader = "NTE2"u8.ToArray();
+    private const int NonceSize = 12;
+    private const int AuthenticationTagSize = 16;
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks =
+        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly SemaphoreSlim MutationLock = new(1, 1);
+    private static byte[]? EncryptionKey;
+    private static byte[]? LegacyIv;
+    private static int _saving;
     public static ThingRoot? Root { get; private set; }
-    public static int Saving { get; set; }
+    public static int Saving => Volatile.Read(ref _saving);
+
+    public static void BeginSaving() => Interlocked.Increment(ref _saving);
+    public static void EndSaving() => Interlocked.Decrement(ref _saving);
 
     public static async Task<MemoryStream> Encrypt(Stream input)
     {
-        if (AesInstance.Key is null || AesInstance.IV is null)
-            throw new InvalidOperationException("Key and IV must be set before encryption.");
+        byte[] key = GetEncryptionKey();
+        using var plaintext = new MemoryStream();
+        await input.CopyToAsync(plaintext);
 
-        var output = new MemoryStream();
-        using var cryptoStream = new CryptoStream(output, AesInstance.CreateEncryptor(), CryptoStreamMode.Write, leaveOpen: true);
-        await input.CopyToAsync(cryptoStream);
-        await cryptoStream.FlushFinalBlockAsync();
+        byte[] nonce = RandomNumberGenerator.GetBytes(NonceSize);
+        byte[] ciphertext = new byte[checked((int)plaintext.Length)];
+        byte[] authenticationTag = new byte[AuthenticationTagSize];
+
+        using (var aes = new AesGcm(key, AuthenticationTagSize))
+        {
+            aes.Encrypt(
+                nonce,
+                plaintext.GetBuffer().AsSpan(0, checked((int)plaintext.Length)),
+                ciphertext,
+                authenticationTag,
+                EncryptedFileHeader);
+        }
+
+        var output = new MemoryStream(
+            EncryptedFileHeader.Length + NonceSize + AuthenticationTagSize + ciphertext.Length);
+        await output.WriteAsync(EncryptedFileHeader);
+        await output.WriteAsync(nonce);
+        await output.WriteAsync(authenticationTag);
+        await output.WriteAsync(ciphertext);
         output.Position = 0;
         return output;
     }
 
     public static async Task<MemoryStream> Decrypt(Stream input)
     {
-        if (AesInstance.Key == null)
-            throw new InvalidOperationException("Key and IV must be set before decryption.");
+        return await Decrypt(input, GetEncryptionKey(), GetLegacyIv());
+    }
+
+    private static async Task<MemoryStream> Decrypt(Stream input, byte[] key, byte[] legacyIv)
+    {
+        using var encrypted = new MemoryStream();
+        await input.CopyToAsync(encrypted);
+        byte[] encryptedBytes = encrypted.ToArray();
+
+        if (encryptedBytes.AsSpan().StartsWith(EncryptedFileHeader))
+        {
+            int payloadOffset = EncryptedFileHeader.Length + NonceSize + AuthenticationTagSize;
+            if (encryptedBytes.Length < payloadOffset)
+                throw new CryptographicException("The encrypted data is incomplete.");
+
+            ReadOnlySpan<byte> nonce = encryptedBytes.AsSpan(EncryptedFileHeader.Length, NonceSize);
+            ReadOnlySpan<byte> authenticationTag =
+                encryptedBytes.AsSpan(EncryptedFileHeader.Length + NonceSize, AuthenticationTagSize);
+            ReadOnlySpan<byte> ciphertext = encryptedBytes.AsSpan(payloadOffset);
+            byte[] plaintext = new byte[ciphertext.Length];
+
+            using (var aes = new AesGcm(key, AuthenticationTagSize))
+            {
+                aes.Decrypt(nonce, ciphertext, authenticationTag, plaintext, EncryptedFileHeader);
+            }
+
+            return new MemoryStream(plaintext, writable: false);
+        }
+
+        // Compatibility with files written before the authenticated NTE2 format.
+        using var legacyAes = Aes.Create();
+        legacyAes.Key = key;
+        legacyAes.IV = legacyIv;
 
         var output = new MemoryStream();
-        using var cryptoStream = new CryptoStream(input, AesInstance.CreateDecryptor(), CryptoStreamMode.Read, leaveOpen: true);
+        using var encryptedInput = new MemoryStream(encryptedBytes, writable: false);
+        using var cryptoStream =
+            new CryptoStream(encryptedInput, legacyAes.CreateDecryptor(), CryptoStreamMode.Read);
         await cryptoStream.CopyToAsync(output);
-
         output.Position = 0;
         return output;
     }
@@ -73,68 +134,103 @@ public static class ThingData
     public static async Task<bool> AttemptDecrypt(string password)
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        byte[]? salt = Root.Salt;
+        ArgumentException.ThrowIfNullOrEmpty(password);
 
-        byte[]? key = Rfc2898DeriveBytes.Pbkdf2(
+        byte[] keyMaterial = Rfc2898DeriveBytes.Pbkdf2(
                 password,
-                salt,
+                Root.Salt,
                 iterations: 10000,
                 hashAlgorithm: HashAlgorithmName.SHA256, 
                 outputLength: 48
                 );
 
-        AesInstance.Key = key[..32];
-        AesInstance.IV = key[32..];
+        byte[] candidateKey = keyMaterial[..32];
+        byte[] candidateLegacyIv = keyMaterial[32..];
 
-        if (!string.IsNullOrEmpty(Root.ContentEncrypted))
+        try
         {
-            try
+            if (!string.IsNullOrEmpty(Root.ContentEncrypted))
             {
-                string? temp = await Decrypt(Root.ContentEncrypted);
-                //Debug.WriteLine(temp);
+                byte[] encryptedBytes = Convert.FromBase64String(Root.ContentEncrypted);
+                using var inputStream = new MemoryStream(encryptedBytes, writable: false);
+                using var decrypted = await Decrypt(inputStream, candidateKey, candidateLegacyIv);
+                string temp = Encoding.UTF8.GetString(decrypted.ToArray());
 
                 if (temp.StartsWith(Magic)) //PWD korrekt
                 {
-                    string? subtemp = temp.Substring(Magic.Length);
-                    Root.Content = JsonSerializer.Deserialize<List<ThingObjectLink>>(subtemp);
+                    string subtemp = temp[Magic.Length..];
+                    Root.Content = JsonSerializer.Deserialize<List<ThingObjectLink>>(subtemp) ?? [];
+                    SetEncryptionMaterial(candidateKey, candidateLegacyIv);
                     Debug.WriteLine("Password correct");
                     return true;
                 }
             }
-            catch(CryptographicException)
+            else
             {
-                Debug.WriteLine("Password incorrect, decryption FAILED.");
+                SetEncryptionMaterial(candidateKey, candidateLegacyIv);
+                Debug.WriteLine("No main file found, assuming first run or no password set.");
+                return true;
             }
         }
-        else
+        catch (CryptographicException)
         {
-            Debug.WriteLine("No main file found, assuming first run or no password set.");
-            return true;
+            Debug.WriteLine("Password incorrect, decryption FAILED.");
+        }
+        catch (FormatException)
+        {
+            Debug.WriteLine("Root content is not valid encrypted data.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(keyMaterial);
+            CryptographicOperations.ZeroMemory(candidateKey);
+            CryptographicOperations.ZeroMemory(candidateLegacyIv);
         }
 
-        Debug.WriteLine("Password incorrect, resetting Key and IV.");
-        Array.Clear(AesInstance.Key);
-        Array.Clear(AesInstance.IV);
+        Debug.WriteLine("Password incorrect.");
         return false;
+    }
+
+    private static byte[] GetEncryptionKey()
+    {
+        byte[]? key = Volatile.Read(ref EncryptionKey);
+        return key ?? throw new InvalidOperationException("An encryption key has not been established.");
+    }
+
+    private static byte[] GetLegacyIv()
+    {
+        byte[]? iv = Volatile.Read(ref LegacyIv);
+        return iv ?? throw new InvalidOperationException("A legacy IV has not been established.");
+    }
+
+    private static void SetEncryptionMaterial(byte[] key, byte[] legacyIv)
+    {
+        byte[]? oldKey = Interlocked.Exchange(ref EncryptionKey, (byte[])key.Clone());
+        byte[]? oldIv = Interlocked.Exchange(ref LegacyIv, (byte[])legacyIv.Clone());
+        if (oldKey is not null)
+            CryptographicOperations.ZeroMemory(oldKey);
+        if (oldIv is not null)
+            CryptographicOperations.ZeroMemory(oldIv);
     }
     public static async Task<bool> LoadMainData()
     {
-    Retry:
+        string dataDirectory = Path.Combine(Environment.CurrentDirectory, "Data");
+        string rootPath = Path.Combine(dataDirectory, "0.nte");
         try
         {
-            if(!Directory.Exists(Path.Combine(Environment.CurrentDirectory, "Data")))
+            if (!Directory.Exists(dataDirectory))
             {
                 Debug.WriteLine("\\Data directory not found, creating it.");
-                Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, @"Data"));
+                Directory.CreateDirectory(dataDirectory);
             }
-            if (File.Exists(Path.Combine(Environment.CurrentDirectory, @"Data\0.nte")))
+            if (File.Exists(rootPath))
             {
                 Debug.WriteLine("Main file found, attempting to load.");
-                using FileStream fs = File.OpenRead(Path.Combine(Environment.CurrentDirectory, @"Data\0.nte"));
+                using FileStream fs = File.OpenRead(rootPath);
                 ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
-                root.Content = new List<ThingObjectLink>();
+                root.Content = [];
                 Root = root;
                 Debug.WriteLine("Main file loaded successfully.");
             }
@@ -156,23 +252,18 @@ public static class ThingData
             }
             return true;
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or ArgumentNullException)
         {
-            Debug.WriteLine("JSON Exception occurred, attempting to recover.");
-            File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
-            MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
+            string backupPath = Path.Combine(
+                dataDirectory,
+                $"0_damaged_{DateTime.Now:yyyyMMdd_HHmmss}.nte");
+            Debug.WriteLine($"{ex.GetType().Name} occurred while loading the root file.");
+            if (File.Exists(rootPath))
+                File.Copy(rootPath, backupPath, overwrite: false);
+            MessageBox.Show($"The main data file is corrupted or damaged. A backup has been created at {backupPath}.\n" +
                 "Please restore from a backup or recreate the file.",
                 "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            goto Retry;
-        }
-        catch (ArgumentNullException)
-        {
-            Debug.WriteLine("Argument Null Exception occurred, attempting to recover.");
-            File.Copy(@"/Data/0.nte", @"/Data/0_damaged.nte", true);
-            MessageBox.Show("The main data file is corrupted or damaged. A backup has been created at /Data/0_damaged.nte." +
-                "Please restore from a backup or recreate the file.",
-                "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            goto Retry;
+            return false;
         }
         catch (UnauthorizedAccessException)
         {
@@ -205,16 +296,15 @@ public static class ThingData
     public static ulong GenerateID()
     {
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        ulong tempID = 0;
+        ulong tempID;
         do
         {
             byte[] buffer = new byte[8];
             RandomNumberGenerator.Fill(buffer);
             tempID = BitConverter.ToUInt64(buffer, 0);
         }
-        while (tempID != 0 && File.Exists((Root.SaveLocation == null) ? IDToHex(tempID) : Path.Combine(Root.SaveLocation, IDToHex(tempID))));
+        while (tempID == 0 || File.Exists(Path.Combine(Root.SaveLocation, IDToHex(tempID) + ".nte")));
         return tempID;
-
     }
     public static string GetFilePath(ulong id, bool create = false)
     {
@@ -225,12 +315,12 @@ public static class ThingData
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         string path = string.Empty;
 
-        path = Path.GetFullPath(Path.Combine(Root.SaveLocation, (IDToHex(id) + ".nte")));
+        path = Path.GetFullPath(Path.Combine(Root.SaveLocation, IDToHex(id) + ".nte"));
         if (File.Exists(path))
             return path;
         else if (create)
         {
-            File.Create(path).Close();
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             return path;
         }
 
@@ -283,7 +373,7 @@ public static class ThingData
     }
     public static async Task SaveFileAsync(ThingObject? obj)
     {
-        Saving++;
+        BeginSaving();
         try
         {
             ArgumentNullException.ThrowIfNull(obj, nameof(obj));
@@ -292,28 +382,23 @@ public static class ThingData
             switch (obj)
             {
                 case ThingFile file:
-                    await SaveFileAsyncLegacy(file);
+                    await SaveFileCoreAsync(file);
                     break;
                 case ThingFolder folder:
-                    await SaveFolderAsyncLegacy(folder);
+                    await SaveFolderCoreAsync(folder);
                     break;
                 default:
                     throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
             }
         }
-        catch (Exception)
-        {
-            throw;
-        }
         finally
         {
-            Saving--;
+            EndSaving();
         }
     }
-    private static async Task SaveFolderAsyncLegacy(ThingFolder? folder)
-    {
-        ArgumentNullException.ThrowIfNull(folder);
 
+    private static async Task SaveFolderCoreAsync(ThingFolder folder)
+    {
         string folderPath = GetFilePath(folder.ID, true);
 
         var options = new JsonSerializerOptions
@@ -325,13 +410,11 @@ public static class ThingData
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(folderContent));
         await using var encrypted = await Encrypt(input);
 
-        await using FileStream fs = File.Create(folderPath);
-        await encrypted.CopyToAsync(fs);
+        await WriteAtomicallyAsync(folderPath, encrypted);
     }
-    private static async Task SaveFileAsyncLegacy(ThingFile file)
-    {
-        ArgumentNullException.ThrowIfNull(file);
 
+    private static async Task SaveFileCoreAsync(ThingFile file)
+    {
         string filePath = GetFilePath(file.ID, true);
 
         var options = new JsonSerializerOptions
@@ -345,242 +428,432 @@ public static class ThingData
         plainStream.Position = 0;
 
         await using var encrypted = await Encrypt(plainStream);
+        await WriteAtomicallyAsync(filePath, encrypted);
+    }
 
-        await using var fs = File.Create(filePath);
-        await encrypted.CopyToAsync(fs);
+    public static async Task SaveEncryptedDataAsync(ulong id, Stream plaintext)
+    {
+        BeginSaving();
+        try
+        {
+            string filePath = GetFilePath(id, create: true);
+            await using var encrypted = await Encrypt(plaintext);
+            await WriteAtomicallyAsync(filePath, encrypted);
+        }
+        finally
+        {
+            EndSaving();
+        }
+    }
+
+    private static async Task WriteAtomicallyAsync(string destinationPath, Stream content)
+    {
+        string fullPath = Path.GetFullPath(destinationPath);
+        string directory = Path.GetDirectoryName(fullPath)
+            ?? throw new InvalidOperationException("The destination has no parent directory.");
+        Directory.CreateDirectory(directory);
+
+        SemaphoreSlim fileLock = FileLocks.GetOrAdd(fullPath, static _ => new SemaphoreSlim(1, 1));
+        await fileLock.WaitAsync();
+        string temporaryPath = Path.Combine(
+            directory,
+            $".{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            content.Position = 0;
+            await using (var output = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                81920,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await content.CopyToAsync(output);
+                await output.FlushAsync();
+                output.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+            fileLock.Release();
+        }
     }
     public static async Task MoveFileToFolderAsync(ThingFile file, ulong folderID)
     {
-        Saving++;
+        ArgumentNullException.ThrowIfNull(file);
+        if (folderID == 0)
+            throw new ArgumentException("Files cannot be placed directly in the root.", nameof(folderID));
+
+        BeginSaving();
+        await MutationLock.WaitAsync();
         try
         {
-            ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
-            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
+            ThingRoot root = RequireRoot();
+            ThingFolder folder = await LoadFileAsync<ThingFolder>(folderID)
+                ?? throw new FileNotFoundException("The target folder could not be loaded.");
+
+            if (file.ParentID == folderID)
+                return;
+            if (folder.Content.Any(x => x.ID == file.ID))
+                throw new InvalidOperationException("The target folder already contains this file.");
+
             ThingObjectLink? link;
 
             if (file.ParentID == 0)
             {
-                ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-                ArgumentNullException.ThrowIfNull(Root.Content, nameof(Root.Content));
-                link = new ThingObjectLink(file.ID, file.Name, file.Type, 0);
-
-                Root.Content.Remove(link);
+                link = root.Content?.FirstOrDefault(x => x.ID == file.ID);
+                if (link is not null)
+                {
+                    root.Content!.Remove(link);
+                    await SaveRootAsync();
+                }
             }
             else
             {
-                ThingFolder? oldFolder = await LoadFileAsync(file.ParentID) as ThingFolder;
-                ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
+                ThingFolder oldFolder = await LoadFileAsync<ThingFolder>(file.ParentID)
+                    ?? throw new FileNotFoundException("The current parent folder could not be loaded.");
                 link = oldFolder.Content.FirstOrDefault(x => x.ID == file.ID);
+                if (link is null)
+                    throw new InvalidDataException("The current parent does not reference this file.");
                 oldFolder.Content.Remove(link);
                 await SaveFileAsync(oldFolder);
             }
 
-            folder.Content.Add(link);
-            await SaveFileAsync(folder);
+            link ??= new ThingObjectLink(
+                file.ID,
+                file.Name,
+                file.Type,
+                file.Content?.LongLength ?? 0);
+            link.Name = file.Name;
+            link.Type = file.Type;
+            link.Size = file.Content?.LongLength ?? link.Size;
+
             file.ParentID = folder.ID;
             await SaveFileAsync(file);
-        }
-        catch(Exception)
-        {
-            throw;
+            folder.Content.Add(link);
+            await SaveFileAsync(folder);
         }
         finally
         {
-            Saving--;
+            MutationLock.Release();
+            EndSaving();
         }
     }
+
     public static async Task MoveFolderToFolderAsync(ulong folderID, ulong parentFolderID)
     {
-        Saving++;
+        if (folderID == 0)
+            throw new ArgumentException("The root folder cannot be moved.", nameof(folderID));
+        if (folderID == parentFolderID)
+            throw new InvalidOperationException("A folder cannot contain itself.");
+
+        BeginSaving();
+        await MutationLock.WaitAsync();
         try
         {
-            ThingFolder? parentFolder = await LoadFileAsync(parentFolderID) as ThingFolder;
-            ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
-            ThingObjectLink? link;
+            ThingRoot root = RequireRoot();
+            ThingFolder folder = await LoadFileAsync<ThingFolder>(folderID)
+                ?? throw new FileNotFoundException("The folder could not be loaded.");
+            if (folder.ParentID == parentFolderID)
+                return;
 
-            ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
-            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-
-            if (folder.ID == 0)
+            ulong ancestorID = parentFolderID;
+            while (ancestorID != 0)
             {
-                throw new ArgumentException("Cannot add the root folder to another folder.", nameof(folder));
+                if (ancestorID == folderID)
+                    throw new InvalidOperationException("A folder cannot be moved into one of its descendants.");
+                ThingFolder ancestor = await LoadFileAsync<ThingFolder>(ancestorID)
+                    ?? throw new FileNotFoundException("An ancestor folder could not be loaded.");
+                ancestorID = ancestor.ParentID;
             }
 
+            ThingFolder? oldParent = null;
+            ThingObjectLink? link;
             if (folder.ParentID == 0)
             {
-                link = Root.Content.FirstOrDefault(x => x.ID == folder.ID);
-                Root.Content.Remove(link);
+                link = root.Content?.FirstOrDefault(x => x.ID == folder.ID);
             }
             else
             {
-                ThingFolder? oldFolder = await LoadFileAsync(folder.ParentID) as ThingFolder; // UHHHHHHHHH Skill Issue
-                ArgumentNullException.ThrowIfNull(oldFolder, nameof(oldFolder));
-                link = oldFolder.Content.FirstOrDefault(x => x.ID == folder.ID);
-                oldFolder.Content.Remove(link);
-                await SaveFileAsync(oldFolder);
+                oldParent = await LoadFileAsync<ThingFolder>(folder.ParentID)
+                    ?? throw new FileNotFoundException("The current parent folder could not be loaded.");
+                link = oldParent.Content.FirstOrDefault(x => x.ID == folder.ID);
             }
 
-            parentFolder.Content.Add(link);
-            await SaveFileAsync(parentFolder);
-            folder.ParentID = parentFolder.ID;
+            if (link is null)
+                throw new InvalidDataException("The current parent does not reference this folder.");
+
+            ThingFolder? newParent = parentFolderID == 0
+                ? null
+                : await LoadFileAsync<ThingFolder>(parentFolderID);
+            if (parentFolderID != 0 && newParent is null)
+                throw new FileNotFoundException("The target parent folder could not be loaded.");
+            if (newParent?.Content.Any(x => x.ID == folder.ID) == true ||
+                (parentFolderID == 0 && root.Content?.Any(x => x.ID == folder.ID) == true))
+                throw new InvalidOperationException("The target parent already contains this folder.");
+
+            root.Content?.RemoveAll(x => x.ID == folder.ID);
+            oldParent?.Content.RemoveAll(x => x.ID == folder.ID);
+
+            folder.ParentID = parentFolderID;
             await SaveFileAsync(folder);
-        }
-        catch(Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            Saving--;
-        }
-    }
-    private static async Task DeleteFile(ulong fileID)
-    {
-        Saving++;
-        try
-        {
-            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-            ThingFile? file = await LoadFileAsync(fileID) as ThingFile;
-            ArgumentNullException.ThrowIfNull(file, nameof(file));
-            Debug.WriteLine("Attempting to delete file: " + file.Name);
-            string filePath = GetFilePath(fileID);
-            if (File.Exists(filePath))
+
+            if (newParent is null)
             {
-                File.Delete(filePath);
-            }
-            ThingFolder? folder = await LoadFileAsync(file.ParentID) as ThingFolder;
-            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-            folder.Content.RemoveAll(x => x.ID == file.ID);
-            await SaveFileAsync(folder);
-        }
-        catch(Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            Saving--;
-        }
-    }
-    private static async Task DeleteFolder(ulong folderID)
-    {
-        Saving++;
-        try
-        {
-            if (folderID == 0)
-            {
-                throw new ArgumentException("Cannot delete the root folder.", nameof(folderID));
-            }
-            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-            ThingFolder? folder = await LoadFileAsync(folderID) as ThingFolder;
-            ArgumentNullException.ThrowIfNull(folder, nameof(folder));
-            Debug.Write("Attempting to delete folder: " + folder.Name + "...  ");
-            if (folder.Content.Count != 0)
-            {
-                throw new InvalidOperationException("Cannot delete a folder that contains files or subfolders.");
-            }
-            string folderPath = GetFilePath(folderID);
-            if (folder.ParentID != 0)
-            {
-                ThingFolder? parentFolder = await LoadFileAsync(folder.ParentID) as ThingFolder;
-                ArgumentNullException.ThrowIfNull(parentFolder, nameof(parentFolder));
-                parentFolder.Content.RemoveAll(x => x.ID == folder.ID);
-                await SaveFileAsync(parentFolder);
-            }
-            else
-            {
-                Root.Content.RemoveAll(x => x.ID == folder.ID);
+                root.Content ??= [];
+                root.Content.Add(link);
                 await SaveRootAsync();
             }
-            if (File.Exists(folderPath))
+            else
             {
-                File.Delete(folderPath);
+                newParent.Content.Add(link);
+                await SaveFileAsync(newParent);
             }
-        }
-        catch(Exception)
-        {
-            throw;
+
+            if (oldParent is not null)
+                await SaveFileAsync(oldParent);
+            else if (parentFolderID != 0)
+                await SaveRootAsync();
         }
         finally
         {
-            Saving--;
+            MutationLock.Release();
+            EndSaving();
         }
     }
-    public static async Task DeleteObject(ulong id)
+
+    public static async Task RenameObjectAsync(ulong id, string newName)
     {
-        Saving++;
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+        if (id == 0)
+            throw new ArgumentException("The root object cannot be renamed.", nameof(id));
+
+        BeginSaving();
+        await MutationLock.WaitAsync();
         try
         {
-            ThingObject? obj = await LoadFileAsync(id);
-            ArgumentNullException.ThrowIfNull(obj);
+            ThingRoot root = RequireRoot();
+            ThingObject obj = await LoadFileAsync(id)
+                ?? throw new FileNotFoundException("The object could not be loaded.");
+            obj.Name = newName;
+            await SaveFileAsync(obj);
 
-            if (obj is ThingFile file)
+            if (obj.ParentID == 0)
             {
-                await DeleteFile(file.ID);
-            }
-            else if (obj is ThingFolder folder)
-            {
-                foreach (ThingObjectLink link in folder.Content.ToList())
-                {
-                    if (link.Type == FileType.folder)
-                    {
-                        await DeleteObject(link.ID);
-                    }
-                    else
-                    {
-                        await DeleteFile(link.ID);
-                    }
-                }
-                await DeleteFolder(folder.ID);
+                ThingObjectLink link = root.Content?.FirstOrDefault(x => x.ID == id)
+                    ?? throw new InvalidDataException("The root does not reference the renamed object.");
+                link.Name = newName;
+                await SaveRootAsync();
             }
             else
             {
-                throw new ArgumentException("Object must be of type ThingFile or ThingFolder.", nameof(obj));
+                ThingFolder parent = await LoadFileAsync<ThingFolder>(obj.ParentID)
+                    ?? throw new FileNotFoundException("The parent folder could not be loaded.");
+                ThingObjectLink link = parent.Content.FirstOrDefault(x => x.ID == id)
+                    ?? throw new InvalidDataException(
+                        "The parent folder does not reference the renamed object.");
+                link.Name = newName;
+                await SaveFileAsync(parent);
             }
         }
         finally
         {
-            Saving--;
+            MutationLock.Release();
+            EndSaving();
+        }
+    }
+
+    public static async Task UpdateObjectSizeAsync(ulong id, long size)
+    {
+        if (id == 0)
+            throw new ArgumentException("The root object has no parent link.", nameof(id));
+        if (size < 0)
+            throw new ArgumentOutOfRangeException(nameof(size));
+
+        BeginSaving();
+        await MutationLock.WaitAsync();
+        try
+        {
+            ThingRoot root = RequireRoot();
+            ThingObject obj = await LoadFileAsync(id)
+                ?? throw new FileNotFoundException("The object could not be loaded.");
+
+            if (obj.ParentID == 0)
+            {
+                ThingObjectLink? link = root.Content?.FirstOrDefault(x => x.ID == id);
+                if (link is not null && link.Size != size)
+                {
+                    link.Size = size;
+                    await SaveRootAsync();
+                }
+            }
+            else
+            {
+                ThingFolder parent = await LoadFileAsync<ThingFolder>(obj.ParentID)
+                    ?? throw new FileNotFoundException("The parent folder could not be loaded.");
+                ThingObjectLink? link = parent.Content.FirstOrDefault(x => x.ID == id);
+                if (link is not null && link.Size != size)
+                {
+                    link.Size = size;
+                    await SaveFileAsync(parent);
+                }
+            }
+        }
+        finally
+        {
+            MutationLock.Release();
+            EndSaving();
+        }
+    }
+
+    private static async Task DeleteFileCoreAsync(ulong fileID)
+    {
+        ThingRoot root = RequireRoot();
+        ThingFile file = await LoadFileAsync<ThingFile>(fileID)
+            ?? throw new FileNotFoundException("The file could not be loaded.");
+        Debug.WriteLine("Attempting to delete file: " + file.Name);
+
+        if (file.ParentID == 0)
+        {
+            root.Content?.RemoveAll(x => x.ID == file.ID);
+            await SaveRootAsync();
+        }
+        else
+        {
+            ThingFolder parent = await LoadFileAsync<ThingFolder>(file.ParentID)
+                ?? throw new FileNotFoundException("The parent folder could not be loaded.");
+            parent.Content.RemoveAll(x => x.ID == file.ID);
+            await SaveFileAsync(parent);
+        }
+
+        await DeletePersistedFileAsync(GetFilePath(fileID));
+    }
+
+    private static async Task DeleteFolderCoreAsync(ulong folderID)
+    {
+        if (folderID == 0)
+            throw new ArgumentException("The root folder cannot be deleted.", nameof(folderID));
+
+        ThingRoot root = RequireRoot();
+        ThingFolder folder = await LoadFileAsync<ThingFolder>(folderID)
+            ?? throw new FileNotFoundException("The folder could not be loaded.");
+        if (folder.Content.Count != 0)
+            throw new InvalidOperationException("A non-empty folder cannot be deleted directly.");
+
+        if (folder.ParentID == 0)
+        {
+            root.Content?.RemoveAll(x => x.ID == folder.ID);
+            await SaveRootAsync();
+        }
+        else
+        {
+            ThingFolder parent = await LoadFileAsync<ThingFolder>(folder.ParentID)
+                ?? throw new FileNotFoundException("The parent folder could not be loaded.");
+            parent.Content.RemoveAll(x => x.ID == folder.ID);
+            await SaveFileAsync(parent);
+        }
+
+        await DeletePersistedFileAsync(GetFilePath(folderID));
+    }
+
+    public static async Task DeleteObject(ulong id)
+    {
+        if (id == 0)
+            throw new ArgumentException("The root object cannot be deleted.", nameof(id));
+
+        BeginSaving();
+        await MutationLock.WaitAsync();
+        try
+        {
+            await DeleteObjectCoreAsync(id);
+        }
+        finally
+        {
+            MutationLock.Release();
+            EndSaving();
+        }
+    }
+
+    private static async Task DeleteObjectCoreAsync(ulong id)
+    {
+        ThingObject obj = await LoadFileAsync(id)
+            ?? throw new FileNotFoundException("The object could not be loaded.");
+
+        if (obj is ThingFile file)
+        {
+            await DeleteFileCoreAsync(file.ID);
+            return;
+        }
+
+        if (obj is not ThingFolder folder)
+            throw new InvalidDataException("The stored object has an unsupported type.");
+
+        foreach (ThingObjectLink link in folder.Content.ToList())
+            await DeleteObjectCoreAsync(link.ID);
+
+        await DeleteFolderCoreAsync(folder.ID);
+    }
+
+    private static async Task DeletePersistedFileAsync(string filePath)
+    {
+        string fullPath = Path.GetFullPath(filePath);
+        SemaphoreSlim fileLock = FileLocks.GetOrAdd(fullPath, static _ => new SemaphoreSlim(1, 1));
+        await fileLock.WaitAsync();
+        try
+        {
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+        finally
+        {
+            fileLock.Release();
         }
     }
     public static async Task SaveRootAsync()
     {
-        Saving++;
+        BeginSaving();
         try
         {
             Debug.WriteLine("Saving Root to main file");
-            ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-            ThingRoot tempRoot = (ThingRoot)Root.Clone();
-            tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(Root.Content));
+            ThingRoot root = RequireRoot();
+            ThingRoot tempRoot = (ThingRoot)root.Clone();
+            tempRoot.ContentEncrypted = await Encrypt(Magic + JsonSerializer.Serialize(root.Content));
             tempRoot.Content = null;
             string rootContent = JsonSerializer.Serialize(tempRoot);
             string rootPath = GetFilePath(0);
-            using FileStream fs = File.Create(rootPath);
-            await fs.WriteAsync(Encoding.UTF8.GetBytes(rootContent));
-            await fs.FlushAsync();
-        }
-        catch (Exception)
-        {
-            throw;
+            using var content = new MemoryStream(Encoding.UTF8.GetBytes(rootContent), writable: false);
+            await WriteAtomicallyAsync(rootPath, content);
         }
         finally
         {
-            Saving--;
+            EndSaving();
         }
     }
     public static ThingFolder AddToRoot(this ThingFolder folder)
     {
-        ArgumentNullException.ThrowIfNull(Root, "Root cannot be null.");
-        Root.Content?.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.folder, 0));
+        ArgumentNullException.ThrowIfNull(folder);
+        ThingRoot root = RequireRoot();
+        root.Content ??= [];
+        if (root.Content.Any(x => x.ID == folder.ID))
+            throw new InvalidOperationException("The root already contains this folder.");
+        folder.ParentID = 0;
+        root.Content.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.folder, 0));
         return folder;
     }
     public static async Task<List<ThingObjectLink>> LoadFolderContent(ulong id)
     {
-        List<ThingObjectLink> content = new List<ThingObjectLink>();
+        List<ThingObjectLink> content = [];
 
-        if(id == 0)
+        if (id == 0)
         {
-            foreach (ThingObjectLink link in Root.Content)
+            ThingRoot root = RequireRoot();
+            foreach (ThingObjectLink link in root.Content ?? [])
             {
                 content.Add(link);
             }
@@ -600,6 +873,11 @@ public static class ThingData
         }
         throw new ArgumentException("The provided ID does not correspond to a folder.", nameof(id));
     }
+
+    private static ThingRoot RequireRoot()
+    {
+        return Root ?? throw new InvalidOperationException("The root data has not been loaded.");
+    }
     public static string Sizeify(this long sizeInBytes)
     {
         string[] sizes = { "Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
@@ -616,11 +894,8 @@ public static class ThingData
     }
     public static void ClearImage(this PictureBox p)
     {
-        if (p.Image != null)
-        {
-            p.Image.Dispose();
-            p.Image = null;
-        }
-
+        Image? image = p.Image;
+        p.Image = null;
+        image?.Dispose();
     }
 }

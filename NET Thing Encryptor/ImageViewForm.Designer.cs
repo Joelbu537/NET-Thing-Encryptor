@@ -61,10 +61,11 @@
             textBoxIndex.Name = "textBoxIndex";
             textBoxIndex.Size = new Size(150, 40);
             textBoxIndex.TabIndex = 0;
-            textBoxIndex.TabStop = false;
+            textBoxIndex.TabStop = true;
             textBoxIndex.Text = "0/0";
             textBoxIndex.TextAlign = HorizontalAlignment.Right;
             textBoxIndex.Enter += textBoxIndex_Enter;
+            textBoxIndex.KeyDown += textBoxIndex_KeyDown;
             textBoxIndex.Leave += textBoxIndex_Leave;
             // 
             // ImageViewForm

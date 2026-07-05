@@ -14,10 +14,9 @@ namespace NET_Thing_Encryptor
 {
     public partial class EmergencyEditorForm : Form
     {
-        private string filePath;
-        private string MD5;
+        private string filePath = string.Empty;
+        private string MD5 = string.Empty;
         private ulong ID;
-        private ThingObject? obj;
         public EmergencyEditorForm(ulong id)
         {
             ID = id;
@@ -53,11 +52,7 @@ namespace NET_Thing_Encryptor
                     byte[] data = Encoding.UTF8.GetBytes(textBox.Text);
                     using MemoryStream ms = new(data);
 
-                    var encrtypted = await ThingData.Encrypt(ms);
-
-                    using FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-                    await encrtypted.CopyToAsync(fs);
-                    await fs.FlushAsync();
+                    await ThingData.SaveEncryptedDataAsync(ID, ms);
                 }
             }
         }

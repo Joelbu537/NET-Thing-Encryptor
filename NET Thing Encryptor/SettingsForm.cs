@@ -15,6 +15,9 @@ namespace NET_Thing_Encryptor
             textBoxSaveLocation.Text = Path.GetFullPath(ThingData.Root.SaveLocation);
             textBoxImportLocation.Text = Path.GetFullPath(ThingData.Root.ImportLocation);
             textBoxExportLocation.Text = Path.GetFullPath(ThingData.Root.ExportLocation);
+            checkBoxDarkMode.Checked = ThingData.Root.DarkMode;
+            numericPreviousImageBuffer.Value = ThingData.Root.ImageViewerPreviousBufferCount;
+            numericNextImageBuffer.Value = ThingData.Root.ImageViewerNextBufferCount;
         }
 
         private async void buttonApply_Click(object sender, EventArgs e)
@@ -22,43 +25,58 @@ namespace NET_Thing_Encryptor
             if (buttonApply.Enabled == false) return;
             buttonApply.Enabled = false;
             buttonCancel.Enabled = false;
-            ArgumentNullException.ThrowIfNull(ThingData.Root);
-
-            // Save Location
-            string pathSave = Path.GetFullPath(textBoxSaveLocation.Text);
-            if (pathSave != Path.GetFullPath(ThingData.Root.SaveLocation))
+            try
             {
-                Directory.CreateDirectory(pathSave);
+                ArgumentNullException.ThrowIfNull(ThingData.Root);
 
-                List<FileInfo> files = new DirectoryInfo(Path.GetFullPath(ThingData.Root.SaveLocation)).GetFiles("*.nte").ToList<FileInfo>();
-                files.RemoveAll(f => f.Name == "0.nte");
+                // Save Location
+                string pathSave = Path.GetFullPath(textBoxSaveLocation.Text);
+                if (pathSave != Path.GetFullPath(ThingData.Root.SaveLocation))
+                {
+                    Directory.CreateDirectory(pathSave);
 
-                using SettingsMoveFilesForm moveForm = new SettingsMoveFilesForm(files, pathSave);
-                moveForm.ShowDialog();
-                ThingData.Root.SaveLocation = pathSave;
-            }
+                    List<FileInfo> files = new DirectoryInfo(Path.GetFullPath(ThingData.Root.SaveLocation))
+                        .GetFiles("*.nte").ToList();
+                    files.RemoveAll(f => f.Name == "0.nte");
 
-            // Import Location
-            string pathImport = Path.GetFullPath(textBoxImportLocation.Text);
-            if (!Directory.Exists(pathImport))
-            {
+                    using SettingsMoveFilesForm moveForm = new(files, pathSave);
+                    if (moveForm.ShowDialog() != DialogResult.OK)
+                        throw new IOException("The encrypted files were not moved completely.");
+                    ThingData.Root.SaveLocation = pathSave;
+                }
+
+                // Import Location
+                string pathImport = Path.GetFullPath(textBoxImportLocation.Text);
                 Directory.CreateDirectory(pathImport);
-            }
-            ThingData.Root.ImportLocation = pathImport;
+                ThingData.Root.ImportLocation = pathImport;
 
-            // Export Location
-            string pathExport = Path.GetFullPath(textBoxExportLocation.Text);
-            if (!Directory.Exists(pathExport))
-            {
+                // Export Location
+                string pathExport = Path.GetFullPath(textBoxExportLocation.Text);
                 Directory.CreateDirectory(pathExport);
+                ThingData.Root.ExportLocation = pathExport;
+
+                // Dark Mode
+                ThingData.Root.DarkMode = checkBoxDarkMode.Checked;
+
+                // Image viewer buffering
+                ThingData.Root.ImageViewerPreviousBufferCount =
+                    decimal.ToInt32(numericPreviousImageBuffer.Value);
+                ThingData.Root.ImageViewerNextBufferCount =
+                    decimal.ToInt32(numericNextImageBuffer.Value);
+
+                await ThingData.SaveRootAsync();
+                Close();
             }
-            ThingData.Root.ExportLocation = pathExport;
-
-            // Dark Mode
-            ThingData.Root.DarkMode = checkBoxDarkMode.Checked;
-
-            await ThingData.SaveRootAsync();
-            this.Close();
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"The settings could not be saved: {ex.Message}",
+                    "Settings error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                buttonApply.Enabled = true;
+                buttonCancel.Enabled = true;
+            }
         }
 
         private void buttonCancel_Click(object sender, EventArgs e)
@@ -66,21 +84,21 @@ namespace NET_Thing_Encryptor
             if (!buttonCancel.Enabled) return;
             this.Close();
         }
-        private string[] ExplorerDialog(string title, bool folderPicker = false, bool multiSelect = true, string initialDirectory = "C:\\")
+        private string? ExplorerDialog(string title, string initialDirectory)
         {
             var dialog = new CommonOpenFileDialog
             {
-                IsFolderPicker = folderPicker,
-                Multiselect = multiSelect,
+                IsFolderPicker = true,
+                Multiselect = false,
                 InitialDirectory = initialDirectory,
                 Title = title,
                 ShowHiddenItems = true
             };
             if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
             {
-                return dialog.FileNames.ToArray();
+                return dialog.FileName;
             }
-            return Array.Empty<string>();
+            return null;
         }
         private void buttonSaveLocation_Click(object sender, EventArgs e)
         {
@@ -91,11 +109,9 @@ namespace NET_Thing_Encryptor
                 return;
             }
 
-            textBoxSaveLocation.Text = ExplorerDialog(
-                title: "Select new save location",
-                folderPicker: false,
-                multiSelect: false,
-                initialDirectory: Directory.GetCurrentDirectory())[0];
+            string? path = ExplorerDialog("Select new save location", Directory.GetCurrentDirectory());
+            if (path is not null)
+                textBoxSaveLocation.Text = path;
 
             buttonSaveLocation.Enabled = true;
         }
@@ -108,11 +124,11 @@ namespace NET_Thing_Encryptor
                 return;
             }
 
-            textBoxImportLocation.Text = ExplorerDialog(
-                title: "Select new default import directory",
-                folderPicker: true,
-                multiSelect: false,
-                initialDirectory: Directory.GetCurrentDirectory())[0];
+            string? path = ExplorerDialog(
+                "Select new default import directory",
+                Directory.GetCurrentDirectory());
+            if (path is not null)
+                textBoxImportLocation.Text = path;
 
             buttonImportLocation.Enabled = true;
         }
@@ -125,11 +141,11 @@ namespace NET_Thing_Encryptor
                 return;
             }
 
-            textBoxExportLocation.Text = ExplorerDialog(
-                title: "Select new default export directory",
-                folderPicker: true,
-                multiSelect: false,
-                initialDirectory: Directory.GetCurrentDirectory())[0];
+            string? path = ExplorerDialog(
+                "Select new default export directory",
+                Directory.GetCurrentDirectory());
+            if (path is not null)
+                textBoxExportLocation.Text = path;
 
             buttonExportLocation.Enabled = true;
         }

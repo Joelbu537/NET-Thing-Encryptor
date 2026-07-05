@@ -27,27 +27,41 @@ namespace NET_Thing_Encryptor
             progressBar.Value = 0;
 
             int count = 0;
-            ThingData.Saving++;
-
-            await Task.Run(() =>
+            ThingData.BeginSaving();
+            try
             {
-                Parallel.ForEach(files, (file) =>
+                await Task.Run(() =>
                 {
-                    File.Copy(file.FullName, Path.Combine(path, file.Name), true);
-                    File.Delete(file.FullName);
-
-                    int current = Interlocked.Increment(ref count);
-
-                    this.Invoke(() =>
+                    Parallel.ForEach(files, (file) =>
                     {
-                        progressBar.Value = current;
-                        label.Text = $"Moving {current}/{progressBar.Maximum} files...";
+                        File.Copy(file.FullName, Path.Combine(path, file.Name), true);
+                        File.Delete(file.FullName);
+
+                        int current = Interlocked.Increment(ref count);
+
+                        this.Invoke(() =>
+                        {
+                            progressBar.Value = current;
+                            label.Text = $"Moving {current}/{progressBar.Maximum} files...";
+                        });
                     });
                 });
-            });
-
-            ThingData.Saving--;
-            this.Close();
+                DialogResult = DialogResult.OK;
+            }
+            catch (Exception ex)
+            {
+                DialogResult = DialogResult.Abort;
+                MessageBox.Show(
+                    $"Not all encrypted files could be moved: {ex.Message}",
+                    "Move failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                ThingData.EndSaving();
+                this.Close();
+            }
         }
     }
 }

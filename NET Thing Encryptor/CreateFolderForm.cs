@@ -21,7 +21,7 @@ namespace NET_Thing_Encryptor
             InitializeComponent();
             textBox.Text = name;
             label.Text = "Change Name to:";
-            textBox1_TextChanged(null, null);
+            textBox1_TextChanged(this, EventArgs.Empty);
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)

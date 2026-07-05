@@ -7,11 +7,13 @@ namespace NET_Thing_Encryptor
 {
     public partial class FormMain : Form
     {
-        public event EventHandler FolderChanged;
+        public event EventHandler? FolderChanged;
 
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
-        private bool recalculating_FS_size;
+        private int recalculatingFileSystemSize;
+        private static ThingRoot Root =>
+            ThingData.Root ?? throw new InvalidOperationException("The root data has not been loaded.");
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ulong CurrentFolderID
@@ -31,7 +33,7 @@ namespace NET_Thing_Encryptor
         {
             InitializeComponent();
             labelMe.Text = Program.Objective as string;
-            if (ThingData.Root.DarkMode)
+            if (Root.DarkMode)
             {
                 tableLayoutPanelMain.BackColor = Program.DarkColor;
                 tableLayoutPanelMain.ForeColor = SystemColors.Control;
@@ -107,7 +109,7 @@ namespace NET_Thing_Encryptor
             RecalculateFileSystemSize(); // Recalculate Folder Sizes
         }
 
-        private async void OnFolderChanged(object sender, EventArgs e)
+        private async void OnFolderChanged(object? sender, EventArgs e)
         {
             Debug.WriteLine("Folder changed. Refreshing items.");
             listViewMain.Items.Clear();
@@ -164,7 +166,9 @@ namespace NET_Thing_Encryptor
             labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
             if (CurrentFolderID == 0)
             {
-                labelInfoTotalSize.Text += " - With encryption overhead: " + new DirectoryInfo(ThingData.Root.SaveLocation).EnumerateFiles("*", SearchOption.TopDirectoryOnly).Sum(f => f.Length).Sizeify();
+                labelInfoTotalSize.Text += " - With encryption overhead: " +
+                    new DirectoryInfo(Root.SaveLocation).EnumerateFiles("*", SearchOption.TopDirectoryOnly)
+                        .Sum(f => f.Length).Sizeify();
             }
         }
         private async void listViewMain_DoubleClick(object sender, EventArgs e)
@@ -188,12 +192,13 @@ namespace NET_Thing_Encryptor
                         OpenFile(file);
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    /*ThingObjectLink? missingLink = CurrentFolder.Content.FirstOrDefault(x => x.ID == ulong.Parse(item.Name));
-                    CurrentFolder.Content.Remove(missingLink);
-                    MessageBox.Show("The selected file is corrupted or missing and has been deleted.", "Error", // REALLY STUPID IDEA!!
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);*/
+                    MessageBox.Show(
+                        $"The selected item could not be opened: {ex.Message}",
+                        "Open failed",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
             }
             else
@@ -247,15 +252,15 @@ namespace NET_Thing_Encryptor
                         new CommonFileDialogFilter("Text files", "*.txt"),
                     },
                 };
-                if (!Directory.Exists(ThingData.Root.ImportLocation))
+                if (!Directory.Exists(Root.ImportLocation))
                 {
                     MessageBox.Show("The default import directory does not exist anymore.");
-                    ThingData.Root.ImportLocation = "C:\\";
+                    Root.ImportLocation = "C:\\";
                     dialog.InitialDirectory = "C:\\";
                 }
                 else
                 {
-                    dialog.InitialDirectory = ThingData.Root.ImportLocation;
+                    dialog.InitialDirectory = Root.ImportLocation;
                 }
 
                 if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
@@ -270,10 +275,10 @@ namespace NET_Thing_Encryptor
                             continue;
                         }
 
-                        ThingData.Saving++;
+                        ThingData.BeginSaving();
                         try
                         {
-                            ThingFile? newFile =
+                            ThingFile newFile =
                                 new ThingFile(Path.GetFileName(file).Replace(Path.GetExtension(file), ""),
                                     File.ReadAllBytes(file));
                             Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true,
@@ -282,24 +287,10 @@ namespace NET_Thing_Encryptor
                             newFile.Extension = Path.GetExtension(file).TrimStart('.');
 
                             await ThingData.MoveFileToFolderAsync(newFile, CurrentFolderID);
-                            await ThingData.SaveFileAsync(newFile);
-
-                            ThingFolder? currentFolderTemp =
-                                await ThingData.LoadFileAsync<ThingFolder>(CurrentFolder.ID);
-
-                            ThingObjectLink? link = currentFolderTemp.Content.Where(l => l.ID == newFile.ID)
-                                .FirstOrDefault();
-                            ArgumentNullException.ThrowIfNull(link,
-                                "Imported file link not found in folder after import.");
-
-
-                            link.Size = (long)(new FileInfo(file).Length);
-                            link.Type = result;
-                            await ThingData.SaveFileAsync(currentFolderTemp);
                         }
                         finally
                         {
-                            ThingData.Saving--;
+                            ThingData.EndSaving();
                         }
                     }
                     CurrentFolderID = CurrentFolderID;
@@ -417,18 +408,19 @@ namespace NET_Thing_Encryptor
                 Multiselect = false,
                 Title = "Select export directory"
             };
-            if (!Directory.Exists(ThingData.Root.ExportLocation))
+            if (!Directory.Exists(Root.ExportLocation))
             {
-                MessageBox.Show("The default import directory does not exist anymore.");
-                ThingData.Root.ExportLocation = "C:\\";
-                dialog.DefaultExtension = "C:\\";
+                MessageBox.Show("The default export directory does not exist anymore.");
+                Root.ExportLocation = "C:\\";
+                dialog.InitialDirectory = "C:\\";
             }
             else
             {
-                dialog.InitialDirectory = ThingData.Root.ExportLocation;
+                dialog.InitialDirectory = Root.ExportLocation;
             }
 
-            if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+            if (dialog.ShowDialog() == CommonFileDialogResult.Ok &&
+                !string.IsNullOrWhiteSpace(dialog.FileName))
             {
                 string path = dialog.FileName; // The Folder to export to
                 ListViewItem item = listViewMain.SelectedItems[0];
@@ -449,38 +441,33 @@ namespace NET_Thing_Encryptor
         }
         private async Task ExportFile(ThingObjectLink file, string path)
         {
-            try
+            if (file.Type == FileType.folder)
             {
-                if (file.Type == FileType.folder)
-                {
-                    ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(file.ID);
-                    ArgumentNullException.ThrowIfNull(f);
+                ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(file.ID);
+                ArgumentNullException.ThrowIfNull(f);
 
-                    foreach (ThingObjectLink o in f.Content)
-                    {
-                        await ExportFile(o, Path.Combine(path, f.Name)); // Export folder + file name
-                    }
-                }
-                else
+                foreach (ThingObjectLink o in f.Content)
                 {
-                    ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
-                    ArgumentNullException.ThrowIfNull(f);
-
-                    if (f.Content == null || f.Content.Length == 0)
-                    {
-                        MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                    string filePath = Path.Combine(path, f.Name) + (string.IsNullOrWhiteSpace(f.Extension) ? string.Empty : "." + f.Extension); // Recursive == Folder + file name (previous iteration) + file name (this iteration) + extension
-                    if (!Directory.Exists(Path.GetDirectoryName(filePath))) Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-                    await File.WriteAllBytesAsync(filePath, f.Content);
+                    await ExportFile(o, Path.Combine(path, f.Name)); // Export folder + file name
                 }
             }
-            catch (Exception)
+            else
             {
-                throw;
-            }
+                ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
+                ArgumentNullException.ThrowIfNull(f);
 
+                if (f.Content == null || f.Content.Length == 0)
+                {
+                    MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                string filePath = Path.Combine(path, f.Name) +
+                    (string.IsNullOrWhiteSpace(f.Extension) ? string.Empty : "." + f.Extension);
+                string? directory = Path.GetDirectoryName(filePath);
+                if (directory is not null)
+                    Directory.CreateDirectory(directory);
+                await File.WriteAllBytesAsync(filePath, f.Content);
+            }
         }
 
         private void listViewMain_MouseDown(object sender, MouseEventArgs e)
@@ -494,7 +481,7 @@ namespace NET_Thing_Encryptor
             bool itemSelected = item != null;
             listViewMain.SelectedItems.Clear();
 
-            if (itemSelected) // An item got right-clicked
+            if (item is not null) // An item got right-clicked
             {
                 item.Selected = true;
                 item.Focused = true;
@@ -516,20 +503,7 @@ namespace NET_Thing_Encryptor
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     string newName = form.Name;
-                    ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
-                    ArgumentNullException.ThrowIfNull(o);
-                    o.Name = newName;
-                    await ThingData.SaveFileAsync(o);
-                    if (CurrentFolder == null)
-                    {
-                        ThingData.Root.Content.FirstOrDefault(l => l.ID == o.ID).Name = newName;
-                        await ThingData.SaveRootAsync(); // Parent needs to acknowledge renaming of child
-                    }
-                    else
-                    {
-                        CurrentFolder.Content.FirstOrDefault(l => l.ID == o.ID).Name = newName;
-                        await ThingData.SaveFileAsync(CurrentFolder);
-                    }
+                    await ThingData.RenameObjectAsync(ulong.Parse(item.Name), newName);
                     CurrentFolderID = CurrentFolderID;
                     listViewMain.SelectedItems.Clear();
                 }
@@ -538,7 +512,8 @@ namespace NET_Thing_Encryptor
         private async Task<long> GetFolderSize(ulong folderID)
         {
 
-            ThingFolder? folder = await ThingData.LoadFileAsync<ThingFolder>(folderID);
+            ThingFolder folder = await ThingData.LoadFileAsync<ThingFolder>(folderID)
+                ?? throw new FileNotFoundException("The folder could not be loaded.");
             long folder_size = 0;
             foreach (ThingObjectLink link in folder.Content)
             {
@@ -552,23 +527,7 @@ namespace NET_Thing_Encryptor
                 }
             }
 
-            if (folder.ParentID == 0) // Wenn Root parent ist UND die größe des Childs in Root (parent) veränmdert ist ist
-            {
-                if (ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size != folder_size)
-                {
-                    ThingData.Root.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
-                    await ThingData.SaveRootAsync();
-                }
-            }
-            else
-            {
-                ThingFolder? parentFolder = await ThingData.LoadFileAsync<ThingFolder>(folder.ParentID);
-                if (parentFolder.Content.FirstOrDefault(l => l.ID == folder.ID).Size != folder_size)
-                {
-                    parentFolder.Content.FirstOrDefault(l => l.ID == folder.ID).Size = folder_size;
-                    await ThingData.SaveFileAsync(parentFolder);
-                }
-            }
+            await ThingData.UpdateObjectSizeAsync(folder.ID, folder_size);
 
             return folder_size;
         }
@@ -585,17 +544,26 @@ namespace NET_Thing_Encryptor
 
         private void RecalculateFileSystemSize()
         {
-            if (recalculating_FS_size) return;
-            recalculating_FS_size = true;
-            _ = Task.Run(() =>
+            if (Interlocked.Exchange(ref recalculatingFileSystemSize, 1) != 0)
+                return;
+            _ = Task.Run(async () =>
             {
-
-                foreach (ThingObjectLink link in ThingData.Root!.Content!)
+                try
                 {
-                    _ = GetFolderSize(link.ID);
+                    foreach (ThingObjectLink link in Root.Content ?? [])
+                    {
+                        if (link.Type == FileType.folder)
+                            await GetFolderSize(link.ID);
+                    }
                 }
-
-                recalculating_FS_size = false;
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Could not recalculate folder sizes: {ex}");
+                }
+                finally
+                {
+                    Volatile.Write(ref recalculatingFileSystemSize, 0);
+                }
             });
         }
 
@@ -612,18 +580,27 @@ namespace NET_Thing_Encryptor
         private List<ThingObjectLink> allFiles = [];
         private async void ToolStripMenuItemOpenRandom_Click(object sender, EventArgs e)
         {
-            if (allFiles.Count is 0)
+            allFiles.Clear();
+            foreach (ThingObjectLink link in Root.Content ?? [])
             {
-                foreach (ThingObjectLink link in ThingData.Root!.Content!)
-                {
-                    await RecursiveFolderSearcher(await ThingData.LoadFileAsync<ThingFolder>(link.ID));
-                }
+                if (link.Type != FileType.folder)
+                    continue;
+                ThingFolder? rootFolder = await ThingData.LoadFileAsync<ThingFolder>(link.ID);
+                if (rootFolder is not null)
+                    await RecursiveFolderSearcher(rootFolder);
             }
 
-            Random r = new();
+            if (allFiles.Count == 0)
+            {
+                MessageBox.Show("No matching media files were found.", "Nothing to open",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
-            ulong randomID = allFiles[r.Next(allFiles.Count)].ID;
-            OpenFile(await ThingData.LoadFileAsync<ThingFile>(randomID));
+            ulong randomID = allFiles[Random.Shared.Next(allFiles.Count)].ID;
+            ThingFile? randomFile = await ThingData.LoadFileAsync<ThingFile>(randomID);
+            if (randomFile is not null)
+                OpenFile(randomFile);
         }
 
         private async Task RecursiveFolderSearcher(ThingFolder folder)
@@ -638,7 +615,7 @@ namespace NET_Thing_Encryptor
                 {
                     ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(link.ID);
                     ArgumentNullException.ThrowIfNull(f);
-                    RecursiveFolderSearcher(f);
+                    await RecursiveFolderSearcher(f);
                 }
             }
         }

@@ -1,7 +1,4 @@
-﻿using System;
 using System.Diagnostics;
-using System.IO;
-using System.Windows.Forms;
 using LibVLCSharp.Shared;
 using Timer = System.Windows.Forms.Timer;
 
@@ -9,213 +6,414 @@ namespace NET_Thing_Encryptor
 {
     public partial class VideoViewForm : Form
     {
+        private const int PositionUpdateIntervalMilliseconds = 100;
+        private const int KeyboardSeekSeconds = 5;
+
         private readonly LibVLC _libVlc;
         private readonly MediaPlayer _mediaPlayer;
         private readonly MemoryStream _videoStream;
         private readonly Media _media;
         private readonly Timer _positionUpdateTimer;
 
-        private bool _isUserDragging;
-        private bool _wasPlayingBeforeDrag;
+        private long _durationMilliseconds;
+        private bool _isSeeking;
+        private bool _resumeAfterSeek;
+        private bool _restartInProgress;
+        private bool _isClosing;
 
         public VideoViewForm(ThingFile file)
         {
+            ArgumentNullException.ThrowIfNull(file);
+            if (file.Type != FileType.video || file.Content is not { Length: > 0 })
+                throw new ArgumentException("The file must contain video data.", nameof(file));
+
             InitializeComponent();
+            KeyPreview = true;
+            Text = $".NET Thing Video Viewer — {file.Name}";
 
-            if (file.Type != FileType.video || file.Content == null)
-            {
-                MessageBox.Show(
-                    "The provided file is not a video.",
-                    "Aborting",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
-                throw new ArgumentException("file must be a video with content", nameof(file));
-            }
+            toolTip.SetToolTip(buttonPlayPause, "Play / Pause (Space)");
+            toolTip.SetToolTip(buttonSeekBackward, "Back 10 seconds");
+            toolTip.SetToolTip(buttonSeekForward, "Forward 10 seconds");
+            toolTip.SetToolTip(timeline, "Click or drag to seek");
 
             Core.Initialize();
-
-            // input-repeat kann man drinlassen, aber für StreamMediaInput
-            // setzen wir unten zusätzlich einen manuellen Restart um.
-            _libVlc = new LibVLC();
+            _libVlc = new LibVLC("--no-video-title-show", "--quiet");
             _mediaPlayer = new MediaPlayer(_libVlc)
             {
                 EnableHardwareDecoding = true
             };
-
             videoView.MediaPlayer = _mediaPlayer;
 
-            Debug.WriteLine($"Opening VideoViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
+            Debug.WriteLine(
+                $"Opening VideoViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
 
-            _videoStream = new MemoryStream(file.Content);
+            _videoStream = new MemoryStream(file.Content, writable: false);
             _media = new Media(_libVlc, new StreamMediaInput(_videoStream));
 
             _positionUpdateTimer = new Timer
             {
-                Interval = 100
+                Interval = PositionUpdateIntervalMilliseconds
             };
             _positionUpdateTimer.Tick += PositionUpdateTimer_Tick;
 
+            timeline.SeekStarted += Timeline_SeekStarted;
+            timeline.SeekPreview += Timeline_SeekPreview;
+            timeline.SeekCompleted += Timeline_SeekCompleted;
+
+            _mediaPlayer.Playing += MediaPlayer_Playing;
+            _mediaPlayer.Paused += MediaPlayer_Paused;
+            _mediaPlayer.Stopped += MediaPlayer_Stopped;
+            _mediaPlayer.LengthChanged += MediaPlayer_LengthChanged;
             _mediaPlayer.EndReached += MediaPlayer_EndReached;
             _mediaPlayer.EncounteredError += MediaPlayer_EncounteredError;
         }
 
         private void VideoViewForm_Load(object sender, EventArgs e)
         {
-            trackBar.Minimum = 0;
-            trackBar.Maximum = 1000;
-            trackBar.Value = 0;
+            timeline.Value = 0d;
+            UpdateTimeDisplay(0, 0);
+            UpdatePlayPauseButton(isPlaying: false);
 
             _mediaPlayer.Media = _media;
-            _mediaPlayer.Play();
+            if (!_mediaPlayer.Play())
+            {
+                MessageBox.Show(
+                    "The video could not be started.",
+                    "Playback error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
 
             _positionUpdateTimer.Start();
-            UpdatePlayPauseButton();
         }
 
         private void PositionUpdateTimer_Tick(object? sender, EventArgs e)
         {
-            if (_isUserDragging)
+            if (_isClosing)
                 return;
 
-            if (_mediaPlayer.Length <= 0)
+            long duration = GetDurationMilliseconds();
+            if (duration <= 0)
+            {
+                UpdateTimeDisplay(0, 0);
+                return;
+            }
+
+            if (_isSeeking)
                 return;
 
-            int value = (int)(_mediaPlayer.Position * trackBar.Maximum);
-
-            if (value < trackBar.Minimum)
-                value = trackBar.Minimum;
-            else if (value > trackBar.Maximum)
-                value = trackBar.Maximum;
-
-            trackBar.Value = value;
+            long currentTime = Math.Clamp(_mediaPlayer.Time, 0, duration);
+            timeline.Value = currentTime / (double)duration;
+            UpdateTimeDisplay(currentTime, duration);
         }
 
-        private void trackBar_MouseDown(object sender, MouseEventArgs e)
+        private void Timeline_SeekStarted(object? sender, EventArgs e)
         {
-            _isUserDragging = true;
-            _wasPlayingBeforeDrag = _mediaPlayer.IsPlaying;
-
-            if (_wasPlayingBeforeDrag)
-                _mediaPlayer.Pause();
-        }
-
-        private async void trackBar_MouseUp(object sender, MouseEventArgs e)
-        {
-            _isUserDragging = false;
-            UpdateVideoPosition();
-
-            if (_wasPlayingBeforeDrag)
+            _isSeeking = true;
+            _resumeAfterSeek = _mediaPlayer.IsPlaying;
+            if (_resumeAfterSeek)
             {
-                _mediaPlayer.Play();
-            }
-            else
-            {
-                _mediaPlayer.Mute = true;
-                _mediaPlayer.Play();
-                await Task.Delay(50);
-                _mediaPlayer.Pause();
-                _mediaPlayer.Mute = false;
-            }
-
-            UpdatePlayPauseButton();
-        }
-
-        private void trackBar_Scroll(object sender, EventArgs e)
-        {
-            if (_isUserDragging)
-            {
-                UpdateVideoPosition();
+                _mediaPlayer.SetPause(true);
+                UpdatePlayPauseButton(isPlaying: false);
             }
         }
 
-        private void UpdateVideoPosition()
+        private void Timeline_SeekPreview(object? sender, TimelineSeekEventArgs e)
         {
-            if (_mediaPlayer.Length <= 0)
+            long duration = GetDurationMilliseconds();
+            if (duration <= 0)
                 return;
 
-            long newTime = (long)(trackBar.Value / (double)trackBar.Maximum * _mediaPlayer.Length);
-            _mediaPlayer.Time = newTime;
+            long previewTime = PositionToTime(e.Position, duration);
+            UpdateTimeDisplay(previewTime, duration);
         }
 
-        private void buttonPause_Click(object sender, EventArgs e)
+        private void Timeline_SeekCompleted(object? sender, TimelineSeekEventArgs e)
+        {
+            try
+            {
+                long duration = GetDurationMilliseconds();
+                if (duration <= 0)
+                    return;
+
+                long targetTime = PositionToTime(e.Position, duration);
+                _mediaPlayer.Time = targetTime;
+                timeline.Value = targetTime / (double)duration;
+                UpdateTimeDisplay(targetTime, duration);
+
+                if (_resumeAfterSeek)
+                {
+                    _mediaPlayer.SetPause(false);
+                    UpdatePlayPauseButton(isPlaying: true);
+                }
+            }
+            finally
+            {
+                _isSeeking = false;
+                _resumeAfterSeek = false;
+            }
+        }
+
+        private void buttonPlayPause_Click(object sender, EventArgs e)
+        {
+            TogglePlayback();
+        }
+
+        private void buttonSeekBackward_Click(object sender, EventArgs e)
+        {
+            SeekBy(TimeSpan.FromSeconds(-10));
+        }
+
+        private void buttonSeekForward_Click(object sender, EventArgs e)
+        {
+            SeekBy(TimeSpan.FromSeconds(10));
+        }
+
+        private void TogglePlayback()
         {
             if (_mediaPlayer.IsPlaying)
-                _mediaPlayer.Pause();
-            else
-                _mediaPlayer.Play();
+            {
+                _mediaPlayer.SetPause(true);
+                UpdatePlayPauseButton(isPlaying: false);
+                return;
+            }
 
-            UpdatePlayPauseButton();
+            if (_mediaPlayer.State == VLCState.Paused)
+            {
+                _mediaPlayer.SetPause(false);
+                UpdatePlayPauseButton(isPlaying: true);
+                return;
+            }
+
+            long duration = GetDurationMilliseconds();
+            if (duration > 0 && _mediaPlayer.Time >= duration - 250)
+            {
+                _videoStream.Position = 0;
+                timeline.Value = 0d;
+                UpdateTimeDisplay(0, duration);
+            }
+
+            _mediaPlayer.Play(_media);
+            UpdatePlayPauseButton(isPlaying: true);
+            _positionUpdateTimer.Start();
         }
 
-        private void UpdatePlayPauseButton()
+        private void SeekBy(TimeSpan offset)
         {
-            // Wenn Video läuft, soll der Button "Pause" anzeigen.
-            buttonPause.BackgroundImage = _mediaPlayer.IsPlaying
-                ? Properties.Resources.pause_icon
-                : Properties.Resources.play_icon;
+            long duration = GetDurationMilliseconds();
+            if (duration <= 0)
+                return;
+
+            long targetTime = Math.Clamp(
+                _mediaPlayer.Time + (long)offset.TotalMilliseconds,
+                0,
+                duration);
+            _mediaPlayer.Time = targetTime;
+            timeline.Value = targetTime / (double)duration;
+            UpdateTimeDisplay(targetTime, duration);
+        }
+
+        private void UpdatePlayPauseButton(bool isPlaying)
+        {
+            // The legacy resource files are named the wrong way around:
+            // play_icon contains pause bars, pause_icon contains the play triangle.
+            buttonPlayPause.BackgroundImage = isPlaying
+                ? Properties.Resources.play_icon
+                : Properties.Resources.pause_icon;
+            buttonPlayPause.AccessibleName = isPlaying ? "Pause" : "Play";
+            buttonPlayPause.Invalidate();
+        }
+
+        private void UpdateTimeDisplay(long currentMilliseconds, long durationMilliseconds)
+        {
+            labelCurrentTime.Text = FormatTime(currentMilliseconds, durationMilliseconds);
+            labelDuration.Text = FormatTime(durationMilliseconds, durationMilliseconds);
+        }
+
+        private long GetDurationMilliseconds()
+        {
+            long playerDuration = _mediaPlayer.Length;
+            if (playerDuration > 0)
+                _durationMilliseconds = playerDuration;
+            return _durationMilliseconds;
+        }
+
+        private static long PositionToTime(double position, long durationMilliseconds)
+        {
+            return Math.Clamp(
+                (long)Math.Round(Math.Clamp(position, 0d, 1d) * durationMilliseconds),
+                0,
+                durationMilliseconds);
+        }
+
+        private static string FormatTime(long milliseconds, long durationMilliseconds)
+        {
+            TimeSpan value = TimeSpan.FromMilliseconds(Math.Max(0, milliseconds));
+            bool showHours = durationMilliseconds >= 3_600_000 || value.TotalHours >= 1d;
+            return showHours
+                ? $"{(int)value.TotalHours}:{value.Minutes:00}:{value.Seconds:00}"
+                : $"{(int)value.TotalMinutes:00}:{value.Seconds:00}";
+        }
+
+        private void MediaPlayer_Playing(object? sender, EventArgs e)
+        {
+            PostToUi(() =>
+            {
+                UpdatePlayPauseButton(isPlaying: true);
+                _positionUpdateTimer.Start();
+            });
+        }
+
+        private void MediaPlayer_Paused(object? sender, EventArgs e)
+        {
+            PostToUi(() => UpdatePlayPauseButton(isPlaying: false));
+        }
+
+        private void MediaPlayer_Stopped(object? sender, EventArgs e)
+        {
+            PostToUi(() => UpdatePlayPauseButton(isPlaying: false));
+        }
+
+        private void MediaPlayer_LengthChanged(object? sender, MediaPlayerLengthChangedEventArgs e)
+        {
+            if (e.Length <= 0)
+                return;
+
+            Interlocked.Exchange(ref _durationMilliseconds, e.Length);
+            PostToUi(() => UpdateTimeDisplay(Math.Max(0, _mediaPlayer.Time), e.Length));
         }
 
         private void MediaPlayer_EndReached(object? sender, EventArgs e)
         {
-            // Sicherheitshalber zurück auf den UI-Thread
-            if (IsDisposed || Disposing)
+            PostToUi(RestartAfterEndAsync);
+        }
+
+        private async void RestartAfterEndAsync()
+        {
+            if (_isClosing || _restartInProgress)
                 return;
 
-            BeginInvoke(new Action(() =>
+            _restartInProgress = true;
+            _positionUpdateTimer.Stop();
+            UpdatePlayPauseButton(isPlaying: false);
+            timeline.Value = 0d;
+            UpdateTimeDisplay(0, GetDurationMilliseconds());
+
+            try
             {
-                try
+                // EndReached is raised from a VLC callback. Waiting until that callback has
+                // returned avoids stopping/restarting the player from inside VLC itself.
+                await Task.Delay(75);
+                if (_isClosing)
+                    return;
+
+                _videoStream.Position = 0;
+                _mediaPlayer.Stop();
+                if (!_mediaPlayer.Play(_media))
+                    throw new InvalidOperationException("VLC could not restart the video.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error while restarting video: {ex}");
+                if (!_isClosing)
                 {
-                    _positionUpdateTimer.Stop();
-
-                    // Stream für erneute Wiedergabe zurücksetzen
-                    _videoStream.Position = 0;
-
-                    // Wiedergabe mit demselben Media-Objekt neu starten
-                    _mediaPlayer.Stop();
-                    _mediaPlayer.Play(_media);
-
-                    trackBar.Value = 0;
-                    UpdatePlayPauseButton();
-
-                    _positionUpdateTimer.Start();
+                    MessageBox.Show(
+                        "The video could not be restarted.",
+                        "Playback error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("Error while restarting video: " + ex);
-                }
-            }));
+            }
+            finally
+            {
+                _restartInProgress = false;
+            }
         }
 
         private void MediaPlayer_EncounteredError(object? sender, EventArgs e)
         {
-            if (IsDisposed || Disposing)
-                return;
-
-            BeginInvoke(new Action(() =>
+            PostToUi(() =>
             {
                 _positionUpdateTimer.Stop();
-                UpdatePlayPauseButton();
+                UpdatePlayPauseButton(isPlaying: false);
                 MessageBox.Show(
                     "An error occurred while playing the video.",
                     "Playback error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-            }));
+            });
+        }
+
+        private void VideoViewForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Space:
+                    TogglePlayback();
+                    break;
+                case Keys.Left:
+                case Keys.J:
+                    SeekBy(TimeSpan.FromSeconds(-KeyboardSeekSeconds));
+                    break;
+                case Keys.Right:
+                case Keys.L:
+                    SeekBy(TimeSpan.FromSeconds(KeyboardSeekSeconds));
+                    break;
+                case Keys.Escape:
+                    Close();
+                    break;
+                default:
+                    return;
+            }
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+
+        private void PostToUi(Action action)
+        {
+            if (_isClosing || IsDisposed || Disposing || !IsHandleCreated)
+                return;
+
+            try
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (!_isClosing && !IsDisposed)
+                        action();
+                }));
+            }
+            catch (InvalidOperationException)
+            {
+                // The window was closed between the handle check and BeginInvoke.
+            }
         }
 
         private void VideoViewForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (_isClosing)
+                return;
+
+            _isClosing = true;
             _positionUpdateTimer.Stop();
             _positionUpdateTimer.Tick -= PositionUpdateTimer_Tick;
 
+            timeline.SeekStarted -= Timeline_SeekStarted;
+            timeline.SeekPreview -= Timeline_SeekPreview;
+            timeline.SeekCompleted -= Timeline_SeekCompleted;
+
+            _mediaPlayer.Playing -= MediaPlayer_Playing;
+            _mediaPlayer.Paused -= MediaPlayer_Paused;
+            _mediaPlayer.Stopped -= MediaPlayer_Stopped;
+            _mediaPlayer.LengthChanged -= MediaPlayer_LengthChanged;
             _mediaPlayer.EndReached -= MediaPlayer_EndReached;
             _mediaPlayer.EncounteredError -= MediaPlayer_EncounteredError;
 
             _mediaPlayer.Stop();
-
-            _media.Dispose();
+            videoView.MediaPlayer = null;
             _mediaPlayer.Dispose();
+            _media.Dispose();
             _libVlc.Dispose();
             _videoStream.Dispose();
             _positionUpdateTimer.Dispose();

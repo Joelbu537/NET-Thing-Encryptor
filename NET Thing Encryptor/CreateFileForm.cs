@@ -14,10 +14,11 @@ namespace NET_Thing_Encryptor
 {
     public partial class CreateFileForm : Form
     {
-        private ThingFolder? currentFolder;
+        private readonly ulong currentFolderID;
         public CreateFileForm(ThingFolder currentFolder)
         {
-            this.currentFolder = currentFolder;
+            ArgumentNullException.ThrowIfNull(currentFolder);
+            currentFolderID = currentFolder.ID;
             InitializeComponent();
         }
         private void buttonAddFiles_Click(object sender, EventArgs e)
@@ -106,7 +107,7 @@ namespace NET_Thing_Encryptor
             buttonCancel.Enabled = false;
 
             // Neu schreiben
-            foreach(ListViewItem item in listViewFiles.Items)
+            foreach (ListViewItem item in listViewFiles.Items.Cast<ListViewItem>().ToList())
             {
                 try
                 {
@@ -115,40 +116,21 @@ namespace NET_Thing_Encryptor
                     if(!File.Exists(filePath))
                         throw new FileNotFoundException("File not found.", filePath);
 
-                    ThingFile? file = new ThingFile(System.IO.Path.GetFileName(filePath), File.ReadAllBytes(filePath));
+                    ThingFile file = new(
+                        Path.GetFileNameWithoutExtension(filePath),
+                        File.ReadAllBytes(filePath));
                     Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
                     file.Type = result;
-                     file.Extension = Path.GetExtension(filePath).TrimStart('.');
-                    await ThingData.MoveFileToFolderAsync(file, currentFolder.ID);
-                    await ThingData.SaveFileAsync(file);
+                    file.Extension = Path.GetExtension(filePath).TrimStart('.');
+                    await ThingData.MoveFileToFolderAsync(file, currentFolderID);
+                    listViewFiles.Items.Remove(item);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error importing file: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    listViewFiles.Items[item.Index].BackColor = Color.Red;
+                    Debug.WriteLine($"Error importing file: {ex.Message}");
+                    item.BackColor = Color.Red;
                 }
             }
-            
-            currentFolder = await ThingData.LoadFileAsync<ThingFolder>(currentFolder.ID);
-            foreach (ListViewItem item in listViewFiles.Items)
-            {
-                if(item.BackColor != Color.Red)
-                {
-                    ThingObjectLink? link = currentFolder.Content.Where(l => l.Name == item.Text).FirstOrDefault();
-                    ArgumentNullException.ThrowIfNull(link, "Imported file link not found in folder after import.");
-
-
-                    link.Size = (long)(new FileInfo(item.SubItems[1].Text).Length);
-
-                    Debug.WriteLine(item.ImageKey);
-                    Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
-                    Debug.WriteLine(result.ToString());
-                    link.Type = result;
-
-                    listViewFiles.Items[item.Index].Remove();
-                }
-            }
-            await ThingData.SaveFileAsync(currentFolder);
 
             buttonCancel.Enabled = true;
         }
