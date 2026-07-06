@@ -6,6 +6,8 @@ namespace NET_Thing_Encryptor
 {
     public partial class ImageViewForm : Form
     {
+        private const long DecodedBitmapBudget = 256L * 1024 * 1024;
+
         private sealed class ImageCacheEntry(
             CancellationTokenSource cancellation,
             Task<Bitmap?> loadTask)
@@ -17,9 +19,10 @@ namespace NET_Thing_Encryptor
         private readonly List<ThingObjectLink> _images = [];
         private readonly Dictionary<int, ImageCacheEntry> _imageCache = [];
         private readonly object _cacheLock = new();
-        private readonly SemaphoreSlim _imageLoadGate = new(2, 2);
+        private readonly SemaphoreSlim _imageLoadGate = new(1, 1);
         private readonly int _previousBufferCount;
         private readonly int _nextBufferCount;
+        private readonly Size _maximumDecodedImageSize;
 
         private int _requestedIndex = -1;
         private long _navigationVersion;
@@ -34,11 +37,34 @@ namespace NET_Thing_Encryptor
 
             KeyPreview = true;
             InitializeComponent();
+            ImageMemoryManager.Configure();
 
             _previousBufferCount = ThingData.Root?.ImageViewerPreviousBufferCount ?? 1;
             _nextBufferCount = ThingData.Root?.ImageViewerNextBufferCount ?? 2;
+            Rectangle screenBounds = Screen.FromControl(this).Bounds;
+            _maximumDecodedImageSize = CalculateMaximumDecodedImageSize(
+                screenBounds.Size,
+                _previousBufferCount + _nextBufferCount + 2);
 
             _ = InitializeViewerSafelyAsync(file);
+        }
+
+        private static Size CalculateMaximumDecodedImageSize(
+            Size screenSize,
+            int residentImageCopies)
+        {
+            int targetWidth = Math.Max(1280, screenSize.Width);
+            int targetHeight = Math.Max(720, screenSize.Height);
+            long bytesPerImage = DecodedBitmapBudget / Math.Max(1, residentImageCopies);
+            double availablePixels = bytesPerImage / 4d;
+            double requestedPixels = (double)targetWidth * targetHeight;
+            if (requestedPixels <= availablePixels)
+                return new Size(targetWidth, targetHeight);
+
+            double scale = Math.Sqrt(availablePixels / requestedPixels);
+            return new Size(
+                Math.Max(1280, (int)Math.Floor(targetWidth * scale)),
+                Math.Max(720, (int)Math.Floor(targetHeight * scale)));
         }
 
         private async Task InitializeViewerSafelyAsync(ThingFile file)
@@ -64,10 +90,18 @@ namespace NET_Thing_Encryptor
 
         private async Task InitializeViewerAsync(ThingFile file)
         {
-            Debug.WriteLine(
-                $"Opening ImageViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
+            string fileName = file.Name;
+            ulong fileID = file.ID;
+            ulong parentID = file.ParentID;
+            FileType fileType = file.Type;
+            long releasedBytes = file.Content?.LongLength ?? 0;
+            file.ReleaseContent();
+            MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
 
-            if (file.Type != FileType.image)
+            Debug.WriteLine(
+                $"Opening ImageViewForm for file {fileName} (ID {fileID}) with ParentID {parentID}");
+
+            if (fileType != FileType.image)
             {
                 MessageBox.Show(
                     "The provided file is not an image.",
@@ -78,12 +112,12 @@ namespace NET_Thing_Encryptor
                 return;
             }
 
-            List<ThingObjectLink> content = await ThingData.LoadFolderContent(file.ParentID);
+            List<ThingObjectLink> content = await ThingData.LoadFolderContent(parentID);
             if (_isClosing)
                 return;
 
             _images.AddRange(content.Where(x => x.Type == FileType.image));
-            int selectedIndex = _images.FindIndex(x => x.ID == file.ID);
+            int selectedIndex = _images.FindIndex(x => x.ID == fileID);
             if (selectedIndex < 0)
             {
                 MessageBox.Show(
@@ -229,21 +263,40 @@ namespace NET_Thing_Encryptor
                 }
 
                 byte[] imageData = imageFile.Content;
-                imageFile.Clear();
+                imageFile.ReleaseContent();
 
                 return await Task.Run(() =>
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    using var image = new MagickImage(imageData);
-                    if (image.ColorSpace != ColorSpace.sRGB)
-                        image.TransformColorSpace(ColorProfiles.SRGB);
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        using var image = new MagickImage(imageData);
+                        if (image.ColorSpace != ColorSpace.sRGB)
+                            image.TransformColorSpace(ColorProfiles.SRGB);
 
-                    using var stream = new MemoryStream();
-                    image.Write(stream, MagickFormat.Png32);
-                    stream.Position = 0;
-                    using var temporaryBitmap = new Bitmap(stream);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return (Bitmap)temporaryBitmap.Clone();
+                        var targetGeometry = new MagickGeometry(
+                            (uint)_maximumDecodedImageSize.Width,
+                            (uint)_maximumDecodedImageSize.Height)
+                        {
+                            Greater = true
+                        };
+                        image.Resize(targetGeometry);
+                        image.Strip();
+
+                        using var stream = new MemoryStream();
+                        image.Write(
+                            stream,
+                            image.HasAlpha ? MagickFormat.Png32 : MagickFormat.Png24);
+                        stream.Position = 0;
+                        using var temporaryBitmap = new Bitmap(stream);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return (Bitmap)temporaryBitmap.Clone();
+                    }
+                    finally
+                    {
+                        ImageMemoryManager.Trim();
+                        MemoryMaintenance.NotifyLargeBufferReleased(imageData.LongLength);
+                    }
                 }, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -375,6 +428,7 @@ namespace NET_Thing_Encryptor
                 DisposeCacheEntry(entry);
 
             _images.Clear();
+            ImageMemoryManager.Trim();
         }
 
         private void textBoxIndex_Enter(object sender, EventArgs e)

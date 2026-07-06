@@ -17,6 +17,7 @@ namespace NET_Thing_Encryptor
         public SettingsMoveFilesForm(List<FileInfo> files, string targetDirectory)
         {
             InitializeComponent();
+            AppTheme.Apply(this, ThingData.Root?.DarkMode ?? true);
             this.files = files;
             path = targetDirectory;
         }

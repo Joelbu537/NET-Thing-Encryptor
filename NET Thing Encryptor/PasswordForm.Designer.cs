@@ -107,7 +107,7 @@
             CancelButton = buttonCancel;
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1040, 172);
+            ClientSize = new Size(680, 190);
             Controls.Add(tableLayoutPanelPassword);
             Font = new Font("Segoe UI", 12F);
             FormBorderStyle = FormBorderStyle.FixedSingle;

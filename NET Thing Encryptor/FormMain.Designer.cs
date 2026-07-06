@@ -72,7 +72,7 @@
             // 
             // tableLayoutPanelMain
             // 
-            tableLayoutPanelMain.AutoSize = true;
+            tableLayoutPanelMain.AutoSize = false;
             tableLayoutPanelMain.ColumnCount = 1;
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanelMain.Controls.Add(tableLayoutPanelNavigation, 0, 0);
@@ -475,7 +475,7 @@
             FormBorderStyle = FormBorderStyle.None;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
-            MinimumSize = new Size(1850, 1000);
+            MinimumSize = new Size(900, 600);
             Name = "FormMain";
             Text = ".NET Thing Encryptor";
             WindowState = FormWindowState.Maximized;

@@ -27,6 +27,7 @@ namespace NET_Thing_Encryptor
 
             _id = id;
             InitializeComponent();
+            AppTheme.Apply(this, ThingData.Root?.DarkMode ?? true);
             KeyPreview = true;
             Text = $"Emergency Editor — {ThingData.IDToHex(_id)}";
             _validationTimer.Tick += ValidationTimer_Tick;

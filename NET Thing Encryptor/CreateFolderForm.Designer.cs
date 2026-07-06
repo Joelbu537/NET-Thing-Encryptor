@@ -130,7 +130,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             AutoSize = true;
             CancelButton = buttonCancel;
-            ClientSize = new Size(1040, 204);
+            ClientSize = new Size(680, 220);
             Controls.Add(tableLayoutPanel);
             Font = new Font("Segoe UI", 12F);
             FormBorderStyle = FormBorderStyle.FixedDialog;

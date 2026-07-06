@@ -12,6 +12,10 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
         private int recalculatingFileSystemSize;
+        private readonly System.Windows.Forms.Timer _savingIndicatorTimer = new()
+        {
+            Interval = 500
+        };
         private static ThingRoot Root =>
             ThingData.Root ?? throw new InvalidOperationException("The root data has not been loaded.");
 
@@ -32,37 +36,71 @@ namespace NET_Thing_Encryptor
         public FormMain()
         {
             InitializeComponent();
-            labelMe.Text = Program.Objective as string;
-            if (Root.DarkMode)
-            {
-                tableLayoutPanelMain.BackColor = Program.DarkColor;
-                tableLayoutPanelMain.ForeColor = SystemColors.Control;
-
-                listViewMain.BackColor = Program.DarkColor;
-                listViewMain.ForeColor = SystemColors.Control;
-                listViewMain.BorderStyle = BorderStyle.FixedSingle;
-
-                textBoxNavigation.BackColor = Program.DarkColor;
-                textBoxNavigation.ForeColor = SystemColors.Control;
-                textBoxNavigation.BorderStyle = BorderStyle.FixedSingle;
-
-                buttonNavigationBack.BackColor = Program.DarkColor;
-                buttonNavigationBack.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationCreateFile.BackColor = Program.DarkColor;
-                buttonNavigationCreateFile.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationCreateFolder.BackColor = Program.DarkColor;
-                buttonNavigationCreateFolder.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationDeleteSelected.BackColor = Program.DarkColor;
-                buttonNavigationDeleteSelected.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationExport.BackColor = Program.DarkColor;
-                buttonNavigationExport.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationSettings.BackColor = Program.DarkColor;
-                buttonNavigationSettings.FlatAppearance.BorderColor = Program.ButtonBorder;
-                buttonNavigationRoot.BackColor = Program.DarkColor;
-                buttonNavigationRoot.FlatAppearance.BorderColor = Program.ButtonBorder;
-            }
+            AppTheme.Apply(this, Root.DarkMode);
+            AppTheme.Apply(contextMenuStrip, Root.DarkMode);
+            ConfigureMainLayout();
+            _savingIndicatorTimer.Tick += SavingIndicatorTimer_Tick;
 
             FolderChanged += OnFolderChanged;
+        }
+
+        private void ConfigureMainLayout()
+        {
+            labelMe.Visible = false;
+            tableLayoutPanelMain.Padding = new Padding(10, 8, 10, 8);
+            tableLayoutPanelNavigation.Margin = new Padding(0, 0, 0, 8);
+            tableLayoutPanelDiv.Margin = Padding.Empty;
+            flowLayoutPanelInfo.Margin = new Padding(0, 8, 0, 0);
+            flowLayoutPanelInfo.Padding = new Padding(6, 2, 6, 2);
+
+            textBoxNavigation.Margin = new Padding(16, 7, 16, 7);
+            textBoxNavigation.Font = new Font("Segoe UI", 10.5F);
+
+            Button[] navigationButtons =
+            {
+                buttonNavigationBack,
+                buttonNavigationCreateFile,
+                buttonNavigationCreateFolder,
+                buttonNavigationDeleteSelected,
+                buttonNavigationExport,
+                buttonNavigationSettings,
+                buttonNavigationRoot,
+                buttonExitApplication
+            };
+
+            foreach (Button button in navigationButtons)
+            {
+                button.AutoSize = false;
+                button.MinimumSize = Size.Empty;
+                button.Size = new Size(44, 44);
+                button.Margin = new Padding(3);
+                button.Padding = new Padding(7);
+                button.BackgroundImageLayout = ImageLayout.Zoom;
+            }
+
+            buttonNavigationRoot.Margin = new Padding(15, 3, 3, 3);
+            buttonExitApplication.FlatAppearance.MouseOverBackColor = Color.FromArgb(112, 42, 48);
+            buttonExitApplication.FlatAppearance.MouseDownBackColor = Color.FromArgb(135, 45, 52);
+
+            listViewMain.Font = new Font("Segoe UI", 10.5F);
+            listViewMain.Margin = Padding.Empty;
+            listViewMain.ContextMenuStrip = contextMenuStrip;
+            listViewMain.Resize += (_, _) => ResizeListColumns();
+            ResizeListColumns();
+        }
+
+        private void ResizeListColumns()
+        {
+            int availableWidth = listViewMain.ClientSize.Width -
+                                 SystemInformation.VerticalScrollBarWidth - 8;
+            if (availableWidth <= 0)
+                return;
+
+            columnHeaderSize.Width = Math.Min(150, Math.Max(100, availableWidth / 5));
+            columnHeaderCreated.Width = Math.Min(210, Math.Max(150, availableWidth / 4));
+            columnHeaderName.Width = Math.Max(
+                220,
+                availableWidth - columnHeaderSize.Width - columnHeaderCreated.Width);
         }
         private void FormMain_Load(object sender, EventArgs e)
         {
@@ -77,36 +115,13 @@ namespace NET_Thing_Encryptor
 
             labelInfoVersion.Text = $"v{Program.Version}";
             CurrentFolderID = 0;
-            _ = Task.Run(() =>
-            {
-                while (true)
-                {
-                    if (ThingData.Saving > 0)
-                    {
-                        if (labelInfoSaving.InvokeRequired)
-                        {
-                            labelInfoSaving.Invoke((Action)(() => labelInfoSaving.Visible = true));
-                        }
-                        else
-                        {
-                            labelInfoSaving.Visible = true;
-                        }
-                    }
-                    else
-                    {
-                        if (labelInfoSaving.InvokeRequired)
-                        {
-                            labelInfoSaving.Invoke((Action)(() => labelInfoSaving.Visible = false));
-                        }
-                        else
-                        {
-                            labelInfoSaving.Visible = false;
-                        }
-                    }
-                    Task.Delay(500).Wait();
-                }
-            }).ConfigureAwait(false); // Start Saving Indicator clock
+            _savingIndicatorTimer.Start();
             RecalculateFileSystemSize(); // Recalculate Folder Sizes
+        }
+
+        private void SavingIndicatorTimer_Tick(object? sender, EventArgs e)
+        {
+            labelInfoSaving.Visible = ThingData.Saving > 0;
         }
 
         private async void OnFolderChanged(object? sender, EventArgs e)
@@ -275,12 +290,13 @@ namespace NET_Thing_Encryptor
                             continue;
                         }
 
+                        ThingFile? newFile = null;
                         ThingData.BeginSaving();
                         try
                         {
-                            ThingFile newFile =
-                                new ThingFile(Path.GetFileName(file).Replace(Path.GetExtension(file), ""),
-                                    File.ReadAllBytes(file));
+                            newFile = new ThingFile(
+                                Path.GetFileNameWithoutExtension(file),
+                                await File.ReadAllBytesAsync(file));
                             Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true,
                                 out FileType result);
                             newFile.Type = result;
@@ -290,6 +306,9 @@ namespace NET_Thing_Encryptor
                         }
                         finally
                         {
+                            long releasedBytes = newFile?.Content?.LongLength ?? 0;
+                            newFile?.ReleaseContent();
+                            MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
                             ThingData.EndSaving();
                         }
                     }
@@ -393,6 +412,9 @@ namespace NET_Thing_Encryptor
 
         private void FormMain_FormClosed(object sender, FormClosedEventArgs e)
         {
+            _savingIndicatorTimer.Stop();
+            _savingIndicatorTimer.Tick -= SavingIndicatorTimer_Tick;
+            _savingIndicatorTimer.Dispose();
             ShutdownBlockReasonDestroy(this.Handle);
         }
 
@@ -435,7 +457,7 @@ namespace NET_Thing_Encryptor
                 }
                 else if (o is ThingFile file)
                 {
-                    await ExportFile(new ThingObjectLink(file.ID, file.Name, file.Type, 0), path);
+                    await ExportLoadedFile(file, path);
                 }
             }
         }
@@ -455,18 +477,37 @@ namespace NET_Thing_Encryptor
             {
                 ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
                 ArgumentNullException.ThrowIfNull(f);
+                await ExportLoadedFile(f, path);
+            }
+        }
 
-                if (f.Content == null || f.Content.Length == 0)
+        private static async Task ExportLoadedFile(ThingFile file, string path)
+        {
+            try
+            {
+                if (file.Content == null || file.Content.Length == 0)
                 {
-                    MessageBox.Show($"File {f.Name} has no content.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        $"File {file.Name} has no content.",
+                        "Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                     return;
                 }
-                string filePath = Path.Combine(path, f.Name) +
-                    (string.IsNullOrWhiteSpace(f.Extension) ? string.Empty : "." + f.Extension);
+                string filePath = Path.Combine(path, file.Name) +
+                    (string.IsNullOrWhiteSpace(file.Extension)
+                        ? string.Empty
+                        : "." + file.Extension);
                 string? directory = Path.GetDirectoryName(filePath);
                 if (directory is not null)
                     Directory.CreateDirectory(directory);
-                await File.WriteAllBytesAsync(filePath, f.Content);
+                await File.WriteAllBytesAsync(filePath, file.Content);
+            }
+            finally
+            {
+                long releasedBytes = file.Content?.LongLength ?? 0;
+                file.ReleaseContent();
+                MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
             }
         }
 
@@ -527,7 +568,7 @@ namespace NET_Thing_Encryptor
                 }
             }
 
-            await ThingData.UpdateObjectSizeAsync(folder.ID, folder_size);
+            await ThingData.UpdateObjectSizeAsync(folder.ID, folder_size, folder.ParentID);
 
             return folder_size;
         }
@@ -633,14 +674,14 @@ namespace NET_Thing_Encryptor
                     imageView.Show();
                     break;
                 case FileType.audio:
-                    MessageBox.Show("Audio preview is not implemented yet.", "Not implemented",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    break;
                 case FileType.video:
-                    VideoViewForm videoView = new(file);
-                    videoView.Show();
+                    VideoViewForm mediaPlayer = new(file);
+                    mediaPlayer.Show();
                     break;
                 case FileType.other:
+                    long releasedBytes = file.Content?.LongLength ?? 0;
+                    file.ReleaseContent();
+                    MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
                     MessageBox.Show(
                         "Viewer for this file type is not integrated. To view this file, please export it so other applications can read its contents.",
                         "Not integrated", MessageBoxButtons.OK, MessageBoxIcon.Information);

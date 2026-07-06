@@ -15,7 +15,9 @@ namespace NET_Thing_Encryptor
         public PasswordForm()
         {
             InitializeComponent();
-            
+            bool darkMode = ThingData.Root?.DarkMode ?? true;
+            AppTheme.Apply(this, darkMode);
+            AppTheme.StylePrimaryButton(buttonContinue, darkMode);
             this.Text = $"Enter Password - NET Thing Encryptor v{Program.Version}";
         }
 
@@ -49,7 +51,6 @@ namespace NET_Thing_Encryptor
                     MessageBox.Show("Incorrect password. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     textBoxPassword.Enabled = true;
                     buttonContinue.Enabled = true;
-                    GC.Collect();
                     textBoxPassword.Focus();
                 }
             }

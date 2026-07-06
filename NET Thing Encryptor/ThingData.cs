@@ -14,6 +14,10 @@ public static class ThingData
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks =
         new(StringComparer.OrdinalIgnoreCase);
     private static readonly SemaphoreSlim MutationLock = new(1, 1);
+    private static readonly JsonSerializerOptions FileSerializerOptions = new()
+    {
+        WriteIndented = true
+    };
     private static byte[]? EncryptionKey;
     private static byte[]? LegacyIv;
     private static int _saving;
@@ -60,9 +64,7 @@ public static class ThingData
 
     private static async Task<MemoryStream> Decrypt(Stream input, byte[] key, byte[] legacyIv)
     {
-        using var encrypted = new MemoryStream();
-        await input.CopyToAsync(encrypted);
-        byte[] encryptedBytes = encrypted.ToArray();
+        byte[] encryptedBytes = await ReadStreamExactlyAsync(input);
 
         if (encryptedBytes.AsSpan().StartsWith(EncryptedFileHeader))
         {
@@ -96,6 +98,24 @@ public static class ThingData
         await cryptoStream.CopyToAsync(output);
         output.Position = 0;
         return output;
+    }
+
+    private static async Task<byte[]> ReadStreamExactlyAsync(Stream input)
+    {
+        if (input.CanSeek)
+        {
+            long remainingLength = input.Length - input.Position;
+            if (remainingLength < 0 || remainingLength > int.MaxValue)
+                throw new IOException("The input stream is too large.");
+
+            byte[] result = GC.AllocateUninitializedArray<byte>((int)remainingLength);
+            await input.ReadExactlyAsync(result);
+            return result;
+        }
+
+        using var buffer = new MemoryStream();
+        await input.CopyToAsync(buffer);
+        return buffer.ToArray();
     }
 
     public static async Task<string> Encrypt(string input)
@@ -344,23 +364,56 @@ public static class ThingData
         using FileStream fs = File.OpenRead(filePath);
         using var decrypted = await Decrypt(fs).ConfigureAwait(false);
         decrypted.Position = 0;
-        string json = Encoding.UTF8.GetString(decrypted.ToArray());
+        bool hasTypeDiscriminator = ContainsTypeDiscriminator(decrypted);
+        decrypted.Position = 0;
 
-        var options = new JsonSerializerOptions { WriteIndented = true };
-
-        ThingObject? obj;
-        if (!json.Contains("\"$type\""))
-        {
-            obj = JsonSerializer.Deserialize<ThingFile>(json, options);
-        }
-        else
-        {
-            obj = JsonSerializer.Deserialize<ThingObject>(json, options);
-        }
+        ThingObject? obj = hasTypeDiscriminator
+            ? await JsonSerializer.DeserializeAsync<ThingObject>(
+                decrypted,
+                FileSerializerOptions).ConfigureAwait(false)
+            : await JsonSerializer.DeserializeAsync<ThingFile>(
+                decrypted,
+                FileSerializerOptions).ConfigureAwait(false);
 
         ArgumentNullException.ThrowIfNull(obj, nameof(obj));
         obj.ID = id;
         return obj;
+    }
+
+    private static bool ContainsTypeDiscriminator(MemoryStream jsonStream)
+    {
+        ReadOnlySpan<byte> pattern = "\"$type\""u8;
+        Span<byte> buffer = stackalloc byte[4096];
+        int matched = 0;
+        long originalPosition = jsonStream.Position;
+
+        try
+        {
+            jsonStream.Position = 0;
+            int bytesRead;
+            while ((bytesRead = jsonStream.Read(buffer)) > 0)
+            {
+                foreach (byte value in buffer[..bytesRead])
+                {
+                    if (value == pattern[matched])
+                    {
+                        matched++;
+                        if (matched == pattern.Length)
+                            return true;
+                    }
+                    else
+                    {
+                        matched = value == pattern[0] ? 1 : 0;
+                    }
+                }
+            }
+
+            return false;
+        }
+        finally
+        {
+            jsonStream.Position = originalPosition;
+        }
     }
     public static async Task<T?> LoadFileAsync<T>(ulong id) where T : ThingObject
     {
@@ -401,11 +454,9 @@ public static class ThingData
     {
         string folderPath = GetFilePath(folder.ID, true);
 
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
-        string folderContent = JsonSerializer.Serialize<ThingObject>(folder, options);
+        string folderContent = JsonSerializer.Serialize<ThingObject>(
+            folder,
+            FileSerializerOptions);
 
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(folderContent));
         await using var encrypted = await Encrypt(input);
@@ -417,14 +468,12 @@ public static class ThingData
     {
         string filePath = GetFilePath(file.ID, true);
 
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true
-        };
-
         await using MemoryStream plainStream = new MemoryStream();
 
-        await JsonSerializer.SerializeAsync<ThingObject>(plainStream, file, options);
+        await JsonSerializer.SerializeAsync<ThingObject>(
+            plainStream,
+            file,
+            FileSerializerOptions);
         plainStream.Position = 0;
 
         await using var encrypted = await Encrypt(plainStream);
@@ -669,7 +718,10 @@ public static class ThingData
         }
     }
 
-    public static async Task UpdateObjectSizeAsync(ulong id, long size)
+    public static async Task UpdateObjectSizeAsync(
+        ulong id,
+        long size,
+        ulong? knownParentID = null)
     {
         if (id == 0)
             throw new ArgumentException("The root object has no parent link.", nameof(id));
@@ -681,10 +733,25 @@ public static class ThingData
         try
         {
             ThingRoot root = RequireRoot();
-            ThingObject obj = await LoadFileAsync(id)
-                ?? throw new FileNotFoundException("The object could not be loaded.");
+            ulong parentID;
+            if (knownParentID.HasValue)
+            {
+                parentID = knownParentID.Value;
+            }
+            else
+            {
+                ThingObject obj = await LoadFileAsync(id)
+                    ?? throw new FileNotFoundException("The object could not be loaded.");
+                parentID = obj.ParentID;
+                if (obj is ThingFile file)
+                {
+                    long releasedBytes = file.Content?.LongLength ?? 0;
+                    file.ReleaseContent();
+                    MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
+                }
+            }
 
-            if (obj.ParentID == 0)
+            if (parentID == 0)
             {
                 ThingObjectLink? link = root.Content?.FirstOrDefault(x => x.ID == id);
                 if (link is not null && link.Size != size)
@@ -695,7 +762,7 @@ public static class ThingData
             }
             else
             {
-                ThingFolder parent = await LoadFileAsync<ThingFolder>(obj.ParentID)
+                ThingFolder parent = await LoadFileAsync<ThingFolder>(parentID)
                     ?? throw new FileNotFoundException("The parent folder could not be loaded.");
                 ThingObjectLink? link = parent.Content.FirstOrDefault(x => x.ID == id);
                 if (link is not null && link.Size != size)
@@ -717,6 +784,9 @@ public static class ThingData
         ThingRoot root = RequireRoot();
         ThingFile file = await LoadFileAsync<ThingFile>(fileID)
             ?? throw new FileNotFoundException("The file could not be loaded.");
+        long releasedBytes = file.Content?.LongLength ?? 0;
+        file.ReleaseContent();
+        MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
         Debug.WriteLine("Attempting to delete file: " + file.Name);
 
         if (file.ParentID == 0)

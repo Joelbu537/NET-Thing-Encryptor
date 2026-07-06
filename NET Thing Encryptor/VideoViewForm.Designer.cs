@@ -19,6 +19,7 @@ namespace NET_Thing_Encryptor
             System.ComponentModel.ComponentResourceManager resources = new(typeof(VideoViewForm));
             rootLayout = new TableLayoutPanel();
             videoView = new LibVLCSharp.WinForms.VideoView();
+            audioDisplay = new AudioPlayerDisplay();
             controlLayout = new TableLayoutPanel();
             labelCurrentTime = new Label();
             timeline = new VideoTimeline();
@@ -40,6 +41,7 @@ namespace NET_Thing_Encryptor
             rootLayout.ColumnCount = 1;
             rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             rootLayout.Controls.Add(videoView, 0, 0);
+            rootLayout.Controls.Add(audioDisplay, 0, 0);
             rootLayout.Controls.Add(controlLayout, 0, 1);
             rootLayout.Dock = DockStyle.Fill;
             rootLayout.Location = new Point(0, 0);
@@ -61,6 +63,19 @@ namespace NET_Thing_Encryptor
             videoView.Name = "videoView";
             videoView.Size = new Size(1280, 628);
             videoView.TabIndex = 0;
+            //
+            // audioDisplay
+            //
+            audioDisplay.Dock = DockStyle.Fill;
+            audioDisplay.FileName = "";
+            audioDisplay.Format = "";
+            audioDisplay.IsPlaying = false;
+            audioDisplay.Location = new Point(0, 0);
+            audioDisplay.Margin = new Padding(0);
+            audioDisplay.Name = "audioDisplay";
+            audioDisplay.Size = new Size(1280, 628);
+            audioDisplay.TabIndex = 1;
+            audioDisplay.Visible = false;
             //
             // controlLayout
             //
@@ -226,6 +241,7 @@ namespace NET_Thing_Encryptor
 
         private TableLayoutPanel rootLayout;
         private LibVLCSharp.WinForms.VideoView videoView;
+        private AudioPlayerDisplay audioDisplay;
         private TableLayoutPanel controlLayout;
         private Label labelCurrentTime;
         private VideoTimeline timeline;

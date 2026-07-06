@@ -20,12 +20,16 @@ namespace NET_Thing_Encryptor
                 throw new ArgumentException("The file must contain text data.", nameof(file));
 
             InitializeComponent();
+            AppTheme.Apply(this, ThingData.Root?.DarkMode ?? true);
             KeyPreview = true;
 
             DecodedText decoded = DecodeText(file.Content);
             _file = file;
             _encoding = decoded.Encoding;
             _emitByteOrderMark = decoded.HasByteOrderMark;
+            long releasedBytes = file.Content.LongLength;
+            file.ReleaseContent();
+            MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
 
             LoadTextAsClean(decoded.Text);
 
@@ -160,7 +164,12 @@ namespace NET_Thing_Encryptor
                     ?? throw new FileNotFoundException("The text file no longer exists.");
                 currentFile.Content = content;
                 await ThingData.SaveFileAsync(currentFile);
-                await ThingData.UpdateObjectSizeAsync(currentFile.ID, content.LongLength);
+                await ThingData.UpdateObjectSizeAsync(
+                    currentFile.ID,
+                    content.LongLength,
+                    currentFile.ParentID);
+                currentFile.ReleaseContent();
+                MemoryMaintenance.NotifyLargeBufferReleased(content.LongLength);
                 _file = currentFile;
 
                 _savedText = editor.Text;

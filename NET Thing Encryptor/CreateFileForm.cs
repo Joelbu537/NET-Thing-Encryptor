@@ -20,6 +20,22 @@ namespace NET_Thing_Encryptor
             ArgumentNullException.ThrowIfNull(currentFolder);
             currentFolderID = currentFolder.ID;
             InitializeComponent();
+            bool darkMode = ThingData.Root?.DarkMode ?? true;
+            AppTheme.Apply(this, darkMode);
+            AppTheme.StylePrimaryButton(buttonImport, darkMode);
+            listViewFiles.Resize += (_, _) => ResizeListColumns();
+            ResizeListColumns();
+        }
+
+        private void ResizeListColumns()
+        {
+            int availableWidth = listViewFiles.ClientSize.Width -
+                                 SystemInformation.VerticalScrollBarWidth - 8;
+            if (availableWidth <= 0)
+                return;
+
+            columnHeaderName.Width = Math.Max(180, availableWidth / 3);
+            columnHeaderPath.Width = Math.Max(260, availableWidth - columnHeaderName.Width);
         }
         private void buttonAddFiles_Click(object sender, EventArgs e)
         {
@@ -54,29 +70,14 @@ namespace NET_Thing_Encryptor
         }
         private string GetImageKey(string filePath)
         {
-            string extension = System.IO.Path.GetExtension(filePath).ToLower();
-            switch (extension)
+            return FileCategories.GetFileType(filePath) switch
             {
-                case ".txt":
-                    return "text";
-                case ".jpg":
-                case ".jpeg":
-                case ".png":
-                case ".gif":
-                case ".avif":
-                    return "image";
-                case ".mp3":
-                case ".wav":
-                case ".ogg":
-                    return "audio";
-                case ".mp4":
-                case ".avi":
-                case ".mkv":
-                case ".mov":
-                    return "video";
-                default:
-                    return "other";
-            }
+                FileType.text => "text",
+                FileType.image => "image",
+                FileType.audio => "audio",
+                FileType.video => "video",
+                _ => "other"
+            };
         }
 
         private void buttonRemoveSelected_Click(object sender, EventArgs e)
@@ -109,6 +110,7 @@ namespace NET_Thing_Encryptor
             // Neu schreiben
             foreach (ListViewItem item in listViewFiles.Items.Cast<ListViewItem>().ToList())
             {
+                ThingFile? importedFile = null;
                 try
                 {
                     string filePath = item.SubItems[1].Text;
@@ -116,19 +118,25 @@ namespace NET_Thing_Encryptor
                     if(!File.Exists(filePath))
                         throw new FileNotFoundException("File not found.", filePath);
 
-                    ThingFile file = new(
+                    importedFile = new ThingFile(
                         Path.GetFileNameWithoutExtension(filePath),
-                        File.ReadAllBytes(filePath));
+                        await File.ReadAllBytesAsync(filePath));
                     Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
-                    file.Type = result;
-                    file.Extension = Path.GetExtension(filePath).TrimStart('.');
-                    await ThingData.MoveFileToFolderAsync(file, currentFolderID);
+                    importedFile.Type = result;
+                    importedFile.Extension = Path.GetExtension(filePath).TrimStart('.');
+                    await ThingData.MoveFileToFolderAsync(importedFile, currentFolderID);
                     listViewFiles.Items.Remove(item);
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"Error importing file: {ex.Message}");
                     item.BackColor = Color.Red;
+                }
+                finally
+                {
+                    long releasedBytes = importedFile?.Content?.LongLength ?? 0;
+                    importedFile?.ReleaseContent();
+                    MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
                 }
             }
 

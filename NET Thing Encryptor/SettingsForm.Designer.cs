@@ -317,6 +317,7 @@
             MinimizeBox = false;
             Name = "SettingsForm";
             ShowIcon = false;
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Settings";
             Load += SettingsForm_Load;
             tableLayoutPanel1.ResumeLayout(false);

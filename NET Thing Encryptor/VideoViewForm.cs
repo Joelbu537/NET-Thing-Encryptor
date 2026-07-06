@@ -11,9 +11,11 @@ namespace NET_Thing_Encryptor
 
         private readonly LibVLC _libVlc;
         private readonly MediaPlayer _mediaPlayer;
-        private readonly MemoryStream _videoStream;
+        private MemoryStream? _mediaStream;
         private readonly Media _media;
         private readonly Timer _positionUpdateTimer;
+        private readonly bool _isAudio;
+        private readonly string _mediaKind;
 
         private long _durationMilliseconds;
         private bool _isSeeking;
@@ -24,12 +26,19 @@ namespace NET_Thing_Encryptor
         public VideoViewForm(ThingFile file)
         {
             ArgumentNullException.ThrowIfNull(file);
-            if (file.Type != FileType.video || file.Content is not { Length: > 0 })
-                throw new ArgumentException("The file must contain video data.", nameof(file));
+            if (file.Type is not FileType.video and not FileType.audio ||
+                file.Content is not { Length: > 0 })
+            {
+                throw new ArgumentException(
+                    "The file must contain audio or video data.",
+                    nameof(file));
+            }
 
+            _isAudio = file.Type == FileType.audio;
+            _mediaKind = _isAudio ? "audio" : "video";
             InitializeComponent();
             KeyPreview = true;
-            Text = $".NET Thing Video Viewer — {file.Name}";
+            ConfigureMediaMode(file);
 
             toolTip.SetToolTip(buttonPlayPause, "Play / Pause (Space)");
             toolTip.SetToolTip(buttonSeekBackward, "Back 10 seconds");
@@ -40,15 +49,19 @@ namespace NET_Thing_Encryptor
             _libVlc = new LibVLC("--no-video-title-show", "--quiet");
             _mediaPlayer = new MediaPlayer(_libVlc)
             {
-                EnableHardwareDecoding = true
+                EnableHardwareDecoding = !_isAudio
             };
             videoView.MediaPlayer = _mediaPlayer;
 
             Debug.WriteLine(
-                $"Opening VideoViewForm for file {file.Name} (ID {file.ID}) with ParentID {file.ParentID}");
+                $"Opening media player for {_mediaKind} file {file.Name} " +
+                $"(ID {file.ID}) with ParentID {file.ParentID}");
 
-            _videoStream = new MemoryStream(file.Content, writable: false);
-            _media = new Media(_libVlc, new StreamMediaInput(_videoStream));
+            _mediaStream = new MemoryStream(file.Content, writable: false);
+            _media = new Media(_libVlc, new StreamMediaInput(_mediaStream));
+            file.ReleaseContent();
+            if (_isAudio)
+                _media.AddOption(":no-video");
 
             _positionUpdateTimer = new Timer
             {
@@ -68,6 +81,42 @@ namespace NET_Thing_Encryptor
             _mediaPlayer.EncounteredError += MediaPlayer_EncounteredError;
         }
 
+        private void ConfigureMediaMode(ThingFile file)
+        {
+            string displayName = GetDisplayName(file);
+            Text = _isAudio
+                ? $".NET Thing Audio Player — {displayName}"
+                : $".NET Thing Video Viewer — {displayName}";
+
+            videoView.Visible = !_isAudio;
+            audioDisplay.Visible = _isAudio;
+            audioDisplay.FileName = displayName;
+            audioDisplay.Format = file.Extension;
+
+            if (_isAudio)
+            {
+                audioDisplay.BringToFront();
+                WindowState = FormWindowState.Normal;
+                StartPosition = FormStartPosition.CenterScreen;
+                ClientSize = new Size(900, 600);
+            }
+            else
+            {
+                videoView.BringToFront();
+            }
+        }
+
+        private static string GetDisplayName(ThingFile file)
+        {
+            if (string.IsNullOrWhiteSpace(file.Extension) ||
+                file.Name.EndsWith($".{file.Extension}", StringComparison.OrdinalIgnoreCase))
+            {
+                return file.Name;
+            }
+
+            return $"{file.Name}.{file.Extension}";
+        }
+
         private void VideoViewForm_Load(object sender, EventArgs e)
         {
             timeline.Value = 0d;
@@ -78,7 +127,7 @@ namespace NET_Thing_Encryptor
             if (!_mediaPlayer.Play())
             {
                 MessageBox.Show(
-                    "The video could not be started.",
+                    $"The {_mediaKind} file could not be started.",
                     "Playback error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
@@ -189,7 +238,7 @@ namespace NET_Thing_Encryptor
             long duration = GetDurationMilliseconds();
             if (duration > 0 && _mediaPlayer.Time >= duration - 250)
             {
-                _videoStream.Position = 0;
+                RewindMediaStream();
                 timeline.Value = 0d;
                 UpdateTimeDisplay(0, duration);
             }
@@ -214,6 +263,13 @@ namespace NET_Thing_Encryptor
             UpdateTimeDisplay(targetTime, duration);
         }
 
+        private void RewindMediaStream()
+        {
+            MemoryStream stream = _mediaStream
+                ?? throw new ObjectDisposedException(nameof(VideoViewForm));
+            stream.Position = 0;
+        }
+
         private void UpdatePlayPauseButton(bool isPlaying)
         {
             // The legacy resource files are named the wrong way around:
@@ -222,6 +278,7 @@ namespace NET_Thing_Encryptor
                 ? Properties.Resources.play_icon
                 : Properties.Resources.pause_icon;
             buttonPlayPause.AccessibleName = isPlaying ? "Pause" : "Play";
+            audioDisplay.IsPlaying = isPlaying;
             buttonPlayPause.Invalidate();
         }
 
@@ -308,18 +365,19 @@ namespace NET_Thing_Encryptor
                 if (_isClosing)
                     return;
 
-                _videoStream.Position = 0;
+                RewindMediaStream();
                 _mediaPlayer.Stop();
                 if (!_mediaPlayer.Play(_media))
-                    throw new InvalidOperationException("VLC could not restart the video.");
+                    throw new InvalidOperationException(
+                        $"VLC could not restart the {_mediaKind} file.");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error while restarting video: {ex}");
+                Debug.WriteLine($"Error while restarting {_mediaKind} playback: {ex}");
                 if (!_isClosing)
                 {
                     MessageBox.Show(
-                        "The video could not be restarted.",
+                        $"The {_mediaKind} file could not be restarted.",
                         "Playback error",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
@@ -338,7 +396,7 @@ namespace NET_Thing_Encryptor
                 _positionUpdateTimer.Stop();
                 UpdatePlayPauseButton(isPlaying: false);
                 MessageBox.Show(
-                    "An error occurred while playing the video.",
+                    $"An error occurred while playing the {_mediaKind} file.",
                     "Playback error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
@@ -410,13 +468,16 @@ namespace NET_Thing_Encryptor
             _mediaPlayer.EndReached -= MediaPlayer_EndReached;
             _mediaPlayer.EncounteredError -= MediaPlayer_EncounteredError;
 
+            long releasedBytes = _mediaStream?.Length ?? 0;
             _mediaPlayer.Stop();
             videoView.MediaPlayer = null;
             _mediaPlayer.Dispose();
             _media.Dispose();
             _libVlc.Dispose();
-            _videoStream.Dispose();
+            _mediaStream?.Dispose();
+            _mediaStream = null;
             _positionUpdateTimer.Dispose();
+            MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
         }
     }
 }

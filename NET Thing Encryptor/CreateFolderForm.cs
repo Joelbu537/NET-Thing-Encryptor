@@ -15,13 +15,22 @@ namespace NET_Thing_Encryptor
         public CreateFolderForm()
         {
             InitializeComponent();
+            ApplyTheme();
         }
         public CreateFolderForm(string name)
         {
             InitializeComponent();
+            ApplyTheme();
             textBox.Text = name;
             label.Text = "Change Name to:";
             textBox1_TextChanged(this, EventArgs.Empty);
+        }
+
+        private void ApplyTheme()
+        {
+            bool darkMode = ThingData.Root?.DarkMode ?? true;
+            AppTheme.Apply(this, darkMode);
+            AppTheme.StylePrimaryButton(buttonOK, darkMode);
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)

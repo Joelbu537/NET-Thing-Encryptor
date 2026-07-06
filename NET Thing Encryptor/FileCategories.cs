@@ -25,7 +25,11 @@ namespace NET_Thing_Encryptor
                 ".html", ".css", ".scss", ".cpp", ".c", ".h", ".rb", ".sql", ".sh",
                 ".ps1", ".bat", ".cmd"
             }),
-            new FileCategorie(FileType.audio, new List<string> { ".mp3", ".wav", ".aac", ".flac", ".ogg", ".wma" }),
+            new FileCategorie(FileType.audio, new List<string>
+            {
+                ".mp3", ".wav", ".aac", ".flac", ".ogg", ".wma", ".m4a",
+                ".opus", ".aiff", ".aif", ".alac", ".mka", ".ac3", ".amr"
+            }),
         ];
 
         public static FileType GetFileType(string filePath)

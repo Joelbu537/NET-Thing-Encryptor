@@ -83,6 +83,7 @@
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "SettingsMoveFilesForm";
+            StartPosition = FormStartPosition.CenterScreen;
             ShowIcon = false;
             Text = "Moving files to new directory";
             Load += SettingsMoveFilesForm_Load;

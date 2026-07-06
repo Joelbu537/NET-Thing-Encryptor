@@ -59,8 +59,13 @@ namespace NET_Thing_Encryptor
 
         public void Clear()
         {
-            _content = null;
+            ReleaseContent();
             ID = 0;
+        }
+
+        public void ReleaseContent()
+        {
+            _content = null;
         }
     }
     public class ThingRoot : ThingObject, ICloneable

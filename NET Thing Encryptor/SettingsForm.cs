@@ -7,6 +7,9 @@ namespace NET_Thing_Encryptor
         public SettingsForm()
         {
             InitializeComponent();
+            bool darkMode = ThingData.Root?.DarkMode ?? true;
+            AppTheme.Apply(this, darkMode);
+            AppTheme.StylePrimaryButton(buttonApply, darkMode);
         }
 
         private void SettingsForm_Load(object sender, EventArgs e)
