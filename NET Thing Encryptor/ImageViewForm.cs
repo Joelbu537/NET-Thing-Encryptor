@@ -10,10 +10,10 @@ namespace NET_Thing_Encryptor
 
         private sealed class ImageCacheEntry(
             CancellationTokenSource cancellation,
-            Task<Bitmap?> loadTask)
+            Task<Image?> loadTask)
         {
             public CancellationTokenSource Cancellation { get; } = cancellation;
-            public Task<Bitmap?> LoadTask { get; } = loadTask;
+            public Task<Image?> LoadTask { get; } = loadTask;
         }
 
         private readonly List<ThingObjectLink> _images = [];
@@ -153,10 +153,10 @@ namespace NET_Thing_Encryptor
             if (!IsCacheEntryCompleted(index))
                 ShowLoadingImage();
 
-            Bitmap? displayImage = await GetDisplayImageAsync(index);
+            Image? displayImage = await GetDisplayImageAsync(index);
             if (_isClosing || navigationVersion != Volatile.Read(ref _navigationVersion))
             {
-                displayImage?.Dispose();
+                DisposeImage(displayImage);
                 return;
             }
 
@@ -191,7 +191,7 @@ namespace NET_Thing_Encryptor
                     ulong imageID = _images[index].ID;
                     _imageCache[index] = new ImageCacheEntry(
                         cancellation,
-                        LoadBitmapAsync(imageID, cancellation.Token));
+                        LoadImageAsync(imageID, cancellation.Token));
                 }
 
                 foreach (int staleIndex in _imageCache.Keys
@@ -216,7 +216,7 @@ namespace NET_Thing_Encryptor
             }
         }
 
-        private async Task<Bitmap?> GetDisplayImageAsync(int index)
+        private async Task<Image?> GetDisplayImageAsync(int index)
         {
             ImageCacheEntry? entry;
             lock (_cacheLock)
@@ -225,7 +225,7 @@ namespace NET_Thing_Encryptor
             if (entry is null)
                 return null;
 
-            Bitmap? cachedImage = await entry.LoadTask;
+            Image? cachedImage = await entry.LoadTask;
             if (cachedImage is null)
                 return null;
 
@@ -240,11 +240,11 @@ namespace NET_Thing_Encryptor
 
                 // The cache owns its bitmap. PictureBox receives a separate instance
                 // so rapid navigation can never reassign an image that was just disposed.
-                return (Bitmap)cachedImage.Clone();
+                return CloneDisplayImage(cachedImage);
             }
         }
 
-        private async Task<Bitmap?> LoadBitmapAsync(ulong imageID, CancellationToken cancellationToken)
+        private async Task<Image?> LoadImageAsync(ulong imageID, CancellationToken cancellationToken)
         {
             bool gateEntered = false;
             try
@@ -263,6 +263,7 @@ namespace NET_Thing_Encryptor
                 }
 
                 byte[] imageData = imageFile.Content;
+                string extension = imageFile.Extension;
                 imageFile.ReleaseContent();
 
                 return await Task.Run(() =>
@@ -270,6 +271,15 @@ namespace NET_Thing_Encryptor
                     try
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        if (IsAnimatedGif(extension, imageData))
+                        {
+                            MemoryStream gifStream = new(imageData, writable: false);
+                            Image gif = Image.FromStream(gifStream);
+                            gif.Tag = gifStream;
+                            cancellationToken.ThrowIfCancellationRequested();
+                            return gif;
+                        }
+
                         using var image = new MagickImage(imageData);
                         if (image.ColorSpace != ColorSpace.sRGB)
                             image.TransformColorSpace(ColorProfiles.SRGB);
@@ -315,6 +325,17 @@ namespace NET_Thing_Encryptor
             }
         }
 
+        private static bool IsAnimatedGif(string extension, byte[] imageData)
+        {
+            return string.Equals(extension, "gif", StringComparison.OrdinalIgnoreCase) &&
+                   imageData.Length >= 6 &&
+                   imageData[0] == 'G' &&
+                   imageData[1] == 'I' &&
+                   imageData[2] == 'F' &&
+                   imageData[3] == '8' &&
+                   imageData[5] == 'a';
+        }
+
         private void ShowLoadingImage()
         {
             pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -328,19 +349,43 @@ namespace NET_Thing_Encryptor
 
         private static Image? CloneImage(Image? image)
         {
-            return image is null ? null : (Image)image.Clone();
+            return image is null ? null : CloneDisplayImage(image);
         }
 
         private void ReplaceDisplayedImage(Image? replacement)
         {
             Image? previous = pictureBox.Image;
             pictureBox.Image = null;
-            previous?.Dispose();
+            DisposeImage(previous);
 
             if (_isClosing)
-                replacement?.Dispose();
+                DisposeImage(replacement);
             else
                 pictureBox.Image = replacement;
+        }
+
+        private static Image CloneDisplayImage(Image image)
+        {
+            if (image.Tag is MemoryStream gifStream)
+            {
+                MemoryStream cloneStream = new(gifStream.ToArray(), writable: false);
+                Image clone = Image.FromStream(cloneStream);
+                clone.Tag = cloneStream;
+                return clone;
+            }
+
+            return (Image)image.Clone();
+        }
+
+        private static void DisposeImage(Image? image)
+        {
+            if (image is null)
+                return;
+
+            IDisposable? backingStream = image.Tag as IDisposable;
+            image.Tag = null;
+            image.Dispose();
+            backingStream?.Dispose();
         }
 
         private static void DisposeCacheEntry(ImageCacheEntry entry)
@@ -349,7 +394,7 @@ namespace NET_Thing_Encryptor
             if (entry.LoadTask.IsCompleted)
             {
                 if (entry.LoadTask.Status == TaskStatus.RanToCompletion)
-                    entry.LoadTask.Result?.Dispose();
+                    DisposeImage(entry.LoadTask.Result);
                 entry.Cancellation.Dispose();
                 return;
             }
@@ -358,7 +403,7 @@ namespace NET_Thing_Encryptor
                 task =>
                 {
                     if (task.Status == TaskStatus.RanToCompletion)
-                        task.Result?.Dispose();
+                        DisposeImage(task.Result);
                     entry.Cancellation.Dispose();
                 },
                 CancellationToken.None,

@@ -12,10 +12,27 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
         private int recalculatingFileSystemSize;
+        private const int AutoLockMinutes = 5;
+        private const long LargeFileWarningThreshold = 256L * 1024 * 1024;
         private readonly System.Windows.Forms.Timer _savingIndicatorTimer = new()
         {
             Interval = 500
         };
+        private readonly System.Windows.Forms.Timer _sessionLockTimer = new()
+        {
+            Interval = 1000
+        };
+        private readonly ToolStripMenuItem _toolStripMenuItemMoveHere = new("Move marked here");
+        private readonly ActivityMessageFilter _activityMessageFilter;
+        private DateTime _lastUserActivityUtc = DateTime.UtcNow;
+        private bool _lockingSession;
+        private readonly List<ulong> _pendingMoveIds = [];
+        private readonly TextBox _textBoxSearch = new()
+        {
+            Width = 180,
+            PlaceholderText = "Search"
+        };
+        private List<ThingObjectLink> _currentFolderContent = [];
         private static ThingRoot Root =>
             ThingData.Root ?? throw new InvalidOperationException("The root data has not been loaded.");
 
@@ -39,7 +56,10 @@ namespace NET_Thing_Encryptor
             AppTheme.Apply(this, Root.DarkMode);
             AppTheme.Apply(contextMenuStrip, Root.DarkMode);
             ConfigureMainLayout();
+            _activityMessageFilter = new ActivityMessageFilter(RecordUserActivity);
+            Application.AddMessageFilter(_activityMessageFilter);
             _savingIndicatorTimer.Tick += SavingIndicatorTimer_Tick;
+            _sessionLockTimer.Tick += SessionLockTimer_Tick;
 
             FolderChanged += OnFolderChanged;
         }
@@ -84,8 +104,20 @@ namespace NET_Thing_Encryptor
 
             listViewMain.Font = new Font("Segoe UI", 10.5F);
             listViewMain.Margin = Padding.Empty;
+            listViewMain.MultiSelect = true;
             listViewMain.ContextMenuStrip = contextMenuStrip;
             listViewMain.Resize += (_, _) => ResizeListColumns();
+            toolStripMenuItemCopy.Text = "Mark for move";
+            toolStripMenuItemCopy.Click += toolStripMenuItemMarkForMove_Click;
+            _toolStripMenuItemMoveHere.Click += toolStripMenuItemMoveHere_Click;
+            contextMenuStrip.Items.Insert(3, _toolStripMenuItemMoveHere);
+            _textBoxSearch.Margin = new Padding(18, 8, 3, 3);
+            _textBoxSearch.BackColor = Root.DarkMode ? Color.FromArgb(45, 45, 45) : SystemColors.Window;
+            _textBoxSearch.ForeColor = Root.DarkMode ? Color.White : SystemColors.WindowText;
+            _textBoxSearch.BorderStyle = BorderStyle.FixedSingle;
+            _textBoxSearch.TextChanged += textBoxSearch_TextChanged;
+            flowLayoutPanelNavigationButtons.Controls.Add(_textBoxSearch);
+            AppTheme.Apply(contextMenuStrip, Root.DarkMode);
             ResizeListColumns();
         }
 
@@ -116,18 +148,116 @@ namespace NET_Thing_Encryptor
             labelInfoVersion.Text = $"v{Program.Version}";
             CurrentFolderID = 0;
             _savingIndicatorTimer.Start();
+            _sessionLockTimer.Start();
             RecalculateFileSystemSize(); // Recalculate Folder Sizes
         }
 
         private void SavingIndicatorTimer_Tick(object? sender, EventArgs e)
         {
+            if (_pendingMoveIds.Count > 0)
+            {
+                labelInfoSaving.BackColor = Color.FromArgb(255, 205, 120);
+                labelInfoSaving.ForeColor = Color.Black;
+                labelInfoSaving.Text = $"Marked {_pendingMoveIds.Count} for move";
+                labelInfoSaving.Visible = true;
+                return;
+            }
+
+            labelInfoSaving.BackColor = Color.Red;
+            labelInfoSaving.ForeColor = Color.Black;
+            labelInfoSaving.Text = "Saving...";
             labelInfoSaving.Visible = ThingData.Saving > 0;
+        }
+
+        private void RecordUserActivity()
+        {
+            if (!_lockingSession)
+                _lastUserActivityUtc = DateTime.UtcNow;
+        }
+
+        private async void SessionLockTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_lockingSession ||
+                ThingData.Saving > 0 ||
+                !ThingData.IsSessionUnlocked ||
+                DateTime.UtcNow - _lastUserActivityUtc < TimeSpan.FromMinutes(AutoLockMinutes))
+            {
+                return;
+            }
+
+            await LockSessionAsync();
+        }
+
+        private async Task LockSessionAsync()
+        {
+            if (_lockingSession)
+                return;
+
+            _lockingSession = true;
+            _sessionLockTimer.Stop();
+            try
+            {
+                if (ThingData.Saving > 0)
+                    return;
+
+                if (!CloseSecondaryFormsForSessionLock())
+                {
+                    _lastUserActivityUtc = DateTime.UtcNow;
+                    return;
+                }
+
+                await ThingData.SaveRootAsync();
+                Hide();
+                ThingData.LockSession();
+
+                using PasswordForm passwordForm = new();
+                if (passwordForm.ShowDialog() == DialogResult.OK)
+                {
+                    Show();
+                    WindowState = FormWindowState.Maximized;
+                    CurrentFolderID = CurrentFolderID;
+                    _lastUserActivityUtc = DateTime.UtcNow;
+                }
+                else
+                {
+                    Application.Exit();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"The session could not be locked safely: {ex.Message}",
+                    "Lock failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                Show();
+                _lastUserActivityUtc = DateTime.UtcNow;
+            }
+            finally
+            {
+                _lockingSession = false;
+                _sessionLockTimer.Start();
+            }
+        }
+
+        private bool CloseSecondaryFormsForSessionLock()
+        {
+            foreach (Form form in Application.OpenForms.Cast<Form>().ToList())
+            {
+                if (ReferenceEquals(form, this) || form is PasswordForm)
+                    continue;
+
+                form.Close();
+                if (!form.IsDisposed && form.Visible)
+                    return false;
+            }
+
+            return true;
         }
 
         private async void OnFolderChanged(object? sender, EventArgs e)
         {
             Debug.WriteLine("Folder changed. Refreshing items.");
-            listViewMain.Items.Clear();
             if (CurrentFolderID == 0)
             {
                 CurrentFolder = null;
@@ -137,23 +267,43 @@ namespace NET_Thing_Encryptor
             {
                 CurrentFolder = await ThingData.LoadFileAsync<ThingFolder>(CurrentFolderID);
             }
-            List<ThingObjectLink> newContent = await ThingData.LoadFolderContent(CurrentFolderID);
+            _currentFolderContent = await ThingData.LoadFolderContent(CurrentFolderID);
 
-            Debug.WriteLine($"Loaded folder contains {newContent.Count} items:");
+            Debug.WriteLine($"Loaded folder contains {_currentFolderContent.Count} items:");
             Debug.WriteLine(new string('-', 80));
-            foreach (ThingObjectLink o in newContent)
+            foreach (ThingObjectLink o in _currentFolderContent)
             {
                 Debug.WriteLine($"  - {o.Name} {o.Type}  ID {o.ID} ({ThingData.IDToHex(o.ID)})");
 
             }
             Debug.WriteLine(new string('-', 80) + '\n');
 
+            RenderCurrentFolderContent();
+        }
+
+        private void textBoxSearch_TextChanged(object? sender, EventArgs e)
+        {
+            RenderCurrentFolderContent();
+        }
+
+        private void RenderCurrentFolderContent()
+        {
+            listViewMain.Items.Clear();
+            string searchText = _textBoxSearch.Text.Trim();
+            IEnumerable<ThingObjectLink> visibleContent = _currentFolderContent;
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                visibleContent = visibleContent.Where(link =>
+                    link.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    link.Type.ToString().Contains(searchText, StringComparison.OrdinalIgnoreCase));
+            }
+
             int folderCount = 0;
             int fileCount = 0;
             long totalSize = 0;
             List<ListViewItem> items = new();
 
-            foreach (ThingObjectLink o in newContent)
+            foreach (ThingObjectLink o in visibleContent)
             {
                 if (o.Type == FileType.folder) folderCount++;
                 else fileCount++;
@@ -179,6 +329,8 @@ namespace NET_Thing_Encryptor
             labelInfoFileCount.Text = $"Files: {fileCount}";
             labelInfoFolderCount.Text = $"Folders: {folderCount}";
             labelInfoTotalSize.Text = $"Total Size: {totalSize.Sizeify()}";
+            if (!string.IsNullOrWhiteSpace(searchText))
+                labelInfoTotalSize.Text += $" - Filtered from {_currentFolderContent.Count}";
             if (CurrentFolderID == 0)
             {
                 labelInfoTotalSize.Text += " - With encryption overhead: " +
@@ -280,9 +432,10 @@ namespace NET_Thing_Encryptor
 
                 if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
                 {
-                    List<string> selectedFiles = dialog.FileNames.ToList();
+                    List<string> selectedFiles = FilterLargeImportFiles(dialog.FileNames.ToList());
+                    HashSet<string> reservedNames = new(StringComparer.OrdinalIgnoreCase);
 
-                    foreach (string file in selectedFiles) // Turn this whole loop into a pile of tasks. Fuck read/write speed.
+                    foreach (string file in selectedFiles)
                     {
                         if (!File.Exists(file))
                         {
@@ -294,8 +447,13 @@ namespace NET_Thing_Encryptor
                         ThingData.BeginSaving();
                         try
                         {
-                            newFile = new ThingFile(
+                            string objectName = GetUniqueNameForCurrentFolder(
                                 Path.GetFileNameWithoutExtension(file),
+                                reservedNames);
+                            reservedNames.Add(objectName);
+
+                            newFile = new ThingFile(
+                                objectName,
                                 await File.ReadAllBytesAsync(file));
                             Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true,
                                 out FileType result);
@@ -321,6 +479,16 @@ namespace NET_Thing_Encryptor
             using CreateFolderForm form = new();
             if (form.ShowDialog() == DialogResult.OK)
             {
+                if (CurrentFolderContainsName(form.Name))
+                {
+                    MessageBox.Show(
+                        $"The current folder already contains an item named {form.Name}.",
+                        "Name already exists",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+
                 ThingFolder newFolder = new ThingFolder(form.Name).AddToRoot();
                 await ThingData.SaveFileAsync(newFolder);
                 if (CurrentFolderID == 0)
@@ -342,19 +510,41 @@ namespace NET_Thing_Encryptor
         }
         private async void buttonNavigationDeleteSelected_Click(object sender, EventArgs e)
         {
-            if (listViewMain.SelectedItems.Count > 0)
+            if (listViewMain.SelectedItems.Count <= 0)
+                return;
+
+            List<ListViewItem> selectedItems = listViewMain.SelectedItems
+                .Cast<ListViewItem>()
+                .ToList();
+            string message = selectedItems.Count == 1
+                ? $"Are you sure you want to delete {selectedItems[0].Text} and all of its contents?"
+                : $"Are you sure you want to delete {selectedItems.Count} selected items and all of their contents?";
+
+            DialogResult r = MessageBox.Show(
+                message,
+                "Confirmation required",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (r != DialogResult.Yes)
+                return;
+
+            foreach (ListViewItem item in selectedItems)
             {
-                ListViewItem item = listViewMain.SelectedItems[0];
                 Debug.WriteLine($"Deleting {item.Text}");
-
-                DialogResult r = MessageBox.Show($"Are you sure you want to delete {item.Text} and all of its contents?",
-                        "Confirmation required", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-                if (r == DialogResult.Yes)
+                try
                 {
                     await ThingData.DeleteObject(ulong.Parse(item.Name));
+                    listViewMain.Items.Remove(item);
                 }
-                listViewMain.Items.RemoveAt(listViewMain.SelectedIndices[0]); // Remove link
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"The item {item.Text} could not be deleted: {ex.Message}",
+                        "Delete failed",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
             }
         }
         private void buttonNavigationRoot_Click(object sender, EventArgs e)
@@ -415,10 +605,13 @@ namespace NET_Thing_Encryptor
             _savingIndicatorTimer.Stop();
             _savingIndicatorTimer.Tick -= SavingIndicatorTimer_Tick;
             _savingIndicatorTimer.Dispose();
+            _sessionLockTimer.Stop();
+            _sessionLockTimer.Tick -= SessionLockTimer_Tick;
+            _sessionLockTimer.Dispose();
+            Application.RemoveMessageFilter(_activityMessageFilter);
             ShutdownBlockReasonDestroy(this.Handle);
         }
 
-        // Auf Multiselect umstellen!!!
         private async void buttonNavigationExport_Click(object sender, EventArgs e)
         {
             if (listViewMain.SelectedItems.Count <= 0)
@@ -444,20 +637,18 @@ namespace NET_Thing_Encryptor
             if (dialog.ShowDialog() == CommonFileDialogResult.Ok &&
                 !string.IsNullOrWhiteSpace(dialog.FileName))
             {
-                string path = dialog.FileName; // The Folder to export to
-                ListViewItem item = listViewMain.SelectedItems[0];
-                ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
-                if (o is ThingFolder folder)
+                foreach (ListViewItem item in listViewMain.SelectedItems.Cast<ListViewItem>().ToList())
                 {
-                    path = Path.Combine(dialog.FileName, o.Name);
-                    foreach (ThingObjectLink link in folder.Content)
+                    string path = dialog.FileName; // The Folder to export to
+                    ThingObject? o = await ThingData.LoadFileAsync(ulong.Parse(item.Name));
+                    if (o is ThingFolder folder)
                     {
-                        await ExportFile(link, path);
+                        await ExportFolder(folder, path);
                     }
-                }
-                else if (o is ThingFile file)
-                {
-                    await ExportLoadedFile(file, path);
+                    else if (o is ThingFile file)
+                    {
+                        await ExportLoadedFile(file, path);
+                    }
                 }
             }
         }
@@ -467,11 +658,7 @@ namespace NET_Thing_Encryptor
             {
                 ThingFolder? f = await ThingData.LoadFileAsync<ThingFolder>(file.ID);
                 ArgumentNullException.ThrowIfNull(f);
-
-                foreach (ThingObjectLink o in f.Content)
-                {
-                    await ExportFile(o, Path.Combine(path, f.Name)); // Export folder + file name
-                }
+                await ExportFolder(f, path);
             }
             else
             {
@@ -479,6 +666,14 @@ namespace NET_Thing_Encryptor
                 ArgumentNullException.ThrowIfNull(f);
                 await ExportLoadedFile(f, path);
             }
+        }
+
+        private async Task ExportFolder(ThingFolder folder, string parentPath)
+        {
+            string folderPath = GetAvailableDirectoryPath(Path.Combine(parentPath, folder.Name));
+            Directory.CreateDirectory(folderPath);
+            foreach (ThingObjectLink child in folder.Content)
+                await ExportFile(child, folderPath);
         }
 
         private static async Task ExportLoadedFile(ThingFile file, string path)
@@ -494,14 +689,18 @@ namespace NET_Thing_Encryptor
                         MessageBoxIcon.Error);
                     return;
                 }
-                string filePath = Path.Combine(path, file.Name) +
-                    (string.IsNullOrWhiteSpace(file.Extension)
-                        ? string.Empty
-                        : "." + file.Extension);
+                string filePath = GetAvailableExportFilePath(path, file.Name, file.Extension);
                 string? directory = Path.GetDirectoryName(filePath);
                 if (directory is not null)
                     Directory.CreateDirectory(directory);
-                await File.WriteAllBytesAsync(filePath, file.Content);
+                await using FileStream output = new(
+                    filePath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    81920,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await output.WriteAsync(file.Content);
             }
             finally
             {
@@ -509,6 +708,41 @@ namespace NET_Thing_Encryptor
                 file.ReleaseContent();
                 MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
             }
+        }
+
+        private static string GetAvailableExportFilePath(string directory, string name, string extension)
+        {
+            string suffix = string.IsNullOrWhiteSpace(extension) ? string.Empty : "." + extension;
+            return GetAvailablePath(Path.Combine(directory, name + suffix), isDirectory: false);
+        }
+
+        private static string GetAvailableDirectoryPath(string directory)
+        {
+            return GetAvailablePath(directory, isDirectory: true);
+        }
+
+        private static string GetAvailablePath(string path, bool isDirectory)
+        {
+            if (!PathExists(path, isDirectory))
+                return path;
+
+            string? directory = Path.GetDirectoryName(path);
+            string name = isDirectory
+                ? Path.GetFileName(path)
+                : Path.GetFileNameWithoutExtension(path);
+            string extension = isDirectory ? string.Empty : Path.GetExtension(path);
+
+            for (int index = 2; ; index++)
+            {
+                string candidate = Path.Combine(directory ?? string.Empty, $"{name} ({index}){extension}");
+                if (!PathExists(candidate, isDirectory))
+                    return candidate;
+            }
+        }
+
+        private static bool PathExists(string path, bool isDirectory)
+        {
+            return isDirectory ? Directory.Exists(path) : File.Exists(path);
         }
 
         private void listViewMain_MouseDown(object sender, MouseEventArgs e)
@@ -519,18 +753,18 @@ namespace NET_Thing_Encryptor
             }
 
             ListViewItem? item = listViewMain.GetItemAt(e.X, e.Y);
-            bool itemSelected = item != null;
-            listViewMain.SelectedItems.Clear();
-
-            if (item is not null) // An item got right-clicked
+            if (item is not null && !item.Selected)
             {
+                listViewMain.SelectedItems.Clear();
                 item.Selected = true;
                 item.Focused = true;
             }
+            else if (item is null)
+            {
+                listViewMain.SelectedItems.Clear();
+            }
 
-            toolStripMenuItemCopy.Enabled = itemSelected;
-            toolStripMenuItemEmergencyEditor.Enabled = itemSelected;
-            toolStripMenuItemRename.Enabled = itemSelected;
+            UpdateContextMenuState();
 
             contextMenuStrip.Show(listViewMain, e.Location);
         }
@@ -544,12 +778,82 @@ namespace NET_Thing_Encryptor
                 if (form.ShowDialog() == DialogResult.OK)
                 {
                     string newName = form.Name;
+                    if (CurrentFolderContainsName(newName, ulong.Parse(item.Name)))
+                    {
+                        MessageBox.Show(
+                            $"The current folder already contains an item named {newName}.",
+                            "Name already exists",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                        return;
+                    }
+
                     await ThingData.RenameObjectAsync(ulong.Parse(item.Name), newName);
                     CurrentFolderID = CurrentFolderID;
                     listViewMain.SelectedItems.Clear();
                 }
             }
         }
+
+        private void toolStripMenuItemMarkForMove_Click(object? sender, EventArgs e)
+        {
+            _pendingMoveIds.Clear();
+            _pendingMoveIds.AddRange(GetSelectedObjectIds());
+            UpdateContextMenuState();
+            labelInfoSaving.Visible = true;
+            labelInfoSaving.BackColor = Color.FromArgb(255, 205, 120);
+            labelInfoSaving.ForeColor = Color.Black;
+            labelInfoSaving.Text = $"Marked {_pendingMoveIds.Count} for move";
+        }
+
+        private async void toolStripMenuItemMoveHere_Click(object? sender, EventArgs e)
+        {
+            if (_pendingMoveIds.Count == 0)
+                return;
+
+            List<ulong> moveIds = _pendingMoveIds.ToList();
+            List<string> failures = [];
+            foreach (ulong id in moveIds)
+            {
+                try
+                {
+                    ThingObject? obj = await ThingData.LoadFileAsync(id);
+                    switch (obj)
+                    {
+                        case ThingFile file:
+                            await ThingData.MoveFileToFolderAsync(file, CurrentFolderID);
+                            break;
+                        case ThingFolder folder:
+                            await ThingData.MoveFolderToFolderAsync(folder.ID, CurrentFolderID);
+                            break;
+                        case null:
+                            failures.Add($"{ThingData.IDToHex(id)} no longer exists.");
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{ThingData.IDToHex(id)}: {ex.Message}");
+                }
+            }
+
+            _pendingMoveIds.Clear();
+            labelInfoSaving.Text = "Saving...";
+            labelInfoSaving.BackColor = Color.Red;
+            labelInfoSaving.ForeColor = Color.Black;
+            labelInfoSaving.Visible = ThingData.Saving > 0;
+            CurrentFolderID = CurrentFolderID;
+
+            if (failures.Count > 0)
+            {
+                MessageBox.Show(
+                    "Some items could not be moved:\n\n" + string.Join("\n", failures),
+                    "Move failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+        }
+
         private async Task<long> GetFolderSize(ulong folderID)
         {
 
@@ -615,7 +919,79 @@ namespace NET_Thing_Encryptor
 
         private void contextMenuStrip_Opening(object sender, CancelEventArgs e)
         {
+            UpdateContextMenuState();
+        }
 
+        private void UpdateContextMenuState()
+        {
+            int selectedCount = listViewMain.SelectedItems.Count;
+            toolStripMenuItemRename.Enabled = selectedCount == 1;
+            toolStripMenuItemEmergencyEditor.Enabled = selectedCount == 1;
+            toolStripMenuItemCopy.Enabled = selectedCount > 0;
+            _toolStripMenuItemMoveHere.Enabled = _pendingMoveIds.Count > 0;
+        }
+
+        private List<ulong> GetSelectedObjectIds()
+        {
+            return listViewMain.SelectedItems
+                .Cast<ListViewItem>()
+                .Select(item => ulong.Parse(item.Name))
+                .ToList();
+        }
+
+        private bool CurrentFolderContainsName(string name, ulong? excludingId = null)
+        {
+            return _currentFolderContent.Any(link =>
+                (!excludingId.HasValue || link.ID != excludingId.Value) &&
+                string.Equals(link.Name, name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private string GetUniqueNameForCurrentFolder(string requestedName, ISet<string> reservedNames)
+        {
+            HashSet<string> usedNames = _currentFolderContent
+                .Select(link => link.Name)
+                .Concat(reservedNames)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            return CreateUniqueName(requestedName, usedNames);
+        }
+
+        private static string CreateUniqueName(string requestedName, ISet<string> usedNames)
+        {
+            if (!usedNames.Contains(requestedName))
+                return requestedName;
+
+            for (int index = 2; ; index++)
+            {
+                string candidate = $"{requestedName} ({index})";
+                if (!usedNames.Contains(candidate))
+                    return candidate;
+            }
+        }
+
+        private static List<string> FilterLargeImportFiles(List<string> files)
+        {
+            List<string> largeFiles = files
+                .Where(File.Exists)
+                .Where(file => new FileInfo(file).Length >= LargeFileWarningThreshold)
+                .ToList();
+            if (largeFiles.Count == 0)
+                return files;
+
+            long totalLargeSize = largeFiles.Sum(file => new FileInfo(file).Length);
+            DialogResult result = MessageBox.Show(
+                $"{largeFiles.Count} selected file(s) are at least {LargeFileWarningThreshold.Sizeify()} each " +
+                $"({totalLargeSize.Sizeify()} total). This storage format still has to load imported file content into memory while encrypting it.\n\n" +
+                "Import these large files anyway?",
+                "Large import",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Warning);
+
+            return result switch
+            {
+                DialogResult.Yes => files,
+                DialogResult.No => files.Except(largeFiles, StringComparer.OrdinalIgnoreCase).ToList(),
+                _ => []
+            };
         }
 
         private List<ThingObjectLink> allFiles = [];
@@ -688,6 +1064,27 @@ namespace NET_Thing_Encryptor
                     break;
                 default:
                     throw new InvalidEnumArgumentException("Unknown internal file type.");
+            }
+        }
+
+        private sealed class ActivityMessageFilter(Action activityCallback) : IMessageFilter
+        {
+            private const int WmKeyDown = 0x0100;
+            private const int WmSysKeyDown = 0x0104;
+            private const int WmLButtonDown = 0x0201;
+            private const int WmRButtonDown = 0x0204;
+            private const int WmMButtonDown = 0x0207;
+            private const int WmMouseWheel = 0x020A;
+
+            public bool PreFilterMessage(ref Message m)
+            {
+                if (m.Msg is WmKeyDown or WmSysKeyDown or
+                    WmLButtonDown or WmRButtonDown or WmMButtonDown or WmMouseWheel)
+                {
+                    activityCallback();
+                }
+
+                return false;
             }
         }
     }

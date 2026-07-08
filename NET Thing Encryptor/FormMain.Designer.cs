@@ -380,7 +380,7 @@
             listViewMain.FullRowSelect = true;
             listViewMain.HeaderStyle = ColumnHeaderStyle.Nonclickable;
             listViewMain.Location = new Point(3, 3);
-            listViewMain.MultiSelect = false;
+            listViewMain.MultiSelect = true;
             listViewMain.Name = "listViewMain";
             listViewMain.Size = new Size(1838, 883);
             listViewMain.SmallImageList = imageListFileIcons;

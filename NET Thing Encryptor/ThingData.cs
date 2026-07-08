@@ -18,14 +18,37 @@ public static class ThingData
     {
         WriteIndented = true
     };
+    private sealed class MutationBackup(
+        string backupDirectory,
+        string rootPath,
+        string saveLocation)
+    {
+        public string BackupDirectory { get; } = backupDirectory;
+        public string RootPath { get; } = rootPath;
+        public string SaveLocation { get; } = saveLocation;
+    }
+
     private static byte[]? EncryptionKey;
     private static byte[]? LegacyIv;
     private static int _saving;
     public static ThingRoot? Root { get; private set; }
     public static int Saving => Volatile.Read(ref _saving);
+    public static bool IsSessionUnlocked => Volatile.Read(ref EncryptionKey) is not null;
 
     public static void BeginSaving() => Interlocked.Increment(ref _saving);
     public static void EndSaving() => Interlocked.Decrement(ref _saving);
+
+    public static void LockSession()
+    {
+        byte[]? oldKey = Interlocked.Exchange(ref EncryptionKey, null);
+        byte[]? oldIv = Interlocked.Exchange(ref LegacyIv, null);
+        if (oldKey is not null)
+            CryptographicOperations.ZeroMemory(oldKey);
+        if (oldIv is not null)
+            CryptographicOperations.ZeroMemory(oldIv);
+        if (Root is not null)
+            Root.Content = null;
+    }
 
     public static async Task<MemoryStream> Encrypt(Stream input)
     {
@@ -533,15 +556,160 @@ public static class ThingData
             fileLock.Release();
         }
     }
+
+    private static async Task RunMutationAsync(Func<Task> mutation)
+    {
+        BeginSaving();
+        await MutationLock.WaitAsync();
+        MutationBackup? backup = null;
+        ThingRoot rootSnapshot = CloneRootForRollback(RequireRoot());
+        try
+        {
+            backup = await CreateMutationBackupAsync();
+            await mutation();
+        }
+        catch
+        {
+            Root = rootSnapshot;
+            if (backup is not null)
+                await RestoreMutationBackupAsync(backup);
+            throw;
+        }
+        finally
+        {
+            if (backup is not null)
+                DeleteMutationBackup(backup);
+            MutationLock.Release();
+            EndSaving();
+        }
+    }
+
+    private static ThingRoot CloneRootForRollback(ThingRoot root)
+    {
+        ThingRoot clone = (ThingRoot)root.Clone();
+        clone.Content = root.Content?
+            .Select(link => new ThingObjectLink(
+                link.ID,
+                link.Name,
+                link.Type,
+                link.Size,
+                link.PreviewContent is null ? null : (byte[])link.PreviewContent.Clone())
+            {
+                CreatedAt = link.CreatedAt
+            })
+            .ToList();
+        return clone;
+    }
+
+    private static bool ContainsNameConflict(
+        IEnumerable<ThingObjectLink> content,
+        string name,
+        ulong excludedID = 0)
+    {
+        return content.Any(link =>
+            link.ID != excludedID &&
+            string.Equals(link.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static async Task<MutationBackup> CreateMutationBackupAsync()
+    {
+        ThingRoot root = RequireRoot();
+        string rootPath = GetFilePath(0);
+        string saveLocation = Path.GetFullPath(root.SaveLocation);
+        string backupDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "NET Thing Encryptor",
+            "MutationBackups",
+            Guid.NewGuid().ToString("N"));
+        string backupRootDirectory = Path.Combine(backupDirectory, "root");
+        string backupObjectsDirectory = Path.Combine(backupDirectory, "objects");
+        Directory.CreateDirectory(backupRootDirectory);
+        Directory.CreateDirectory(backupObjectsDirectory);
+
+        if (File.Exists(rootPath))
+            await CopyFileAsync(rootPath, Path.Combine(backupRootDirectory, "0.nte"));
+
+        if (Directory.Exists(saveLocation))
+        {
+            foreach (string file in Directory.EnumerateFiles(saveLocation, "*.nte", SearchOption.TopDirectoryOnly))
+            {
+                if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(rootPath), StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                await CopyFileAsync(file, Path.Combine(backupObjectsDirectory, Path.GetFileName(file)));
+            }
+        }
+
+        return new MutationBackup(backupDirectory, rootPath, saveLocation);
+    }
+
+    private static async Task RestoreMutationBackupAsync(MutationBackup backup)
+    {
+        string backupRootPath = Path.Combine(backup.BackupDirectory, "root", "0.nte");
+        string backupObjectsDirectory = Path.Combine(backup.BackupDirectory, "objects");
+
+        Directory.CreateDirectory(Path.GetDirectoryName(backup.RootPath)!);
+        Directory.CreateDirectory(backup.SaveLocation);
+
+        if (File.Exists(backupRootPath))
+            await CopyFileAsync(backupRootPath, backup.RootPath);
+
+        foreach (string file in Directory.EnumerateFiles(backup.SaveLocation, "*.nte", SearchOption.TopDirectoryOnly))
+        {
+            if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(backup.RootPath), StringComparison.OrdinalIgnoreCase))
+                continue;
+            File.Delete(file);
+        }
+
+        if (Directory.Exists(backupObjectsDirectory))
+        {
+            foreach (string file in Directory.EnumerateFiles(backupObjectsDirectory, "*.nte", SearchOption.TopDirectoryOnly))
+                await CopyFileAsync(file, Path.Combine(backup.SaveLocation, Path.GetFileName(file)));
+        }
+    }
+
+    private static async Task CopyFileAsync(string sourcePath, string destinationPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+        await using FileStream source = new(
+            sourcePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            81920,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using FileStream destination = new(
+            destinationPath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None,
+            81920,
+            FileOptions.Asynchronous | FileOptions.WriteThrough);
+        await source.CopyToAsync(destination);
+        await destination.FlushAsync();
+        destination.Flush(flushToDisk: true);
+    }
+
+    private static void DeleteMutationBackup(MutationBackup backup)
+    {
+        try
+        {
+            if (Directory.Exists(backup.BackupDirectory))
+                Directory.Delete(backup.BackupDirectory, recursive: true);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Could not delete mutation backup {backup.BackupDirectory}: {ex}");
+        }
+    }
+
     public static async Task MoveFileToFolderAsync(ThingFile file, ulong folderID)
     {
         ArgumentNullException.ThrowIfNull(file);
         if (folderID == 0)
             throw new ArgumentException("Files cannot be placed directly in the root.", nameof(folderID));
 
-        BeginSaving();
-        await MutationLock.WaitAsync();
-        try
+        await RunMutationAsync(async () =>
         {
             ThingRoot root = RequireRoot();
             ThingFolder folder = await LoadFileAsync<ThingFolder>(folderID)
@@ -551,6 +719,8 @@ public static class ThingData
                 return;
             if (folder.Content.Any(x => x.ID == file.ID))
                 throw new InvalidOperationException("The target folder already contains this file.");
+            if (ContainsNameConflict(folder.Content, file.Name, file.ID))
+                throw new InvalidOperationException("The target folder already contains an item with this name.");
 
             ThingObjectLink? link;
 
@@ -587,12 +757,7 @@ public static class ThingData
             await SaveFileAsync(file);
             folder.Content.Add(link);
             await SaveFileAsync(folder);
-        }
-        finally
-        {
-            MutationLock.Release();
-            EndSaving();
-        }
+        });
     }
 
     public static async Task MoveFolderToFolderAsync(ulong folderID, ulong parentFolderID)
@@ -602,9 +767,7 @@ public static class ThingData
         if (folderID == parentFolderID)
             throw new InvalidOperationException("A folder cannot contain itself.");
 
-        BeginSaving();
-        await MutationLock.WaitAsync();
-        try
+        await RunMutationAsync(async () =>
         {
             ThingRoot root = RequireRoot();
             ThingFolder folder = await LoadFileAsync<ThingFolder>(folderID)
@@ -646,6 +809,12 @@ public static class ThingData
             if (newParent?.Content.Any(x => x.ID == folder.ID) == true ||
                 (parentFolderID == 0 && root.Content?.Any(x => x.ID == folder.ID) == true))
                 throw new InvalidOperationException("The target parent already contains this folder.");
+            if (newParent is not null &&
+                ContainsNameConflict(newParent.Content, folder.Name, folder.ID))
+                throw new InvalidOperationException("The target parent already contains an item with this name.");
+            if (parentFolderID == 0 &&
+                ContainsNameConflict(root.Content ?? [], folder.Name, folder.ID))
+                throw new InvalidOperationException("The root already contains an item with this name.");
 
             root.Content?.RemoveAll(x => x.ID == folder.ID);
             oldParent?.Content.RemoveAll(x => x.ID == folder.ID);
@@ -669,12 +838,7 @@ public static class ThingData
                 await SaveFileAsync(oldParent);
             else if (parentFolderID != 0)
                 await SaveRootAsync();
-        }
-        finally
-        {
-            MutationLock.Release();
-            EndSaving();
-        }
+        });
     }
 
     public static async Task RenameObjectAsync(ulong id, string newName)
@@ -683,13 +847,24 @@ public static class ThingData
         if (id == 0)
             throw new ArgumentException("The root object cannot be renamed.", nameof(id));
 
-        BeginSaving();
-        await MutationLock.WaitAsync();
-        try
+        await RunMutationAsync(async () =>
         {
             ThingRoot root = RequireRoot();
             ThingObject obj = await LoadFileAsync(id)
                 ?? throw new FileNotFoundException("The object could not be loaded.");
+            if (obj.ParentID == 0)
+            {
+                if (ContainsNameConflict(root.Content ?? [], newName, id))
+                    throw new InvalidOperationException("The root already contains an item with this name.");
+            }
+            else
+            {
+                ThingFolder parentForNameCheck = await LoadFileAsync<ThingFolder>(obj.ParentID)
+                    ?? throw new FileNotFoundException("The parent folder could not be loaded.");
+                if (ContainsNameConflict(parentForNameCheck.Content, newName, id))
+                    throw new InvalidOperationException("The parent folder already contains an item with this name.");
+            }
+
             obj.Name = newName;
             await SaveFileAsync(obj);
 
@@ -710,12 +885,7 @@ public static class ThingData
                 link.Name = newName;
                 await SaveFileAsync(parent);
             }
-        }
-        finally
-        {
-            MutationLock.Release();
-            EndSaving();
-        }
+        });
     }
 
     public static async Task UpdateObjectSizeAsync(
@@ -837,17 +1007,7 @@ public static class ThingData
         if (id == 0)
             throw new ArgumentException("The root object cannot be deleted.", nameof(id));
 
-        BeginSaving();
-        await MutationLock.WaitAsync();
-        try
-        {
-            await DeleteObjectCoreAsync(id);
-        }
-        finally
-        {
-            MutationLock.Release();
-            EndSaving();
-        }
+        await RunMutationAsync(() => DeleteObjectCoreAsync(id));
     }
 
     private static async Task DeleteObjectCoreAsync(ulong id)

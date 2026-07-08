@@ -14,6 +14,7 @@ namespace NET_Thing_Encryptor
 {
     public partial class CreateFileForm : Form
     {
+        private const long LargeFileWarningThreshold = 256L * 1024 * 1024;
         private readonly ulong currentFolderID;
         public CreateFileForm(ThingFolder currentFolder)
         {
@@ -107,8 +108,14 @@ namespace NET_Thing_Encryptor
             buttonImport.Enabled = false;
             buttonCancel.Enabled = false;
 
-            // Neu schreiben
-            foreach (ListViewItem item in listViewFiles.Items.Cast<ListViewItem>().ToList())
+            List<ListViewItem> importItems = FilterLargeImportItems(
+                listViewFiles.Items.Cast<ListViewItem>().ToList());
+            List<ThingObjectLink> existingContent = await ThingData.LoadFolderContent(currentFolderID);
+            HashSet<string> usedNames = existingContent
+                .Select(link => link.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (ListViewItem item in importItems)
             {
                 ThingFile? importedFile = null;
                 try
@@ -118,8 +125,13 @@ namespace NET_Thing_Encryptor
                     if(!File.Exists(filePath))
                         throw new FileNotFoundException("File not found.", filePath);
 
-                    importedFile = new ThingFile(
+                    string objectName = CreateUniqueName(
                         Path.GetFileNameWithoutExtension(filePath),
+                        usedNames);
+                    usedNames.Add(objectName);
+
+                    importedFile = new ThingFile(
+                        objectName,
                         await File.ReadAllBytesAsync(filePath));
                     Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
                     importedFile.Type = result;
@@ -141,6 +153,46 @@ namespace NET_Thing_Encryptor
             }
 
             buttonCancel.Enabled = true;
+        }
+
+        private static List<ListViewItem> FilterLargeImportItems(List<ListViewItem> items)
+        {
+            List<ListViewItem> largeItems = items
+                .Where(item => item.SubItems.Count > 1)
+                .Where(item => File.Exists(item.SubItems[1].Text))
+                .Where(item => new FileInfo(item.SubItems[1].Text).Length >= LargeFileWarningThreshold)
+                .ToList();
+            if (largeItems.Count == 0)
+                return items;
+
+            long totalLargeSize = largeItems.Sum(item => new FileInfo(item.SubItems[1].Text).Length);
+            DialogResult result = MessageBox.Show(
+                $"{largeItems.Count} queued file(s) are at least {LargeFileWarningThreshold.Sizeify()} each " +
+                $"({totalLargeSize.Sizeify()} total). This storage format still has to load imported file content into memory while encrypting it.\n\n" +
+                "Import these large files anyway?",
+                "Large import",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Warning);
+
+            return result switch
+            {
+                DialogResult.Yes => items,
+                DialogResult.No => items.Except(largeItems).ToList(),
+                _ => []
+            };
+        }
+
+        private static string CreateUniqueName(string requestedName, ISet<string> usedNames)
+        {
+            if (!usedNames.Contains(requestedName))
+                return requestedName;
+
+            for (int index = 2; ; index++)
+            {
+                string candidate = $"{requestedName} ({index})";
+                if (!usedNames.Contains(candidate))
+                    return candidate;
+            }
         }
 
         private void listViewFiles_SelectedIndexChanged(object sender, EventArgs e)
