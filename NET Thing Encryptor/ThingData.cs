@@ -257,10 +257,12 @@ public static class ThingData
     }
     public static async Task<bool> LoadMainData()
     {
-        string dataDirectory = Path.Combine(Environment.CurrentDirectory, "Data");
-        string rootPath = Path.Combine(dataDirectory, "0.nte");
+        string dataDirectory = AppPaths.DataDirectory;
+        string rootPath = AppPaths.RootFilePath;
         try
         {
+            MigrateLegacyDataIfNeeded(dataDirectory);
+
             if (!Directory.Exists(dataDirectory))
             {
                 Debug.WriteLine("\\Data directory not found, creating it.");
@@ -274,6 +276,7 @@ public static class ThingData
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
                 root.Content = [];
+                RebaseLegacySaveLocation(root, dataDirectory);
                 Root = root;
                 Debug.WriteLine("Main file loaded successfully.");
             }
@@ -287,6 +290,7 @@ public static class ThingData
                 }
                 Root = new ThingRoot();
                 Root.Salt = salt;
+                Root.SaveLocation = dataDirectory;
                 Debug.WriteLine("New Root created in memory");
                 MessageBox.Show("The main data file was not found.\n" +
                     "If this is your first time running this program, you can ignore this message.\n" +
@@ -324,6 +328,49 @@ public static class ThingData
         }
         return false;
     }
+
+    private static void MigrateLegacyDataIfNeeded(string targetDataDirectory)
+    {
+        if (File.Exists(AppPaths.RootFilePath))
+            return;
+
+        foreach (string legacyDataDirectory in AppPaths.LegacyDataDirectories)
+        {
+            string legacyRootPath = Path.Combine(legacyDataDirectory, "0.nte");
+            if (!File.Exists(legacyRootPath))
+                continue;
+
+            CopyDirectoryIfMissing(legacyDataDirectory, targetDataDirectory);
+            Debug.WriteLine($"Migrated legacy data from {legacyDataDirectory} to {targetDataDirectory}.");
+            return;
+        }
+    }
+
+    private static void CopyDirectoryIfMissing(string sourceDirectory, string destinationDirectory)
+    {
+        Directory.CreateDirectory(destinationDirectory);
+
+        foreach (string sourceFile in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
+        {
+            string relativePath = Path.GetRelativePath(sourceDirectory, sourceFile);
+            string destinationFile = Path.Combine(destinationDirectory, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
+            if (!File.Exists(destinationFile))
+                File.Copy(sourceFile, destinationFile);
+        }
+    }
+
+    private static void RebaseLegacySaveLocation(ThingRoot root, string dataDirectory)
+    {
+        foreach (string legacyDataDirectory in AppPaths.LegacyDataDirectories)
+        {
+            if (AppPaths.PathEquals(root.SaveLocation, legacyDataDirectory))
+            {
+                root.SaveLocation = dataDirectory;
+                return;
+            }
+        }
+    }
     public static string IDToHex(ulong id)
     {
         return id.ToString("X16");
@@ -353,7 +400,7 @@ public static class ThingData
     {
         if(id == 0)
         {
-            return Path.Combine(Directory.GetCurrentDirectory() ,"Data\\0.nte");
+            return AppPaths.RootFilePath;
         }
         ArgumentNullException.ThrowIfNull(Root, nameof(Root));
         string path = string.Empty;
@@ -1039,6 +1086,8 @@ public static class ThingData
         {
             if (File.Exists(fullPath))
                 File.Delete(fullPath);
+            if (File.Exists(fullPath))
+                throw new IOException($"The encrypted file could not be deleted: {fullPath}");
         }
         finally
         {

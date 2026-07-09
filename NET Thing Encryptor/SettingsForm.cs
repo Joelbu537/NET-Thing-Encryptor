@@ -112,7 +112,7 @@ namespace NET_Thing_Encryptor
                 return;
             }
 
-            string? path = ExplorerDialog("Select new save location", Directory.GetCurrentDirectory());
+            string? path = ExplorerDialog("Select new save location", textBoxSaveLocation.Text);
             if (path is not null)
                 textBoxSaveLocation.Text = path;
 
@@ -129,7 +129,7 @@ namespace NET_Thing_Encryptor
 
             string? path = ExplorerDialog(
                 "Select new default import directory",
-                Directory.GetCurrentDirectory());
+                textBoxImportLocation.Text);
             if (path is not null)
                 textBoxImportLocation.Text = path;
 
@@ -146,7 +146,7 @@ namespace NET_Thing_Encryptor
 
             string? path = ExplorerDialog(
                 "Select new default export directory",
-                Directory.GetCurrentDirectory());
+                textBoxExportLocation.Text);
             if (path is not null)
                 textBoxExportLocation.Text = path;
 

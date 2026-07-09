@@ -80,7 +80,7 @@ namespace NET_Thing_Encryptor
             { 
                 if(_saveLocation == null)
                 {
-                    return Path.Combine(Directory.GetCurrentDirectory(), "Data");
+                    return AppPaths.DataDirectory;
                 }
                 else
                 {

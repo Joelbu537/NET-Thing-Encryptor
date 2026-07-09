@@ -529,13 +529,17 @@ namespace NET_Thing_Encryptor
             if (r != DialogResult.Yes)
                 return;
 
+            bool deletedAny = false;
             foreach (ListViewItem item in selectedItems)
             {
                 Debug.WriteLine($"Deleting {item.Text}");
                 try
                 {
-                    await ThingData.DeleteObject(ulong.Parse(item.Name));
+                    ulong id = ulong.Parse(item.Name);
+                    await ThingData.DeleteObject(id);
+                    _currentFolderContent.RemoveAll(link => link.ID == id);
                     listViewMain.Items.Remove(item);
+                    deletedAny = true;
                 }
                 catch (Exception ex)
                 {
@@ -546,6 +550,9 @@ namespace NET_Thing_Encryptor
                         MessageBoxIcon.Error);
                 }
             }
+
+            if (deletedAny)
+                CurrentFolderID = CurrentFolderID;
         }
         private void buttonNavigationRoot_Click(object sender, EventArgs e)
         {

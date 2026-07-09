@@ -18,6 +18,9 @@
 	<ErrorReport>send</ErrorReport>
 	<RepositoryUrl>https://github.com/Joelbu537/NET-Thing-Encryptor</RepositoryUrl>
 	<StartupObject>NET_Thing_Encryptor.Program</StartupObject>
+	<Version>3.6.1</Version>
+	<AssemblyVersion>3.6.1.0</AssemblyVersion>
+	<FileVersion>3.6.1.0</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
