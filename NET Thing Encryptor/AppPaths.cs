@@ -4,6 +4,8 @@ public static class AppPaths
 {
     private const string AppDirectoryName = "NET Thing Encryptor";
 
+    internal static string? DataDirectoryOverride { get; set; }
+
     public static string UserDataDirectory
     {
         get
@@ -18,7 +20,7 @@ public static class AppPaths
         }
     }
 
-    public static string DataDirectory => Path.Combine(UserDataDirectory, "Data");
+    public static string DataDirectory => DataDirectoryOverride ?? Path.Combine(UserDataDirectory, "Data");
 
     public static string RootFilePath => Path.Combine(DataDirectory, "0.nte");
 
