@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <style name="NteTheme.NoActionBar" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
+    <item name="android:windowActionBar">false</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowBackground">#123A56</item>
+    <item name="android:colorAccent">#1769AA</item>
+  </style>
+</resources>

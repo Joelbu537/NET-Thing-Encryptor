@@ -15,6 +15,7 @@ public sealed class ApplicationBoundaryTests
             .ToArray();
 
         Assert.DoesNotContain("Avalonia.Desktop", references);
+        Assert.DoesNotContain("Avalonia.Android", references);
         Assert.DoesNotContain("System.Windows.Forms", references);
         Assert.DoesNotContain("System.Drawing.Common", references);
         Assert.DoesNotContain(references, name => name.StartsWith("Microsoft.Windows", StringComparison.Ordinal));

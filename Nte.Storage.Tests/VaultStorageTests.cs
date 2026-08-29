@@ -178,6 +178,41 @@ public sealed class VaultStorageTests : IDisposable
         Assert.Equal(Path.GetFullPath(local), mapped);
     }
 
+    [Fact]
+    public async Task AppSandboxStorage_RemapsForeignLocatorAndKeepsObjectsPrivate()
+    {
+        string appFiles = Path.Combine(_testDirectory, "android-app-files");
+        var storage = new AppSandboxVaultStorage(appFiles);
+
+        await storage.InitializeAsync(TestContext.Current.CancellationToken);
+        string mapped = storage.ResolveObjectLocation(@"C:\Transferred\Windows\Objects");
+        using var content = new MemoryStream("encrypted"u8.ToArray());
+        await storage.WriteAtomicallyAsync(42, content, TestContext.Current.CancellationToken);
+
+        Assert.Equal(storage.VaultDirectory, mapped);
+        Assert.True(storage.Exists(42));
+        Assert.Equal(
+            storage.VaultDirectory,
+            Path.GetDirectoryName(storage.GetLocation(42)));
+    }
+
+    [Fact]
+    public void AppSandboxStorage_RejectsExternalObjectLocation()
+    {
+        string appFiles = Path.Combine(_testDirectory, "private-files");
+        var storage = new AppSandboxVaultStorage(appFiles);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            storage.SetObjectLocation(Path.Combine(_testDirectory, "shared-storage")));
+    }
+
+    [Fact]
+    public void AppSandboxStorage_RejectsEscapingDirectoryName()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            new AppSandboxVaultStorage(_testDirectory, ".."));
+    }
+
     private async Task<FileSystemVaultStorage> CreateVaultAsync(bool includeFile = false)
     {
         string rootDirectory = Path.Combine(_testDirectory, "source", "root");

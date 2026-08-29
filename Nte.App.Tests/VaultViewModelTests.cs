@@ -43,6 +43,23 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task SystemBack_LeavesNestedFolderBeforeLockingVault()
+    {
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [TextFile];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+
+        bool handled = viewModel.HandleBackRequested();
+
+        Assert.True(handled);
+        Assert.Equal((ulong)0, viewModel.CurrentFolderId);
+    }
+
+    [Fact]
     public async Task DocumentImport_IsDisabledAtRootAndUsesUniqueNamesInsideFolder()
     {
         var vault = new FakeVaultApplicationService();

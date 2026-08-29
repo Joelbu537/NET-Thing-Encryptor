@@ -1,0 +1,16 @@
+{
+  "solution": {
+    "path": "../NET Thing Encryptor.sln",
+    "projects": [
+      "NET Thing Encryptor\\NET Thing Encryptor.csproj",
+      "NET Thing Encryptor.Tests\\NET Thing Encryptor.Tests.csproj",
+      "Nte.Core\\Nte.Core.csproj",
+      "Nte.Core.Tests\\Nte.Core.Tests.csproj",
+      "Nte.Storage\\Nte.Storage.csproj",
+      "Nte.Storage.Tests\\Nte.Storage.Tests.csproj",
+      "Nte.App\\Nte.App.csproj",
+      "Nte.Desktop\\Nte.Desktop.csproj",
+      "Nte.App.Tests\\Nte.App.Tests.csproj"
+    ]
+  }
+}

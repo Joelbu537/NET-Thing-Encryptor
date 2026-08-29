@@ -14,6 +14,8 @@ public sealed class VaultViewModel : ObservableObject
     private string _newFolderName = string.Empty;
     private string _errorMessage = string.Empty;
     private bool _isBusy;
+    private bool _isLocked;
+    private CancellationTokenSource? _operationCancellation;
 
     public VaultViewModel(
         IVaultApplicationService vault,
@@ -104,11 +106,43 @@ public sealed class VaultViewModel : ObservableObject
 
     public Task InitializeAsync() => RefreshAsync();
 
+    public bool HandleBackRequested()
+    {
+        if (_isLocked)
+            return false;
+        if (IsBusy)
+            return true;
+        if (!IsRoot)
+        {
+            _ = BackCommand.ExecuteAsync();
+            return true;
+        }
+
+        LockImmediately("Tresor gesperrt.");
+        return true;
+    }
+
+    public void LockImmediately(string statusMessage)
+    {
+        if (_isLocked)
+            return;
+
+        _isLocked = true;
+        _operationCancellation?.Cancel();
+        _vault.Lock();
+        Items.Clear();
+        SelectedItem = null;
+        _setStatus(statusMessage);
+        _onLocked();
+    }
+
     private async Task RefreshAsync()
     {
-        await RunBusyAsync(async () =>
+        await RunBusyAsync(async cancellationToken =>
         {
-            IReadOnlyList<VaultItem> items = await _vault.GetFolderItemsAsync(CurrentFolderId);
+            IReadOnlyList<VaultItem> items = await _vault.GetFolderItemsAsync(
+                CurrentFolderId,
+                cancellationToken);
             Items.Clear();
             foreach (VaultItem item in items)
                 Items.Add(new VaultItemViewModel(item));
@@ -145,7 +179,7 @@ public sealed class VaultViewModel : ObservableObject
             return;
 
         bool succeeded = await RunBusyAsync(
-            () => _vault.CreateFolderAsync(name, CurrentFolderId),
+            cancellationToken => _vault.CreateFolderAsync(name, CurrentFolderId, cancellationToken),
             "Der Ordner konnte nicht erstellt werden");
         if (!succeeded)
             return;
@@ -160,9 +194,10 @@ public sealed class VaultViewModel : ObservableObject
         if (CurrentFolderId == 0)
             return;
 
-        await RunBusyAsync(async () =>
+        await RunBusyAsync(async cancellationToken =>
         {
-            IReadOnlyList<IReadableExternalFile> files = await _filePicker.PickDocumentsAsync();
+            IReadOnlyList<IReadableExternalFile> files = await _filePicker.PickDocumentsAsync(
+                cancellationToken);
             if (files.Count == 0)
                 return;
 
@@ -171,12 +206,13 @@ public sealed class VaultViewModel : ObservableObject
             foreach (IReadableExternalFile file in files)
             {
                 string objectName = CreateUniqueName(file.Name, names);
-                await using Stream source = await file.OpenReadAsync();
+                await using Stream source = await file.OpenReadAsync(cancellationToken);
                 await _vault.ImportFileAsync(
                     source,
                     file.Name,
                     CurrentFolderId,
-                    objectName);
+                    objectName,
+                    cancellationToken);
                 names.Add(objectName);
                 imported++;
             }
@@ -184,7 +220,7 @@ public sealed class VaultViewModel : ObservableObject
             _setStatus(imported == 1
                 ? "Ein Dokument importiert."
                 : $"{imported} Dokumente importiert.");
-            await ReloadItemsAsync();
+            await ReloadItemsAsync(cancellationToken);
         }, "Dokumente konnten nicht importiert werden");
     }
 
@@ -194,48 +230,48 @@ public sealed class VaultViewModel : ObservableObject
         if (item is null || item.IsFolder)
             return;
 
-        await RunBusyAsync(async () =>
+        await RunBusyAsync(async cancellationToken =>
         {
             IWritableExternalFile? file = await _filePicker.PickDocumentExportAsync(
-                item.SuggestedFileName);
+                item.SuggestedFileName,
+                cancellationToken);
             if (file is null)
                 return;
 
-            await using Stream destination = await file.OpenWriteAsync();
-            await _vault.ExportFileAsync(item.Id, destination);
+            await using Stream destination = await file.OpenWriteAsync(cancellationToken);
+            await _vault.ExportFileAsync(item.Id, destination, cancellationToken);
             _setStatus($"„{item.SuggestedFileName}“ exportiert.");
         }, "Das Dokument konnte nicht exportiert werden");
     }
 
     private async Task ExportVaultAsync()
     {
-        await RunBusyAsync(async () =>
+        await RunBusyAsync(async cancellationToken =>
         {
             string suggestedName = $"NET-Thing-Encryptor-{DateTime.Now:yyyy-MM-dd}.ntevault";
             IWritableExternalFile? file = await _filePicker.PickVaultArchiveExportAsync(
-                suggestedName);
+                suggestedName,
+                cancellationToken);
             if (file is null)
                 return;
 
-            await using Stream destination = await file.OpenWriteAsync();
-            int count = await _vault.ExportVaultAsync(destination);
+            await using Stream destination = await file.OpenWriteAsync(cancellationToken);
+            int count = await _vault.ExportVaultAsync(destination, cancellationToken);
             _setStatus($"Tresorarchiv exportiert ({count} Objekte). Bewahre es wie den Tresor geschützt auf.");
         }, "Das Tresorarchiv konnte nicht exportiert werden");
     }
 
     private Task LockAsync()
     {
-        _vault.Lock();
-        Items.Clear();
-        SelectedItem = null;
-        _setStatus("Tresor gesperrt.");
-        _onLocked();
+        LockImmediately("Tresor gesperrt.");
         return Task.CompletedTask;
     }
 
-    private async Task ReloadItemsAsync()
+    private async Task ReloadItemsAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<VaultItem> items = await _vault.GetFolderItemsAsync(CurrentFolderId);
+        IReadOnlyList<VaultItem> items = await _vault.GetFolderItemsAsync(
+            CurrentFolderId,
+            cancellationToken);
         Items.Clear();
         foreach (VaultItem item in items)
             Items.Add(new VaultItemViewModel(item));
@@ -244,14 +280,22 @@ public sealed class VaultViewModel : ObservableObject
         OnPropertyChanged(nameof(EmptyMessage));
     }
 
-    private async Task<bool> RunBusyAsync(Func<Task> action, string errorPrefix)
+    private async Task<bool> RunBusyAsync(
+        Func<CancellationToken, Task> action,
+        string errorPrefix)
     {
+        using var cancellation = new CancellationTokenSource();
+        _operationCancellation = cancellation;
         IsBusy = true;
         ErrorMessage = string.Empty;
         try
         {
-            await action();
+            await action(cancellation.Token);
             return true;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            return false;
         }
         catch (Exception ex)
         {
@@ -260,6 +304,8 @@ public sealed class VaultViewModel : ObservableObject
         }
         finally
         {
+            if (ReferenceEquals(_operationCancellation, cancellation))
+                _operationCancellation = null;
             IsBusy = false;
         }
     }

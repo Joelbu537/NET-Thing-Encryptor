@@ -2,7 +2,7 @@
 
 NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Der veröffentlichte Installer enthält weiterhin die bewährte Windows-/WinForms-Anwendung als selbstenthaltendes x64-Paket.
 
-Mit M3 steht daneben ein erster plattformübergreifender Avalonia-Client für Windows, Linux und macOS bereit. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und exportieren sowie vollständige `.ntevault`-Archive übertragen. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem und Transfer. Die Android-Paketierung und der Android-Tresorspeicher folgen in M4.
+Mit M4 steht daneben ein plattformübergreifender Avalonia-Client für Windows, Android, Linux und macOS bereit. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und exportieren sowie vollständige `.ntevault`-Archive übertragen. Android verwendet einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox und Transfer.
 
 ## Unterstützte Systeme
 
@@ -12,13 +12,14 @@ Veröffentlichte WinForms-Referenz:
 - x64-Prozessor
 - Installation pro Benutzer, ohne Administratorrechte
 
-Avalonia-M3-Client aus dem Quellcode:
+Avalonia-M4-Client aus dem Quellcode:
 
 - Windows x64, lokal gestartet und geprüft
+- Android 12 oder neuer (API 31 bis 36); APK auf einem API-35-Emulator geprüft
 - Linux x64, Runtime-Publish und CI-Starttest unter Xvfb
 - macOS ARM64, Runtime-Publish
 
-## Avalonia-M3-Client starten
+## Avalonia-Desktop-Client starten
 
 Mit .NET SDK 10.0.400:
 
@@ -27,6 +28,18 @@ dotnet run --project ".\Nte.Desktop\Nte.Desktop.csproj"
 ```
 
 Der Client verwendet denselben Benutzerdatenordner und dasselbe Tresorformat wie die WinForms-Referenz. Für einen isolierten Entwicklungsstart kann `NTE_DATA_DIRECTORY` auf ein separates Verzeichnis gesetzt werden. `--startup-probe` startet die vollständige Oberfläche mit einem temporären Tresor und schließt sie nach der Initialisierung automatisch.
+
+## Android-APK bauen
+
+Zusätzlich zu .NET SDK 10.0.400 werden Java 17, Android SDK 36 und der .NET-Android-Workload benötigt:
+
+```powershell
+dotnet workload install android
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build ".\Nte.Android\Nte.Android.csproj" -c Release
+```
+
+Die APKs liegen anschließend unter `Nte.Android\bin\Release\net10.0-android`. Lokal signierte Debug-/Release-Ausgaben dienen nur Entwicklung und Tests; eine Veröffentlichung benötigt einen geschützten Produktionsschlüssel.
 
 ## Tests ausführen
 
@@ -44,7 +57,7 @@ dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
 dotnet test ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release
 ```
 
-CI führt die drei plattformneutralen Tests zusätzlich unter Linux aus, startet dort den Avalonia-Client unter Xvfb und publiziert den Desktop-Host auch für macOS ARM64. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md) und [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md).
+CI führt die drei plattformneutralen Tests zusätzlich unter Linux aus, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64 und baut ein Android-Release-APK. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md) und [docs/m4-android-client.md](docs/m4-android-client.md).
 
 ## Installer bauen
 

@@ -180,7 +180,7 @@ if ([string]::IsNullOrWhiteSpace($TimestampUrl)) {
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$solutionFile = Join-Path $repoRoot "NET Thing Encryptor.sln"
+$solutionFile = Join-Path $repoRoot "build\desktop.slnf"
 $projectFile = Join-Path $repoRoot "NET Thing Encryptor\NET Thing Encryptor.csproj"
 $innoScript = Join-Path $repoRoot "installer\NETThingEncryptor.iss"
 $iconPath = Join-Path $repoRoot "NET Thing Encryptor\image.ico"

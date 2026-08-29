@@ -52,6 +52,21 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
         ShowUnlock(error);
     }
 
+    public bool HandleBackRequested() =>
+        CurrentPage is VaultViewModel vault && vault.HandleBackRequested();
+
+    public bool LockForSecurity(SessionLockReason reason)
+    {
+        if (CurrentPage is not VaultViewModel vault)
+            return false;
+
+        string message = reason == SessionLockReason.Inactivity
+            ? "Tresor nach fünf Minuten Inaktivität automatisch gesperrt."
+            : "Tresor beim Verlassen der App automatisch gesperrt.";
+        vault.LockImmediately(message);
+        return true;
+    }
+
     public void Dispose()
     {
         if (_disposed)

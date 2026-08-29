@@ -3,7 +3,9 @@ using Avalonia.Platform.Storage;
 
 namespace Nte.App.Services;
 
-public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFilePickerService
+public sealed class AvaloniaFilePickerService(
+    Func<TopLevel?> getTopLevel,
+    AppLifecycleCoordinator? lifecycleCoordinator = null) : IFilePickerService
 {
     private static readonly FilePickerFileType VaultArchiveFileType = new("NTE-Tresorarchiv")
     {
@@ -16,12 +18,14 @@ public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFi
     {
         cancellationToken.ThrowIfCancellationRequested();
         IStorageProvider storage = GetStorageProvider(requireSave: false);
+        using IDisposable? interaction = lifecycleCoordinator?.BeginExternalInteraction();
         IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(
             new FilePickerOpenOptions
             {
                 Title = "Dokumente importieren",
                 AllowMultiple = true
             });
+        cancellationToken.ThrowIfCancellationRequested();
         return files.Select(file => (IReadableExternalFile)new ReadableStorageFile(file)).ToArray();
     }
 
@@ -30,6 +34,7 @@ public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFi
     {
         cancellationToken.ThrowIfCancellationRequested();
         IStorageProvider storage = GetStorageProvider(requireSave: false);
+        using IDisposable? interaction = lifecycleCoordinator?.BeginExternalInteraction();
         IReadOnlyList<IStorageFile> files = await storage.OpenFilePickerAsync(
             new FilePickerOpenOptions
             {
@@ -37,6 +42,7 @@ public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFi
                 AllowMultiple = false,
                 FileTypeFilter = [VaultArchiveFileType]
             });
+        cancellationToken.ThrowIfCancellationRequested();
         return files.Count == 0 ? null : new ReadableStorageFile(files[0]);
     }
 
@@ -47,12 +53,14 @@ public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFi
         ArgumentException.ThrowIfNullOrWhiteSpace(suggestedFileName);
         cancellationToken.ThrowIfCancellationRequested();
         IStorageProvider storage = GetStorageProvider(requireSave: true);
+        using IDisposable? interaction = lifecycleCoordinator?.BeginExternalInteraction();
         IStorageFile? file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Dokument exportieren",
             SuggestedFileName = suggestedFileName,
             ShowOverwritePrompt = true
         });
+        cancellationToken.ThrowIfCancellationRequested();
         return file is null ? null : new WritableStorageFile(file);
     }
 
@@ -63,6 +71,7 @@ public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFi
         ArgumentException.ThrowIfNullOrWhiteSpace(suggestedFileName);
         cancellationToken.ThrowIfCancellationRequested();
         IStorageProvider storage = GetStorageProvider(requireSave: true);
+        using IDisposable? interaction = lifecycleCoordinator?.BeginExternalInteraction();
         IStorageFile? file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Tresorarchiv exportieren",
@@ -72,6 +81,7 @@ public sealed class AvaloniaFilePickerService(Func<TopLevel?> getTopLevel) : IFi
             SuggestedFileType = VaultArchiveFileType,
             ShowOverwritePrompt = true
         });
+        cancellationToken.ThrowIfCancellationRequested();
         return file is null ? null : new WritableStorageFile(file);
     }
 

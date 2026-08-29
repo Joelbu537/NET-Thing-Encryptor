@@ -1,4 +1,5 @@
 using Nte.App.Tests.Fakes;
+using Nte.App.Services;
 using Nte.App.ViewModels;
 
 namespace Nte.App.Tests;
@@ -59,5 +60,40 @@ public sealed class AppShellViewModelTests
         Assert.Equal("Hinweis: Testmeldung", shell.StatusMessage);
         shell.Dispose();
         Assert.True(vault.Disposed);
+    }
+
+    [Fact]
+    public async Task BackgroundLock_ClearsSessionAndReturnsToUnlockPage()
+    {
+        var vault = new FakeVaultApplicationService();
+        using var shell = new AppShellViewModel(vault, new FakeFilePickerService());
+        await shell.InitializeAsync();
+        var unlock = Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        unlock.Password = "correct horse battery staple";
+        await unlock.UnlockCommand.ExecuteAsync();
+
+        bool handled = shell.LockForSecurity(SessionLockReason.Background);
+
+        Assert.True(handled);
+        Assert.False(vault.IsUnlocked);
+        Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        Assert.Contains("Verlassen", shell.StatusMessage);
+    }
+
+    [Fact]
+    public async Task BackAtVaultRoot_LocksInsteadOfClosingApplication()
+    {
+        var vault = new FakeVaultApplicationService();
+        using var shell = new AppShellViewModel(vault, new FakeFilePickerService());
+        await shell.InitializeAsync();
+        var unlock = Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        unlock.Password = "correct horse battery staple";
+        await unlock.UnlockCommand.ExecuteAsync();
+
+        bool handled = shell.HandleBackRequested();
+
+        Assert.True(handled);
+        Assert.False(vault.IsUnlocked);
+        Assert.IsType<UnlockViewModel>(shell.CurrentPage);
     }
 }
