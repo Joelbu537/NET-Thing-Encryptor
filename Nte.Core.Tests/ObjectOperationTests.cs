@@ -6,6 +6,39 @@ namespace NET_Thing_Encryptor.Tests;
 public sealed class ObjectOperationTests
 {
     [Fact]
+    public async Task CreateFolder_PersistsRootAndNestedMembership()
+    {
+        await using var environment = await TestEnvironment.CreateAsync();
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+
+        ThingFolder parent = await ThingData.CreateFolderAsync("parent", 0, cancellationToken);
+        ThingFolder child = await ThingData.CreateFolderAsync("child", parent.ID, cancellationToken);
+
+        Assert.Contains(environment.Root.Content!, link =>
+            link.ID == parent.ID && link.Name == "parent" && link.Type == FileType.folder);
+        ThingFolder storedParent = (await ThingData.LoadFileAsync<ThingFolder>(parent.ID))!;
+        Assert.Contains(storedParent.Content, link => link.ID == child.ID && link.Name == "child");
+        Assert.Equal(parent.ID, (await ThingData.LoadFileAsync<ThingFolder>(child.ID))!.ParentID);
+        Assert.Equal(0, ThingData.Saving);
+    }
+
+    [Fact]
+    public async Task CreateFolder_RejectsSiblingConflictWithoutLeavingAnObject()
+    {
+        await using var environment = await TestEnvironment.CreateAsync();
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        await ThingData.CreateFolderAsync("Photos", 0, cancellationToken);
+        int objectCount = ThingData.CurrentStorage.ListObjectIds().Count;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => ThingData.CreateFolderAsync("photos", 0, cancellationToken));
+
+        Assert.Equal(objectCount, ThingData.CurrentStorage.ListObjectIds().Count);
+        Assert.Single(environment.Root.Content!);
+        Assert.Equal(0, ThingData.Saving);
+    }
+
+    [Fact]
     public async Task FileLifecycle_MoveRenameResizeAndDelete_UpdatesParentLinks()
     {
         await using var environment = await TestEnvironment.CreateAsync();

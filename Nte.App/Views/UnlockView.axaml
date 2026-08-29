@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nte.App.ViewModels"
+             x:Class="Nte.App.Views.UnlockView"
+             x:DataType="vm:UnlockViewModel">
+  <Grid Margin="28">
+    <Border MaxWidth="520" Padding="34" CornerRadius="12" BorderThickness="1"
+            BorderBrush="#40607080" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel Spacing="16">
+        <TextBlock Classes="page-title" Text="Tresor entsperren" />
+        <TextBlock Text="Gib dein Passwort ein. Beim ersten Start wird dieses Passwort für den neuen Tresor gesetzt."
+                   TextWrapping="Wrap" Opacity="0.75" />
+        <TextBlock Text="Passwort" FontWeight="SemiBold" />
+        <TextBox Text="{Binding Password, Mode=TwoWay}"
+                 PasswordChar="●"
+                 PlaceholderText="Passwort"
+                 MinHeight="42" />
+        <Button Classes="primary" Content="Entsperren" Command="{Binding UnlockCommand}"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                MinHeight="42" IsDefault="True" />
+        <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
+        <Border Margin="0,8,0,0" Padding="14" CornerRadius="8" Background="#101769AA">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Vorhandenen Tresor übernehmen" FontWeight="SemiBold" />
+            <TextBlock Text="Ein .ntevault-Archiv kann nur importiert werden, solange hier noch kein Tresor gespeichert ist."
+                       TextWrapping="Wrap" Opacity="0.75" />
+            <Button Content="Tresorarchiv importieren …"
+                    Command="{Binding ImportVaultCommand}"
+                    IsEnabled="{Binding CanImportVault}"
+                    HorizontalAlignment="Left" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,14 +1,32 @@
 # NET Thing Encryptor
 
-NET Thing Encryptor ist eine Windows-Desktopanwendung zum verschlüsselten Verwalten von Dateien. Die Anwendung wird als selbstenthaltendes x64-Paket veröffentlicht und benötigt auf dem Zielsystem kein separat installiertes .NET Runtime-Paket.
+NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Der veröffentlichte Installer enthält weiterhin die bewährte Windows-/WinForms-Anwendung als selbstenthaltendes x64-Paket.
 
-Die schrittweise Migration zu einer plattformübergreifenden Avalonia-Anwendung hat begonnen. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10. `Nte.Storage` kapselt Dateisystemzugriffe, streambasierten Dokumenttransfer und vollständige `.ntevault`-Archive. Die bestehende WinForms-Anwendung bleibt während der Migration die funktionierende Windows-Referenz.
+Mit M3 steht daneben ein erster plattformübergreifender Avalonia-Client für Windows, Linux und macOS bereit. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und exportieren sowie vollständige `.ntevault`-Archive übertragen. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem und Transfer. Die Android-Paketierung und der Android-Tresorspeicher folgen in M4.
 
 ## Unterstützte Systeme
+
+Veröffentlichte WinForms-Referenz:
 
 - Windows 10 ab Build 19041 oder Windows 11
 - x64-Prozessor
 - Installation pro Benutzer, ohne Administratorrechte
+
+Avalonia-M3-Client aus dem Quellcode:
+
+- Windows x64, lokal gestartet und geprüft
+- Linux x64, Runtime-Publish und CI-Starttest unter Xvfb
+- macOS ARM64, Runtime-Publish
+
+## Avalonia-M3-Client starten
+
+Mit .NET SDK 10.0.400:
+
+```powershell
+dotnet run --project ".\Nte.Desktop\Nte.Desktop.csproj"
+```
+
+Der Client verwendet denselben Benutzerdatenordner und dasselbe Tresorformat wie die WinForms-Referenz. Für einen isolierten Entwicklungsstart kann `NTE_DATA_DIRECTORY` auf ein separates Verzeichnis gesetzt werden. `--startup-probe` startet die vollständige Oberfläche mit einem temporären Tresor und schließt sie nach der Initialisierung automatisch.
 
 ## Tests ausführen
 
@@ -23,9 +41,10 @@ Der plattformneutrale Kern lässt sich mit .NET 10 unabhängig von WinForms test
 ```powershell
 dotnet test ".\Nte.Core.Tests\Nte.Core.Tests.csproj" -c Release
 dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
+dotnet test ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release
 ```
 
-CI führt beide Tests zusätzlich unter Linux aus. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md) und [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md).
+CI führt die drei plattformneutralen Tests zusätzlich unter Linux aus, startet dort den Avalonia-Client unter Xvfb und publiziert den Desktop-Host auch für macOS ARM64. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md) und [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md).
 
 ## Installer bauen
 

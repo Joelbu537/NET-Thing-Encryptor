@@ -1,0 +1,35 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nte.App.ViewModels"
+             xmlns:views="using:Nte.App.Views"
+             x:Class="Nte.App.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#1769AA" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.page-title">
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.error">
+      <Setter Property="Foreground" Value="#D13438" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+  </Application.Styles>
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:LoadingViewModel">
+      <views:LoadingView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:UnlockViewModel">
+      <views:UnlockView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:VaultViewModel">
+      <views:VaultView />
+    </DataTemplate>
+  </Application.DataTemplates>
+</Application>

@@ -521,6 +521,63 @@ public static partial class ThingData
         root.Content.Add(new ThingObjectLink(folder.ID, folder.Name, FileType.folder, 0));
         return folder;
     }
+
+    public static async Task<ThingFolder> CreateFolderAsync(
+        string name,
+        ulong parentFolderID,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string normalizedName = name.Trim();
+        var folder = new ThingFolder(normalizedName)
+        {
+            ParentID = parentFolderID
+        };
+
+        await RunMutationAsync(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ThingRoot root = RequireRoot();
+
+            if (parentFolderID == 0)
+            {
+                root.Content ??= [];
+                if (ContainsNameConflict(root.Content, normalizedName))
+                    throw new InvalidOperationException(
+                        "The root already contains an item with this name.");
+
+                root.Content.Add(new ThingObjectLink(
+                    folder.ID,
+                    folder.Name,
+                    FileType.folder,
+                    0));
+                await SaveFileAsync(folder).ConfigureAwait(false);
+                await SaveRootAsync().ConfigureAwait(false);
+                return;
+            }
+
+            ThingFolder parent = await LoadFileAsync<ThingFolder>(parentFolderID)
+                .ConfigureAwait(false)
+                ?? throw new FileNotFoundException("The parent folder could not be loaded.");
+            if (ContainsNameConflict(parent.Content, normalizedName))
+                throw new InvalidOperationException(
+                    "The parent folder already contains an item with this name.");
+
+            parent.Content.Add(new ThingObjectLink(
+                folder.ID,
+                folder.Name,
+                FileType.folder,
+                0));
+            await SaveFileAsync(folder).ConfigureAwait(false);
+            await SaveFileAsync(parent).ConfigureAwait(false);
+        }, () => Task.FromResult<IReadOnlyCollection<ulong>>(
+            [0, folder.ID, parentFolderID])).ConfigureAwait(false);
+
+        return folder;
+    }
+
     public static async Task<List<ThingObjectLink>> LoadFolderContent(ulong id)
     {
         List<ThingObjectLink> content = [];

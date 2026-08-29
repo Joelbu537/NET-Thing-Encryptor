@@ -15,6 +15,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nte.Storage", "Nte.Storage\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nte.Storage.Tests", "Nte.Storage.Tests\Nte.Storage.Tests.csproj", "{F766D32F-9F5B-4440-BF80-E4D68322F2EF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nte.App", "Nte.App\Nte.App.csproj", "{5BB2A778-ABF2-498E-90C4-7A9AE44CBA7C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nte.Desktop", "Nte.Desktop\Nte.Desktop.csproj", "{6A7502D3-08C9-43A3-8560-0AB0A8E60DD0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nte.App.Tests", "Nte.App.Tests\Nte.App.Tests.csproj", "{7FA45B51-BF66-4C03-925E-A6223A12FC4B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +51,18 @@ Global
 		{F766D32F-9F5B-4440-BF80-E4D68322F2EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F766D32F-9F5B-4440-BF80-E4D68322F2EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F766D32F-9F5B-4440-BF80-E4D68322F2EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BB2A778-ABF2-498E-90C4-7A9AE44CBA7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BB2A778-ABF2-498E-90C4-7A9AE44CBA7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BB2A778-ABF2-498E-90C4-7A9AE44CBA7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BB2A778-ABF2-498E-90C4-7A9AE44CBA7C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A7502D3-08C9-43A3-8560-0AB0A8E60DD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A7502D3-08C9-43A3-8560-0AB0A8E60DD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A7502D3-08C9-43A3-8560-0AB0A8E60DD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A7502D3-08C9-43A3-8560-0AB0A8E60DD0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FA45B51-BF66-4C03-925E-A6223A12FC4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FA45B51-BF66-4C03-925E-A6223A12FC4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FA45B51-BF66-4C03-925E-A6223A12FC4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FA45B51-BF66-4C03-925E-A6223A12FC4B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
