@@ -23,4 +23,10 @@
     <ProjectReference Include="..\NET Thing Encryptor\NET Thing Encryptor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Fixtures\baseline-v3.7\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
