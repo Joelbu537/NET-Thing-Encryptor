@@ -219,6 +219,11 @@ public sealed class ObjectOperationTests
     [Fact]
     public async Task FailedDeleteOfLockedTarget_RestoresSavingStateAndReferences()
     {
+        // POSIX permits unlinking an open file. The rollback path exercised here is
+        // specific to Windows sharing semantics; storage fault injection follows in M2.
+        if (!OperatingSystem.IsWindows())
+            return;
+
         await using var environment = await TestEnvironment.CreateAsync();
         ThingFile target = environment.CreateFile("locked", ".txt", [1]);
         environment.Root.Content!.Add(new ThingObjectLink(target.ID, target.Name, target.Type, 1));

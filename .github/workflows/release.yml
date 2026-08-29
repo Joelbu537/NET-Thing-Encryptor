@@ -19,10 +19,12 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up .NET 11 Preview 7
+      - name: Set up .NET 10 and .NET 11 Preview 7
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 11.0.100-preview.7.26381.103
+          dotnet-version: |
+            10.0.400
+            11.0.100-preview.7.26381.103
 
       - name: Install Inno Setup
         shell: pwsh

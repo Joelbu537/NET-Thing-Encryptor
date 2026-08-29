@@ -5,6 +5,9 @@ public static class AppPaths
     private const string AppDirectoryName = "NET Thing Encryptor";
 
     internal static string? DataDirectoryOverride { get; set; }
+    internal static StringComparer FileSystemPathComparer => OperatingSystem.IsWindows()
+        ? StringComparer.OrdinalIgnoreCase
+        : StringComparer.Ordinal;
 
     public static string UserDataDirectory
     {
@@ -24,6 +27,24 @@ public static class AppPaths
 
     public static string RootFilePath => Path.Combine(DataDirectory, "0.nte");
 
+    public static string DefaultFilePickerDirectory
+    {
+        get
+        {
+            string userDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (OperatingSystem.IsWindows())
+            {
+                string? root = Path.GetPathRoot(userDirectory);
+                if (!string.IsNullOrWhiteSpace(root))
+                    return root;
+            }
+
+            return string.IsNullOrWhiteSpace(userDirectory)
+                ? UserDataDirectory
+                : Path.GetFullPath(userDirectory);
+        }
+    }
+
     public static IReadOnlyList<string> LegacyDataDirectories
     {
         get
@@ -37,7 +58,7 @@ public static class AppPaths
             return candidates
                 .Select(Path.GetFullPath)
                 .Where(path => !PathEquals(path, DataDirectory))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Distinct(FileSystemPathComparer)
                 .ToArray();
         }
     }
@@ -47,6 +68,8 @@ public static class AppPaths
         return string.Equals(
             Path.GetFullPath(left).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
             Path.GetFullPath(right).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-            StringComparison.OrdinalIgnoreCase);
+            OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal);
     }
 }

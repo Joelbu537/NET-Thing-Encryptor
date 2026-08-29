@@ -2,6 +2,8 @@
 
 NET Thing Encryptor ist eine Windows-Desktopanwendung zum verschlüsselten Verwalten von Dateien. Die Anwendung wird als selbstenthaltendes x64-Paket veröffentlicht und benötigt auf dem Zielsystem kein separat installiertes .NET Runtime-Paket.
 
+Die schrittweise Migration zu einer plattformübergreifenden Avalonia-Anwendung hat begonnen. `Nte.Core` enthält bereits die UI-unabhängige Kernlogik für .NET 10; die bestehende WinForms-Anwendung bleibt während der Migration die funktionierende Windows-Referenz.
+
 ## Unterstützte Systeme
 
 - Windows 10 ab Build 19041 oder Windows 11
@@ -10,15 +12,26 @@ NET Thing Encryptor ist eine Windows-Desktopanwendung zum verschlüsselten Verwa
 
 ## Tests ausführen
 
+Für alle Windows- und Core-Tests werden .NET 10 SDK `10.0.400` und .NET 11 SDK Preview 7 benötigt. Das neuere SDK führt den gesamten Solution-Test aus:
+
 ```powershell
 dotnet test ".\NET Thing Encryptor.sln" -c Release
 ```
+
+Der plattformneutrale Kern lässt sich mit .NET 10 unabhängig von WinForms testen:
+
+```powershell
+dotnet test ".\Nte.Core.Tests\Nte.Core.Tests.csproj" -c Release
+```
+
+CI führt diesen Test zusätzlich unter Linux aus. Die Architekturentscheidungen und M1-Grenzen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md).
 
 ## Installer bauen
 
 Voraussetzungen:
 
 - .NET 11 SDK Preview 7 (`11.0.100-preview.7.26381.103`) für Windows
+- .NET 10 SDK (`10.0.400`) für `Nte.Core`
 - Inno Setup 6 (`winget install JRSoftware.InnoSetup`)
 
 Hinweis: .NET 11 ist bis zur geplanten finalen Veröffentlichung am 10. November 2026 eine Preview und wird von Microsoft nicht für den Produktionseinsatz unterstützt.

@@ -83,11 +83,20 @@ public sealed class UtilityTests
     }
 
     [Fact]
+    public void PathEquals_UsesThePlatformCaseRule()
+    {
+        string lower = Path.Combine(Path.GetTempPath(), "nte-case-probe");
+        string upper = Path.Combine(Path.GetTempPath(), "NTE-CASE-PROBE");
+
+        Assert.Equal(OperatingSystem.IsWindows(), AppPaths.PathEquals(lower, upper));
+    }
+
+    [Fact]
     public void NaturalComparer_SortsNumericSegmentsNaturally()
     {
-        string[] values = ["file10", "file2", "file1"];
+        string[] values = ["file10", "file02", "File2", "file1"];
         Array.Sort(values, new NaturalStringComparer());
-        Assert.Equal(["file1", "file2", "file10"], values);
+        Assert.Equal(["file1", "File2", "file02", "file10"], values);
         Assert.Equal(0, new NaturalStringComparer().Compare(null, string.Empty));
     }
 }

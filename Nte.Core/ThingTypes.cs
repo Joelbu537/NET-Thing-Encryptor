@@ -103,7 +103,7 @@ namespace NET_Thing_Encryptor
             {
                 if (_importLocation == null)
                 {
-                    return "C:\\";
+                    return AppPaths.DefaultFilePickerDirectory;
                 }
                 return _importLocation;
             }
@@ -121,7 +121,7 @@ namespace NET_Thing_Encryptor
             {
                 if (_exportLocation == null)
                 {
-                    return "C:\\";
+                    return AppPaths.DefaultFilePickerDirectory;
                 }
                 return _exportLocation;
             }

@@ -55,7 +55,7 @@ Nicht lokal ausgeführt wurden der Installations-/Deinstallations-Smoke-Test und
 
 ## Golden-Fixture `baseline-v3.7`
 
-Das Verzeichnis `NET Thing Encryptor.Tests/Fixtures/baseline-v3.7` enthält ausschließlich synthetische Daten. Das Fixture deckt Root, Ordner, Unicode-Text mit UTF-8-BOM, PNG, WAV, MP4 und ein historisches AES-CBC-Objekt ab. Die absichtlich künstlichen absoluten Windows-Pfade machen die spätere Pfadmigration sichtbar.
+Das Verzeichnis `Nte.Core.Tests/Fixtures/baseline-v3.7` enthält ausschließlich synthetische Daten. Das Fixture deckt Root, Ordner, Unicode-Text mit UTF-8-BOM, PNG, WAV, MP4 und ein historisches AES-CBC-Objekt ab. Die absichtlich künstlichen absoluten Windows-Pfade machen die spätere Pfadmigration sichtbar.
 
 Fixture-Passwort: `M0 synthetic baseline password`
 

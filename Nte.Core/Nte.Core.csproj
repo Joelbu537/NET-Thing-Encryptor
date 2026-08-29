@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Nte.Core</AssemblyName>
+    <RootNamespace>NET_Thing_Encryptor</RootNamespace>
+    <Version>3.7.0</Version>
+  </PropertyGroup>
+
+</Project>

@@ -39,6 +39,8 @@ namespace NET_Thing_Encryptor
 #endif
             ApplicationConfiguration.Initialize();
             Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+            using WinFormsVaultNotificationAdapter notificationAdapter =
+                WinFormsVaultNotificationAdapter.Subscribe();
             try
             {
                 if (ThingData.LoadMainData().Result)
