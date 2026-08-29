@@ -217,10 +217,30 @@ public sealed class ObjectOperationTests
     }
 
     [Fact]
+    public async Task FailedDeleteFromInjectedStorageFault_RollsBackOnEveryPlatform()
+    {
+        await using var environment = await TestEnvironment.CreateAsync();
+        ThingFile target = environment.CreateFile("faulted", ".txt", [1, 2, 3]);
+        environment.Root.Content!.Add(new ThingObjectLink(target.ID, target.Name, target.Type, 3));
+        await ThingData.SaveFileAsync(target);
+        await ThingData.SaveRootAsync();
+
+        IVaultStorage physicalStorage = ThingData.CurrentStorage;
+        ThingData.ConfigureStorage(new DeleteFaultStorage(physicalStorage, target.ID));
+
+        await Assert.ThrowsAsync<IOException>(() => ThingData.DeleteObject(target.ID));
+
+        Assert.True(physicalStorage.Exists(target.ID));
+        Assert.Contains(environment.Root.Content!, link => link.ID == target.ID);
+        Assert.NotNull(await ThingData.LoadFileAsync<ThingFile>(target.ID));
+        Assert.Equal(0, ThingData.Saving);
+    }
+
+    [Fact]
     public async Task FailedDeleteOfLockedTarget_RestoresSavingStateAndReferences()
     {
         // POSIX permits unlinking an open file. The rollback path exercised here is
-        // specific to Windows sharing semantics; storage fault injection follows in M2.
+        // specific to Windows sharing semantics and complements the portable fault test.
         if (!OperatingSystem.IsWindows())
             return;
 
@@ -305,5 +325,37 @@ public sealed class ObjectOperationTests
             link => link.ID == file.ID && link.Name == "after");
         Assert.True(File.Exists(unrelatedPath));
         Assert.Equal(0, ThingData.Saving);
+    }
+
+    private sealed class DeleteFaultStorage(IVaultStorage inner, ulong failingId) : IVaultStorage
+    {
+        public string ObjectLocation => inner.ObjectLocation;
+        public Task InitializeAsync(CancellationToken cancellationToken = default) =>
+            inner.InitializeAsync(cancellationToken);
+        public string ResolveObjectLocation(string? persistedLocation) =>
+            inner.ResolveObjectLocation(persistedLocation);
+        public string SetObjectLocation(string location) => inner.SetObjectLocation(location);
+        public string GetLocation(ulong id) => inner.GetLocation(id);
+        public bool Exists(ulong id) => inner.Exists(id);
+        public IReadOnlyCollection<ulong> ListObjectIds() => inner.ListObjectIds();
+        public ValueTask<Stream> OpenReadAsync(ulong id, CancellationToken cancellationToken = default) =>
+            inner.OpenReadAsync(id, cancellationToken);
+        public Task WriteAtomicallyAsync(
+            ulong id,
+            Stream content,
+            CancellationToken cancellationToken = default) =>
+            inner.WriteAtomicallyAsync(id, content, cancellationToken);
+        public Task DeleteAsync(ulong id, CancellationToken cancellationToken = default) =>
+            id == failingId
+                ? Task.FromException(new IOException("Injected delete failure."))
+                : inner.DeleteAsync(id, cancellationToken);
+        public Task<IVaultStorageSnapshot> CreateSnapshotAsync(
+            IReadOnlyCollection<ulong>? objectIds = null,
+            CancellationToken cancellationToken = default) =>
+            inner.CreateSnapshotAsync(objectIds, cancellationToken);
+        public Task<string?> PreserveDamagedRootAsync(
+            string suffix,
+            CancellationToken cancellationToken = default) =>
+            inner.PreserveDamagedRootAsync(suffix, cancellationToken);
     }
 }

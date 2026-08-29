@@ -49,7 +49,7 @@ namespace NET_Thing_Encryptor
                     using SettingsMoveFilesForm moveForm = new(files, pathSave);
                     if (moveForm.ShowDialog() != DialogResult.OK)
                         throw new IOException("The encrypted files were not moved completely.");
-                    ThingData.Root.SaveLocation = pathSave;
+                    ThingData.Root.SaveLocation = ThingData.CurrentStorage.SetObjectLocation(pathSave);
                 }
 
                 // Import Location

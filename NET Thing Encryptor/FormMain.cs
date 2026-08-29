@@ -481,15 +481,12 @@ namespace NET_Thing_Encryptor
                                 reservedNames);
                             reservedNames.Add(objectName);
 
-                            newFile = new ThingFile(
-                                objectName,
-                                await File.ReadAllBytesAsync(file));
-                            Enum.TryParse<FileType>(FileCategories.GetFileType(file).ToString(), true,
-                                out FileType result);
-                            newFile.Type = result;
-                            newFile.Extension = Path.GetExtension(file).TrimStart('.');
-
-                            await ThingData.MoveFileToFolderAsync(newFile, CurrentFolderID);
+                            await using FileStream input = File.OpenRead(file);
+                            newFile = await ThingData.ImportFileAsync(
+                                input,
+                                Path.GetFileName(file),
+                                CurrentFolderID,
+                                objectName);
                         }
                         finally
                         {
@@ -683,7 +680,10 @@ namespace NET_Thing_Encryptor
                     }
                     else if (o is ThingFile file)
                     {
-                        await ExportLoadedFile(file, path);
+                        long releasedBytes = file.Content?.LongLength ?? 0;
+                        file.ReleaseContent();
+                        MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
+                        await ExportStoredFile(file.ID, file.Name, file.Extension, path);
                     }
                 }
             }
@@ -698,9 +698,7 @@ namespace NET_Thing_Encryptor
             }
             else
             {
-                ThingFile? f = await ThingData.LoadFileAsync<ThingFile>(file.ID);
-                ArgumentNullException.ThrowIfNull(f);
-                await ExportLoadedFile(f, path);
+                await ExportStoredFile(file.ID, file.Name, file.Extension, path);
             }
         }
 
@@ -712,38 +710,24 @@ namespace NET_Thing_Encryptor
                 await ExportFile(child, folderPath);
         }
 
-        private static async Task ExportLoadedFile(ThingFile file, string path)
+        private static async Task ExportStoredFile(
+            ulong id,
+            string name,
+            string extension,
+            string path)
         {
-            try
-            {
-                if (file.Content == null || file.Content.Length == 0)
-                {
-                    MessageBox.Show(
-                        $"File {file.Name} has no content.",
-                        "Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                    return;
-                }
-                string filePath = GetAvailableExportFilePath(path, file.Name, file.Extension);
-                string? directory = Path.GetDirectoryName(filePath);
-                if (directory is not null)
-                    Directory.CreateDirectory(directory);
-                await using FileStream output = new(
-                    filePath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    81920,
-                    FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await output.WriteAsync(file.Content);
-            }
-            finally
-            {
-                long releasedBytes = file.Content?.LongLength ?? 0;
-                file.ReleaseContent();
-                MemoryMaintenance.NotifyLargeBufferReleased(releasedBytes);
-            }
+            string filePath = GetAvailableExportFilePath(path, name, extension);
+            string? directory = Path.GetDirectoryName(filePath);
+            if (directory is not null)
+                Directory.CreateDirectory(directory);
+            await using FileStream output = new(
+                filePath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                81920,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await ThingData.ExportFileAsync(id, output);
         }
 
         private static string GetAvailableExportFilePath(string directory, string name, string extension)

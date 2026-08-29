@@ -25,6 +25,7 @@ internal sealed class TestEnvironment : IAsyncDisposable
         string directory = Path.Combine(Path.GetTempPath(), "NETThingEncryptor.Tests", Guid.NewGuid().ToString("N"));
         System.IO.Directory.CreateDirectory(directory);
         AppPaths.DataDirectoryOverride = directory;
+        ThingData.ConfigureStorage(new FileSystemVaultStorage(directory));
 
         var root = new ThingRoot
         {

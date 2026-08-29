@@ -22,6 +22,7 @@ public sealed class CoreBoundaryTests
         Assert.DoesNotContain("System.Windows.Forms", references);
         Assert.DoesNotContain("System.Drawing.Common", references);
         Assert.DoesNotContain(references, name => name.StartsWith("Microsoft.Windows", StringComparison.Ordinal));
+        Assert.DoesNotContain("Nte.Storage", references);
     }
 
     [Fact]
@@ -37,6 +38,7 @@ public sealed class CoreBoundaryTests
         ThingData.LockSession();
         TestEnvironment.SetRoot(null);
         AppPaths.DataDirectoryOverride = directory;
+        ThingData.ConfigureStorage(new FileSystemVaultStorage(directory));
         ThingData.NotificationRaised += handler;
         try
         {

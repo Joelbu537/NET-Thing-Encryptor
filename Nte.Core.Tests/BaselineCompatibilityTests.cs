@@ -27,6 +27,7 @@ public sealed class BaselineCompatibilityTests
         ThingData.LockSession();
         TestEnvironment.SetRoot(null);
         AppPaths.DataDirectoryOverride = workingDirectory;
+        ThingData.ConfigureStorage(new FileSystemVaultStorage(workingDirectory));
         try
         {
             foreach (string sourceFile in Directory.EnumerateFiles(fixtureDirectory))
@@ -87,6 +88,72 @@ public sealed class BaselineCompatibilityTests
             AppPaths.DataDirectoryOverride = null;
             if (Directory.Exists(workingDirectory))
                 Directory.Delete(workingDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Version37Fixture_ArchiveTransfersCompleteVault()
+    {
+        string fixtureDirectory = Path.Combine(
+            AppContext.BaseDirectory,
+            "Fixtures",
+            "baseline-v3.7");
+        string testDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "NETThingEncryptor.Tests",
+            Guid.NewGuid().ToString("N"));
+        string sourceDirectory = Path.Combine(testDirectory, "source");
+        string destinationRoot = Path.Combine(testDirectory, "destination", "root");
+        string destinationObjects = Path.Combine(testDirectory, "destination", "objects");
+        Directory.CreateDirectory(sourceDirectory);
+
+        ThingData.LockSession();
+        TestEnvironment.SetRoot(null);
+        try
+        {
+            foreach (string sourceFile in Directory.EnumerateFiles(fixtureDirectory, "*.nte"))
+                File.Copy(sourceFile, Path.Combine(sourceDirectory, Path.GetFileName(sourceFile)));
+
+            var sourceStorage = new FileSystemVaultStorage(sourceDirectory);
+            var destinationStorage = new FileSystemVaultStorage(destinationRoot, destinationObjects);
+            var archiveService = new VaultArchiveService();
+            using var archive = new MemoryStream();
+            VaultArchiveExportResult exported = await archiveService.ExportAsync(
+                sourceStorage,
+                archive,
+                TestContext.Current.CancellationToken);
+
+            archive.Position = 0;
+            VaultArchiveImportResult imported = await archiveService.ImportAsync(
+                archive,
+                destinationStorage,
+                TestContext.Current.CancellationToken);
+
+            Assert.Equal(5, exported.ObjectCount);
+            Assert.Equal(exported.ObjectCount, imported.ObjectCount);
+            foreach (ulong id in sourceStorage.ListObjectIds())
+            {
+                byte[] expected = await File.ReadAllBytesAsync(
+                    sourceStorage.GetLocation(id),
+                    TestContext.Current.CancellationToken);
+                byte[] actual = await File.ReadAllBytesAsync(
+                    destinationStorage.GetLocation(id),
+                    TestContext.Current.CancellationToken);
+                Assert.Equal(expected, actual);
+            }
+
+            ThingData.ConfigureStorage(destinationStorage);
+            Assert.True(await ThingData.LoadMainData());
+            Assert.Equal(Path.GetFullPath(destinationObjects), ThingData.Root!.SaveLocation);
+            Assert.True(await ThingData.AttemptDecrypt(Password));
+            Assert.Equal(FolderId, Assert.Single(ThingData.Root.Content!).ID);
+        }
+        finally
+        {
+            ThingData.LockSession();
+            TestEnvironment.SetRoot(null);
+            if (Directory.Exists(testDirectory))
+                Directory.Delete(testDirectory, recursive: true);
         }
     }
 

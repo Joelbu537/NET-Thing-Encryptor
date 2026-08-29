@@ -22,10 +22,4 @@
     <ProjectReference Include="..\Nte.Storage\Nte.Storage.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Fixtures\baseline-v3.7\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

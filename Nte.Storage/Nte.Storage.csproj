@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Nte.Storage</AssemblyName>
+    <RootNamespace>NET_Thing_Encryptor</RootNamespace>
+    <Version>3.7.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nte.Core\Nte.Core.csproj" />
+  </ItemGroup>
+
+</Project>

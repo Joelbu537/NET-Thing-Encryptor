@@ -48,6 +48,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Nte.Core\Nte.Core.csproj" />
+    <ProjectReference Include="..\Nte.Storage\Nte.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

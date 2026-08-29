@@ -12,27 +12,29 @@ public static partial class ThingData
     {
         BeginSaving();
         await MutationLock.WaitAsync();
-        MutationBackup? backup = null;
-        ThingRoot rootSnapshot = CloneRootForRollback(RequireRoot());
+        IVaultStorageSnapshot? backup = null;
+        ThingRoot liveRoot = RequireRoot();
+        ThingRoot rootSnapshot = CloneRootForRollback(liveRoot);
         try
         {
             IReadOnlyCollection<ulong>? backupIds = backupIdProvider is null
                 ? null
                 : await backupIdProvider();
-            backup = await CreateMutationBackupAsync(backupIds);
+            backup = await CurrentStorage.CreateSnapshotAsync(backupIds).ConfigureAwait(false);
             await mutation();
         }
         catch
         {
-            Root = rootSnapshot;
+            RestoreRootFromSnapshot(liveRoot, rootSnapshot);
+            Root = liveRoot;
             if (backup is not null)
-                await RestoreMutationBackupAsync(backup);
+                await backup.RestoreAsync().ConfigureAwait(false);
             throw;
         }
         finally
         {
             if (backup is not null)
-                DeleteMutationBackup(backup);
+                await backup.DisposeAsync().ConfigureAwait(false);
             MutationLock.Release();
             EndSaving();
         }
@@ -56,6 +58,37 @@ public static partial class ThingData
         return clone;
     }
 
+    private static void RestoreRootFromSnapshot(ThingRoot destination, ThingRoot snapshot)
+    {
+        destination.Name = snapshot.Name;
+        destination.ID = snapshot.ID;
+        destination.ParentID = snapshot.ParentID;
+        destination.Salt = (byte[])snapshot.Salt.Clone();
+        destination.SaveLocation = snapshot.SaveLocation;
+        destination.ImportLocation = snapshot.ImportLocation;
+        destination.ExportLocation = snapshot.ExportLocation;
+        destination.DarkMode = snapshot.DarkMode;
+        destination.ImageViewerPreviousBufferCount = snapshot.ImageViewerPreviousBufferCount;
+        destination.ImageViewerNextBufferCount = snapshot.ImageViewerNextBufferCount;
+        destination.AutoLockMinutes = snapshot.AutoLockMinutes;
+        destination.RandomiseSelectedImage = snapshot.RandomiseSelectedImage;
+        destination.ImageAutoplayIntervalSeconds = snapshot.ImageAutoplayIntervalSeconds;
+        destination.LoopOnAutoplay = snapshot.LoopOnAutoplay;
+        destination.ContentEncrypted = snapshot.ContentEncrypted;
+        destination.Content = snapshot.Content?
+            .Select(link => new ThingObjectLink(
+                link.ID,
+                link.Name,
+                link.Type,
+                link.Size,
+                link.PreviewContent is null ? null : (byte[])link.PreviewContent.Clone())
+            {
+                CreatedAt = link.CreatedAt,
+                Extension = link.Extension
+            })
+            .ToList();
+    }
+
     private static bool ContainsNameConflict(
         IEnumerable<ThingObjectLink> content,
         string name,
@@ -64,119 +97,6 @@ public static partial class ThingData
         return content.Any(link =>
             link.ID != excludedID &&
             string.Equals(link.Name, name, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static async Task<MutationBackup> CreateMutationBackupAsync(
-        IReadOnlyCollection<ulong>? scopedObjectIds = null)
-    {
-        ThingRoot root = RequireRoot();
-        string rootPath = GetFilePath(0);
-        string saveLocation = Path.GetFullPath(root.SaveLocation);
-        string backupDirectory = Path.Combine(
-            Path.GetTempPath(),
-            "NET Thing Encryptor",
-            "MutationBackups",
-            Guid.NewGuid().ToString("N"));
-        string backupRootDirectory = Path.Combine(backupDirectory, "root");
-        string backupObjectsDirectory = Path.Combine(backupDirectory, "objects");
-        Directory.CreateDirectory(backupRootDirectory);
-        Directory.CreateDirectory(backupObjectsDirectory);
-
-        bool rootExisted = File.Exists(rootPath);
-        if (rootExisted)
-            await CopyFileAsync(rootPath, Path.Combine(backupRootDirectory, "0.nte"));
-
-        IReadOnlyList<string>? scopedObjectPaths = scopedObjectIds?
-            .Where(id => id != 0)
-            .Select(id => Path.GetFullPath(Path.Combine(saveLocation, IDToHex(id) + ".nte")))
-            .Distinct(AppPaths.FileSystemPathComparer)
-            .ToArray();
-
-        IEnumerable<string> objectFiles = scopedObjectPaths is null
-            ? Directory.Exists(saveLocation)
-                ? Directory.EnumerateFiles(saveLocation, "*.nte", SearchOption.TopDirectoryOnly)
-                : []
-            : scopedObjectPaths.Where(File.Exists);
-
-        foreach (string file in objectFiles)
-        {
-            if (AppPaths.PathEquals(file, rootPath))
-                continue;
-
-            await CopyFileAsync(file, Path.Combine(backupObjectsDirectory, Path.GetFileName(file)));
-        }
-
-        return new MutationBackup(
-            backupDirectory,
-            rootPath,
-            saveLocation,
-            rootExisted,
-            scopedObjectPaths);
-    }
-
-    private static async Task RestoreMutationBackupAsync(MutationBackup backup)
-    {
-        string backupRootPath = Path.Combine(backup.BackupDirectory, "root", "0.nte");
-        string backupObjectsDirectory = Path.Combine(backup.BackupDirectory, "objects");
-
-        Directory.CreateDirectory(Path.GetDirectoryName(backup.RootPath)!);
-        Directory.CreateDirectory(backup.SaveLocation);
-
-        if (backup.RootExisted && File.Exists(backupRootPath))
-            await CopyFileAsync(backupRootPath, backup.RootPath);
-        else if (!backup.RootExisted && File.Exists(backup.RootPath))
-            File.Delete(backup.RootPath);
-
-        IEnumerable<string> filesToReset = backup.ScopedObjectPaths ??
-            Directory.EnumerateFiles(backup.SaveLocation, "*.nte", SearchOption.TopDirectoryOnly)
-                .Where(file => !AppPaths.PathEquals(file, backup.RootPath));
-
-        foreach (string file in filesToReset)
-        {
-            if (File.Exists(file))
-                File.Delete(file);
-        }
-
-        if (Directory.Exists(backupObjectsDirectory))
-        {
-            foreach (string file in Directory.EnumerateFiles(backupObjectsDirectory, "*.nte", SearchOption.TopDirectoryOnly))
-                await CopyFileAsync(file, Path.Combine(backup.SaveLocation, Path.GetFileName(file)));
-        }
-    }
-
-    private static async Task CopyFileAsync(string sourcePath, string destinationPath)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-        await using FileStream source = new(
-            sourcePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            81920,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await using FileStream destination = new(
-            destinationPath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            81920,
-            FileOptions.Asynchronous | FileOptions.WriteThrough);
-        await source.CopyToAsync(destination);
-        await destination.FlushAsync();
-        destination.Flush(flushToDisk: true);
-    }
-
-    private static void DeleteMutationBackup(MutationBackup backup)
-    {
-        try
-        {
-            if (Directory.Exists(backup.BackupDirectory))
-                Directory.Delete(backup.BackupDirectory, recursive: true);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Could not delete mutation backup {backup.BackupDirectory}: {ex}");
-        }
     }
 
     public static async Task MoveFileToFolderAsync(ThingFile file, ulong folderID)
@@ -485,7 +405,7 @@ public static partial class ThingData
             await SaveFileAsync(parent);
         }
 
-        await DeletePersistedFileAsync(GetFilePath(fileID));
+        await CurrentStorage.DeleteAsync(fileID).ConfigureAwait(false);
     }
 
     private static async Task DeleteFolderCoreAsync(ulong folderID)
@@ -512,7 +432,7 @@ public static partial class ThingData
             await SaveFileAsync(parent);
         }
 
-        await DeletePersistedFileAsync(GetFilePath(folderID));
+        await CurrentStorage.DeleteAsync(folderID).ConfigureAwait(false);
     }
 
     public static async Task DeleteObject(ulong id)
@@ -569,23 +489,6 @@ public static partial class ThingData
         await DeleteFolderCoreAsync(folder.ID);
     }
 
-    private static async Task DeletePersistedFileAsync(string filePath)
-    {
-        string fullPath = Path.GetFullPath(filePath);
-        SemaphoreSlim fileLock = FileLocks.GetOrAdd(fullPath, static _ => new SemaphoreSlim(1, 1));
-        await fileLock.WaitAsync();
-        try
-        {
-            if (File.Exists(fullPath))
-                File.Delete(fullPath);
-            if (File.Exists(fullPath))
-                throw new IOException($"The encrypted file could not be deleted: {fullPath}");
-        }
-        finally
-        {
-            fileLock.Release();
-        }
-    }
     public static async Task SaveRootAsync()
     {
         BeginSaving();
@@ -598,9 +501,8 @@ public static partial class ThingData
             tempRoot.ContentEncrypted = encryptedContent;
             tempRoot.Content = null;
             string rootContent = JsonSerializer.Serialize(tempRoot);
-            string rootPath = GetFilePath(0);
             using var content = new MemoryStream(Encoding.UTF8.GetBytes(rootContent), writable: false);
-            await WriteAtomicallyAsync(rootPath, content);
+            await CurrentStorage.WriteAtomicallyAsync(0, content).ConfigureAwait(false);
             root.ContentEncrypted = encryptedContent;
         }
         finally

@@ -43,6 +43,10 @@ namespace NET_Thing_Encryptor
                 WinFormsVaultNotificationAdapter.Subscribe();
             try
             {
+                ThingData.ConfigureStorage(new FileSystemVaultStorage(
+                    AppPaths.DataDirectory,
+                    AppPaths.DataDirectory,
+                    AppPaths.LegacyDataDirectories));
                 if (ThingData.LoadMainData().Result)
                 {
                     using var pw = new PasswordForm();

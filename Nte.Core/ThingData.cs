@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Collections.Concurrent;
 
 namespace NET_Thing_Encryptor;
 public static partial class ThingData
@@ -11,32 +10,20 @@ public static partial class ThingData
     private static readonly byte[] EncryptedFileHeader = "NTE2"u8.ToArray();
     private const int NonceSize = 12;
     private const int AuthenticationTagSize = 16;
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks =
-        new(AppPaths.FileSystemPathComparer);
     private static readonly SemaphoreSlim MutationLock = new(1, 1);
     private static readonly JsonSerializerOptions FileSerializerOptions = new()
     {
         WriteIndented = true
     };
-    private sealed class MutationBackup(
-        string backupDirectory,
-        string rootPath,
-        string saveLocation,
-        bool rootExisted,
-        IReadOnlyList<string>? scopedObjectPaths)
-    {
-        public string BackupDirectory { get; } = backupDirectory;
-        public string RootPath { get; } = rootPath;
-        public string SaveLocation { get; } = saveLocation;
-        public bool RootExisted { get; } = rootExisted;
-        public IReadOnlyList<string>? ScopedObjectPaths { get; } = scopedObjectPaths;
-    }
-
     private static readonly VaultSession Session = new();
+    private static IVaultStorage? _storage;
 
     public static event EventHandler<VaultNotificationEventArgs>? NotificationRaised;
 
     public static VaultSession CurrentSession => Session;
+    public static IVaultStorage CurrentStorage => _storage
+        ?? throw new InvalidOperationException(
+            "Vault storage has not been configured. Call ThingData.ConfigureStorage first.");
     public static ThingRoot? Root
     {
         get => Session.Root;
@@ -48,6 +35,32 @@ public static partial class ThingData
     public static void BeginSaving() => Session.BeginSaving();
     public static void EndSaving() => Session.EndSaving();
     public static void LockSession() => Session.Lock();
+
+    public static void ConfigureStorage(IVaultStorage storage)
+    {
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+    }
+
+    internal static async Task<T> RunStorageExclusiveAsync<T>(
+        Func<IVaultStorage, Task<T>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        BeginSaving();
+        bool lockTaken = false;
+        try
+        {
+            await MutationLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            lockTaken = true;
+            return await operation(CurrentStorage).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (lockTaken)
+                MutationLock.Release();
+            EndSaving();
+        }
+    }
 
     public static async Task<MemoryStream> Encrypt(Stream input)
     {
@@ -237,26 +250,20 @@ public static partial class ThingData
 
     public static async Task<bool> LoadMainData()
     {
-        string dataDirectory = AppPaths.DataDirectory;
-        string rootPath = AppPaths.RootFilePath;
+        IVaultStorage storage = CurrentStorage;
         try
         {
-            MigrateLegacyDataIfNeeded(dataDirectory);
-
-            if (!Directory.Exists(dataDirectory))
-            {
-                Debug.WriteLine("\\Data directory not found, creating it.");
-                Directory.CreateDirectory(dataDirectory);
-            }
-            if (File.Exists(rootPath))
+            await storage.InitializeAsync().ConfigureAwait(false);
+            if (storage.Exists(0))
             {
                 Debug.WriteLine("Main file found, attempting to load.");
-                using FileStream fs = File.OpenRead(rootPath);
-                ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(fs);
+                await using Stream input = await storage.OpenReadAsync(0).ConfigureAwait(false);
+                ThingRoot? root = await JsonSerializer.DeserializeAsync<ThingRoot>(input)
+                    .ConfigureAwait(false);
                 ArgumentNullException.ThrowIfNull(root, nameof(root));
 
                 root.Content = [];
-                RebaseLegacySaveLocation(root, dataDirectory);
+                root.SaveLocation = storage.ResolveObjectLocation(root.SaveLocation);
                 Root = root;
                 Debug.WriteLine("Main file loaded successfully.");
             }
@@ -270,7 +277,7 @@ public static partial class ThingData
                 }
                 Root = new ThingRoot();
                 Root.Salt = salt;
-                Root.SaveLocation = dataDirectory;
+                Root.SaveLocation = storage.ObjectLocation;
                 Debug.WriteLine("New Root created in memory");
                 Notify(
                     "New folder structure created",
@@ -283,15 +290,15 @@ public static partial class ThingData
         }
         catch (Exception ex) when (ex is JsonException or ArgumentNullException)
         {
-            string backupPath = Path.Combine(
-                dataDirectory,
-                $"0_damaged_{DateTime.Now:yyyyMMdd_HHmmss}.nte");
+            string? backupPath = await storage.PreserveDamagedRootAsync(
+                $"damaged_{DateTime.Now:yyyyMMdd_HHmmss}").ConfigureAwait(false);
             Debug.WriteLine($"{ex.GetType().Name} occurred while loading the root file.");
-            if (File.Exists(rootPath))
-                File.Copy(rootPath, backupPath, overwrite: false);
             Notify(
                 "File Corrupted",
-                $"The main data file is corrupted or damaged. A backup has been created at {backupPath}.\n" +
+                backupPath is null
+                    ? "The main data file is corrupted or damaged and could not be preserved.\n" +
+                      "Please restore from a backup or recreate the file."
+                    : $"The main data file is corrupted or damaged. A backup has been created at {backupPath}.\n" +
                 "Please restore from a backup or recreate the file.",
                 VaultNotificationSeverity.Error);
             return false;
@@ -329,19 +336,6 @@ public static partial class ThingData
         return false;
     }
 
-    private static void MigrateLegacyDataIfNeeded(string targetDataDirectory)
-    {
-        LegacyDataMigrationResult result = LegacyDataMigrator.MigrateIfNeeded(
-            targetDataDirectory,
-            AppPaths.LegacyDataDirectories);
-        if (result.Status == LegacyDataMigrationStatus.Conflict)
-        {
-            throw new LegacyDataMigrationConflictException(
-                result.SourceDirectory!,
-                targetDataDirectory);
-        }
-    }
-
     private static void Notify(
         string title,
         string message,
@@ -350,15 +344,4 @@ public static partial class ThingData
         NotificationRaised?.Invoke(null, new VaultNotificationEventArgs(title, message, severity));
     }
 
-    private static void RebaseLegacySaveLocation(ThingRoot root, string dataDirectory)
-    {
-        foreach (string legacyDataDirectory in AppPaths.LegacyDataDirectories)
-        {
-            if (AppPaths.PathEquals(root.SaveLocation, legacyDataDirectory))
-            {
-                root.SaveLocation = dataDirectory;
-                return;
-            }
-        }
-    }
 }

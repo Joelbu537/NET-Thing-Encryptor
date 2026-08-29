@@ -27,6 +27,9 @@ jobs:
       - name: Test platform-neutral core
         run: dotnet test ./Nte.Core.Tests/Nte.Core.Tests.csproj -c Release
 
+      - name: Test cross-platform storage and transfer
+        run: dotnet test ./Nte.Storage.Tests/Nte.Storage.Tests.csproj -c Release
+
   windows-installer:
     runs-on: windows-latest
     timeout-minutes: 30

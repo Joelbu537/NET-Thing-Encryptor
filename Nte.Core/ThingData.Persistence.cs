@@ -29,28 +29,16 @@ public static partial class ThingData
             RandomNumberGenerator.Fill(buffer);
             tempID = BitConverter.ToUInt64(buffer, 0);
         }
-        while (tempID == 0 || File.Exists(Path.Combine(Root.SaveLocation, IDToHex(tempID) + ".nte")));
+        while (tempID == 0 || CurrentStorage.Exists(tempID));
         return tempID;
     }
     public static string GetFilePath(ulong id, bool create = false)
     {
-        if(id == 0)
-        {
-            return AppPaths.RootFilePath;
-        }
-        ArgumentNullException.ThrowIfNull(Root, nameof(Root));
-        string path = string.Empty;
+        string location = CurrentStorage.GetLocation(id);
+        if (create || CurrentStorage.Exists(id))
+            return location;
 
-        path = Path.GetFullPath(Path.Combine(Root.SaveLocation, IDToHex(id) + ".nte"));
-        if (File.Exists(path))
-            return path;
-        else if (create)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            return path;
-        }
-
-        throw new FileNotFoundException("File not found.", path);
+        throw new FileNotFoundException("File not found.", location);
     }
     public static async Task<ThingObject?> LoadFileAsync(ulong id)
     {
@@ -62,13 +50,8 @@ public static partial class ThingData
             throw new ArgumentException("Cannot load root element.", nameof(id));
         }
 
-        string filePath = string.Empty;
-
-        filePath = GetFilePath(id);
-        //Debug.WriteLine($"File path resolved to: {filePath}");
-
-        using FileStream fs = File.OpenRead(filePath);
-        using var decrypted = await Decrypt(fs).ConfigureAwait(false);
+        await using Stream input = await CurrentStorage.OpenReadAsync(id).ConfigureAwait(false);
+        using var decrypted = await Decrypt(input).ConfigureAwait(false);
         decrypted.Position = 0;
         bool hasTypeDiscriminator = ContainsTypeDiscriminator(decrypted);
         decrypted.Position = 0;
@@ -158,8 +141,6 @@ public static partial class ThingData
 
     private static async Task SaveFolderCoreAsync(ThingFolder folder)
     {
-        string folderPath = GetFilePath(folder.ID, true);
-
         string folderContent = JsonSerializer.Serialize<ThingObject>(
             folder,
             FileSerializerOptions);
@@ -167,13 +148,11 @@ public static partial class ThingData
         using var input = new MemoryStream(Encoding.UTF8.GetBytes(folderContent));
         await using var encrypted = await Encrypt(input);
 
-        await WriteAtomicallyAsync(folderPath, encrypted);
+        await CurrentStorage.WriteAtomicallyAsync(folder.ID, encrypted).ConfigureAwait(false);
     }
 
     private static async Task SaveFileCoreAsync(ThingFile file)
     {
-        string filePath = GetFilePath(file.ID, true);
-
         await using MemoryStream plainStream = new MemoryStream();
 
         await JsonSerializer.SerializeAsync<ThingObject>(
@@ -183,7 +162,7 @@ public static partial class ThingData
         plainStream.Position = 0;
 
         await using var encrypted = await Encrypt(plainStream);
-        await WriteAtomicallyAsync(filePath, encrypted);
+        await CurrentStorage.WriteAtomicallyAsync(file.ID, encrypted).ConfigureAwait(false);
     }
 
     public static async Task SaveEncryptedDataAsync(ulong id, Stream plaintext)
@@ -191,52 +170,12 @@ public static partial class ThingData
         BeginSaving();
         try
         {
-            string filePath = GetFilePath(id, create: true);
             await using var encrypted = await Encrypt(plaintext);
-            await WriteAtomicallyAsync(filePath, encrypted);
+            await CurrentStorage.WriteAtomicallyAsync(id, encrypted).ConfigureAwait(false);
         }
         finally
         {
             EndSaving();
-        }
-    }
-
-    private static async Task WriteAtomicallyAsync(string destinationPath, Stream content)
-    {
-        string fullPath = Path.GetFullPath(destinationPath);
-        string directory = Path.GetDirectoryName(fullPath)
-            ?? throw new InvalidOperationException("The destination has no parent directory.");
-        Directory.CreateDirectory(directory);
-
-        SemaphoreSlim fileLock = FileLocks.GetOrAdd(fullPath, static _ => new SemaphoreSlim(1, 1));
-        await fileLock.WaitAsync();
-        string temporaryPath = Path.Combine(
-            directory,
-            $".{Path.GetFileName(fullPath)}.{Guid.NewGuid():N}.tmp");
-
-        try
-        {
-            content.Position = 0;
-            await using (var output = new FileStream(
-                temporaryPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.None,
-                81920,
-                FileOptions.Asynchronous | FileOptions.WriteThrough))
-            {
-                await content.CopyToAsync(output);
-                await output.FlushAsync();
-                output.Flush(flushToDisk: true);
-            }
-
-            File.Move(temporaryPath, fullPath, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-            fileLock.Release();
         }
     }
 

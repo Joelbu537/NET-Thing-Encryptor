@@ -130,13 +130,12 @@ namespace NET_Thing_Encryptor
                         usedNames);
                     usedNames.Add(objectName);
 
-                    importedFile = new ThingFile(
-                        objectName,
-                        await File.ReadAllBytesAsync(filePath));
-                    Enum.TryParse<FileType>(item.ImageKey, true, out FileType result);
-                    importedFile.Type = result;
-                    importedFile.Extension = Path.GetExtension(filePath).TrimStart('.');
-                    await ThingData.MoveFileToFolderAsync(importedFile, currentFolderID);
+                    await using FileStream input = File.OpenRead(filePath);
+                    importedFile = await ThingData.ImportFileAsync(
+                        input,
+                        Path.GetFileName(filePath),
+                        currentFolderID,
+                        objectName);
                     listViewFiles.Items.Remove(item);
                 }
                 catch (Exception ex)

@@ -253,6 +253,7 @@ $publishedExecutable = Join-Path $publishDir "NET Thing Encryptor.exe"
 $requiredPublishedFiles = @(
     $publishedExecutable,
     (Join-Path $publishDir "Nte.Core.dll"),
+    (Join-Path $publishDir "Nte.Storage.dll"),
     (Join-Path $publishDir "LibVLCSharp.dll"),
     (Join-Path $publishDir "Magick.NET.Core.dll")
 )

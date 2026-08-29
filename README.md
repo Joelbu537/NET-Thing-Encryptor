@@ -2,7 +2,7 @@
 
 NET Thing Encryptor ist eine Windows-Desktopanwendung zum verschlüsselten Verwalten von Dateien. Die Anwendung wird als selbstenthaltendes x64-Paket veröffentlicht und benötigt auf dem Zielsystem kein separat installiertes .NET Runtime-Paket.
 
-Die schrittweise Migration zu einer plattformübergreifenden Avalonia-Anwendung hat begonnen. `Nte.Core` enthält bereits die UI-unabhängige Kernlogik für .NET 10; die bestehende WinForms-Anwendung bleibt während der Migration die funktionierende Windows-Referenz.
+Die schrittweise Migration zu einer plattformübergreifenden Avalonia-Anwendung hat begonnen. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10. `Nte.Storage` kapselt Dateisystemzugriffe, streambasierten Dokumenttransfer und vollständige `.ntevault`-Archive. Die bestehende WinForms-Anwendung bleibt während der Migration die funktionierende Windows-Referenz.
 
 ## Unterstützte Systeme
 
@@ -22,9 +22,10 @@ Der plattformneutrale Kern lässt sich mit .NET 10 unabhängig von WinForms test
 
 ```powershell
 dotnet test ".\Nte.Core.Tests\Nte.Core.Tests.csproj" -c Release
+dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
 ```
 
-CI führt diesen Test zusätzlich unter Linux aus. Die Architekturentscheidungen und M1-Grenzen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md).
+CI führt beide Tests zusätzlich unter Linux aus. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md) und [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md).
 
 ## Installer bauen
 
