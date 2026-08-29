@@ -1,0 +1,51 @@
+name: Build and test installer
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 11 Preview 7
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 11.0.100-preview.7.26381.103
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue) -and
+              -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress --yes
+          }
+
+      - name: Build and test installer
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content '.\NET Thing Encryptor\NET Thing Encryptor.csproj'
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          .\build\build-installer.ps1 -Clean -ExpectedVersion $version
+          $installer = ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe"
+          .\build\test-installer.ps1 -InstallerPath $installer -ExpectedVersion $version -RunInstallation
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-installer
+          path: |
+            artifacts/installer/*.exe
+            artifacts/installer/*.sha256
+          if-no-files-found: error

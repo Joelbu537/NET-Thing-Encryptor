@@ -23,13 +23,18 @@ namespace NET_Thing_Encryptor
         private readonly int _previousBufferCount;
         private readonly int _nextBufferCount;
         private readonly Size _maximumDecodedImageSize;
+        private readonly System.Windows.Forms.Timer _autoplayTimer = new();
+        private readonly bool _loopOnAutoplay;
 
         private int _requestedIndex = -1;
+        private ulong? _displayedImageId;
         private long _navigationVersion;
         private bool _isClosing;
+        private bool _autoplayEnabled;
+        private bool _autoplayAdvancing;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int Index { get; private set; }
+        public int Index { get; private set; } = -1;
 
         public ImageViewForm(ThingFile file)
         {
@@ -41,6 +46,11 @@ namespace NET_Thing_Encryptor
 
             _previousBufferCount = ThingData.Root?.ImageViewerPreviousBufferCount ?? 1;
             _nextBufferCount = ThingData.Root?.ImageViewerNextBufferCount ?? 2;
+            int autoplayIntervalSeconds = ThingData.Root?.ImageAutoplayIntervalSeconds ?? 5;
+            _loopOnAutoplay = ThingData.Root?.LoopOnAutoplay ?? false;
+            _autoplayTimer.Interval = checked(autoplayIntervalSeconds * 1000);
+            _autoplayTimer.Tick += AutoplayTimer_Tick;
+            AppTheme.Apply(contextMenuImage, ThingData.Root?.DarkMode ?? true);
             Rectangle screenBounds = Screen.FromControl(this).Bounds;
             _maximumDecodedImageSize = CalculateMaximumDecodedImageSize(
                 screenBounds.Size,
@@ -134,10 +144,52 @@ namespace NET_Thing_Encryptor
             await SwitchImageAsync(selectedIndex);
         }
 
-        private Task NavigateByAsync(int offset)
+        private async Task NavigateByAsync(int offset)
         {
             int baseIndex = _requestedIndex >= 0 ? _requestedIndex : Index;
-            return SwitchImageAsync(baseIndex + offset);
+            await SwitchImageAsync(baseIndex + offset);
+            RestartAutoplayCountdown();
+        }
+
+        internal static int RandomiseOrder(
+            IList<ThingObjectLink> images,
+            int selectedIndex,
+            bool includeSelectedImage,
+            Random? random = null)
+        {
+            ArgumentNullException.ThrowIfNull(images);
+            if (selectedIndex < 0 || selectedIndex >= images.Count)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+
+            random ??= Random.Shared;
+            ThingObjectLink selectedImage = images[selectedIndex];
+            if (!includeSelectedImage)
+            {
+                List<ThingObjectLink> remainingImages = images
+                    .Where((_, index) => index != selectedIndex)
+                    .ToList();
+                Shuffle(remainingImages, random);
+                images.Clear();
+                images.Add(selectedImage);
+                foreach (ThingObjectLink image in remainingImages)
+                    images.Add(image);
+                return 0;
+            }
+
+            Shuffle(images, random);
+            // The current bitmap stays visible as a preview, outside the new sequence.
+            // Both manual navigation and autoplay must next visit index 0, not follow
+            // the displayed image to its random position and skip the preceding images.
+            return -1;
+        }
+
+        private static void Shuffle(IList<ThingObjectLink> images, Random random)
+        {
+            for (int index = images.Count - 1; index > 0; index--)
+            {
+                int swapIndex = random.Next(index + 1);
+                (images[index], images[swapIndex]) = (images[swapIndex], images[index]);
+            }
         }
 
         private async Task SwitchImageAsync(int index)
@@ -163,6 +215,7 @@ namespace NET_Thing_Encryptor
             pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             ReplaceDisplayedImage(displayImage ?? CloneErrorImage());
             Index = index;
+            _displayedImageId = _images[index].ID;
             textBoxIndex.Text = $"{Index + 1}/{_images.Count}";
             Debug.WriteLine($"Displayed image {Index + 1}/{_images.Count}.");
         }
@@ -413,6 +466,9 @@ namespace NET_Thing_Encryptor
 
         private async void pictureBox_MouseClick(object sender, MouseEventArgs e)
         {
+            if (e.Button != MouseButtons.Left)
+                return;
+
             await NavigateByAsync(ClientSize.Width / 2 < e.X ? 1 : -1);
         }
 
@@ -437,6 +493,7 @@ namespace NET_Thing_Encryptor
                 requestedIndex <= _images.Count)
             {
                 await SwitchImageAsync(requestedIndex - 1);
+                RestartAutoplayCountdown();
                 ActiveControl = null;
             }
             else
@@ -456,12 +513,119 @@ namespace NET_Thing_Encryptor
                 Close();
         }
 
-        private void ImageViewForm_FormClosing(object sender, FormClosingEventArgs e)
+        private void contextMenuImage_Opening(object sender, CancelEventArgs e)
         {
-            _isClosing = true;
-            Interlocked.Increment(ref _navigationVersion);
-            ReplaceDisplayedImage(null);
+            randomiseOrderToolStripMenuItem.Enabled = _images.Count > 1 && _displayedImageId.HasValue;
+            autoplayToolStripMenuItem.Enabled = _images.Count > 1;
+            autoplayToolStripMenuItem.Text = _autoplayEnabled
+                ? "Stop Autoplay"
+                : "Start Autoplay";
+        }
 
+        private void randomiseOrderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (_isClosing || _images.Count <= 1)
+                return;
+
+            // Index can be -1 after randomising, or an unrelated navigation may still
+            // be loading. Identify the displayed image independently of the cursor.
+            int selectedIndex = _images.FindIndex(image => image.ID == _displayedImageId);
+            if (selectedIndex < 0)
+                return;
+
+            _autoplayTimer.Stop();
+            bool includeSelectedImage = ThingData.Root?.RandomiseSelectedImage ?? false;
+            Interlocked.Increment(ref _navigationVersion);
+            ClearImageCache();
+            Index = RandomiseOrder(
+                _images,
+                selectedIndex,
+                includeSelectedImage);
+            _requestedIndex = -1;
+            textBoxIndex.Text = $"{Index + 1}/{_images.Count}";
+            MaintainCacheWindow(0);
+            RestartAutoplayCountdown();
+        }
+
+        private void autoplayToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (_autoplayEnabled)
+                StopAutoplay();
+            else
+                StartAutoplay();
+        }
+
+        private void StartAutoplay()
+        {
+            if (_isClosing || _images.Count <= 1 ||
+                (!_loopOnAutoplay && Index >= _images.Count - 1))
+            {
+                StopAutoplay();
+                return;
+            }
+
+            _autoplayEnabled = true;
+            autoplayToolStripMenuItem.Text = "Stop Autoplay";
+            _autoplayTimer.Start();
+        }
+
+        private void StopAutoplay()
+        {
+            _autoplayEnabled = false;
+            _autoplayTimer.Stop();
+            autoplayToolStripMenuItem.Text = "Start Autoplay";
+        }
+
+        private void RestartAutoplayCountdown()
+        {
+            if (!_autoplayEnabled || _isClosing)
+                return;
+
+            if (!_loopOnAutoplay && Index >= _images.Count - 1)
+            {
+                StopAutoplay();
+                return;
+            }
+
+            _autoplayTimer.Stop();
+            _autoplayTimer.Start();
+        }
+
+        private async void AutoplayTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!_autoplayEnabled || _autoplayAdvancing || _isClosing)
+                return;
+
+            _autoplayAdvancing = true;
+            _autoplayTimer.Stop();
+            try
+            {
+                int currentIndex = _requestedIndex >= 0 ? _requestedIndex : Index;
+                int nextIndex = currentIndex + 1;
+                if (nextIndex >= _images.Count)
+                {
+                    if (!_loopOnAutoplay)
+                    {
+                        StopAutoplay();
+                        return;
+                    }
+                    nextIndex = 0;
+                }
+
+                await SwitchImageAsync(nextIndex);
+                if (!_loopOnAutoplay && Index >= _images.Count - 1)
+                    StopAutoplay();
+            }
+            finally
+            {
+                _autoplayAdvancing = false;
+                if (_autoplayEnabled && !_isClosing)
+                    _autoplayTimer.Start();
+            }
+        }
+
+        private void ClearImageCache()
+        {
             List<ImageCacheEntry> entries;
             lock (_cacheLock)
             {
@@ -471,6 +635,17 @@ namespace NET_Thing_Encryptor
 
             foreach (ImageCacheEntry entry in entries)
                 DisposeCacheEntry(entry);
+        }
+
+        private void ImageViewForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            _isClosing = true;
+            StopAutoplay();
+            _autoplayTimer.Tick -= AutoplayTimer_Tick;
+            _autoplayTimer.Dispose();
+            Interlocked.Increment(ref _navigationVersion);
+            ReplaceDisplayedImage(null);
+            ClearImageCache();
 
             _images.Clear();
             ImageMemoryManager.Trim();

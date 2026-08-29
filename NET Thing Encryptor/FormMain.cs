@@ -12,7 +12,6 @@ namespace NET_Thing_Encryptor
         private ThingFolder? CurrentFolder;
         private ulong _currentFolderID = 0;
         private int recalculatingFileSystemSize;
-        private const int AutoLockMinutes = 5;
         private const long LargeFileWarningThreshold = 256L * 1024 * 1024;
         private readonly System.Windows.Forms.Timer _savingIndicatorTimer = new()
         {
@@ -30,7 +29,15 @@ namespace NET_Thing_Encryptor
         private readonly TextBox _textBoxSearch = new()
         {
             Width = 180,
-            PlaceholderText = "Search"
+            PlaceholderText = "Search this folder"
+        };
+        private readonly Button _buttonGlobalSearch = new()
+        {
+            AccessibleName = "Search all files",
+            FlatStyle = FlatStyle.Flat,
+            Font = new Font("Segoe UI Symbol", 18F),
+            Text = "⌕",
+            Size = new Size(44, 44)
         };
         private List<ThingObjectLink> _currentFolderContent = [];
         private static ThingRoot Root =>
@@ -116,6 +123,13 @@ namespace NET_Thing_Encryptor
             _textBoxSearch.ForeColor = Root.DarkMode ? Color.White : SystemColors.WindowText;
             _textBoxSearch.BorderStyle = BorderStyle.FixedSingle;
             _textBoxSearch.TextChanged += textBoxSearch_TextChanged;
+            _buttonGlobalSearch.Margin = new Padding(15, 3, 3, 3);
+            _buttonGlobalSearch.Padding = new Padding(7);
+            _buttonGlobalSearch.BackColor = Color.Transparent;
+            _buttonGlobalSearch.ForeColor = Root.DarkMode ? Color.White : SystemColors.ControlText;
+            _buttonGlobalSearch.Click += buttonGlobalSearch_Click;
+            toolTip.SetToolTip(_buttonGlobalSearch, "Search all files");
+            flowLayoutPanelNavigationButtons.Controls.Add(_buttonGlobalSearch);
             flowLayoutPanelNavigationButtons.Controls.Add(_textBoxSearch);
             AppTheme.Apply(contextMenuStrip, Root.DarkMode);
             ResizeListColumns();
@@ -177,10 +191,12 @@ namespace NET_Thing_Encryptor
 
         private async void SessionLockTimer_Tick(object? sender, EventArgs e)
         {
+            int autoLockMinutes = Root.AutoLockMinutes;
             if (_lockingSession ||
                 ThingData.Saving > 0 ||
                 !ThingData.IsSessionUnlocked ||
-                DateTime.UtcNow - _lastUserActivityUtc < TimeSpan.FromMinutes(AutoLockMinutes))
+                autoLockMinutes == 0 ||
+                DateTime.UtcNow - _lastUserActivityUtc < TimeSpan.FromMinutes(autoLockMinutes))
             {
                 return;
             }
@@ -284,6 +300,19 @@ namespace NET_Thing_Encryptor
         private void textBoxSearch_TextChanged(object? sender, EventArgs e)
         {
             RenderCurrentFolderContent();
+        }
+
+        private void buttonGlobalSearch_Click(object? sender, EventArgs e)
+        {
+            GlobalFileSearchForm searchForm = new(OpenSearchResultAsync);
+            searchForm.Show(this);
+        }
+
+        private async Task OpenSearchResultAsync(ulong id)
+        {
+            ThingFile file = await ThingData.LoadFileAsync<ThingFile>(id)
+                ?? throw new FileNotFoundException("The selected file could not be loaded.");
+            OpenFile(file);
         }
 
         private void RenderCurrentFolderContent()

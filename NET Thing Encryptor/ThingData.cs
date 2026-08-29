@@ -318,6 +318,19 @@ public static class ThingData
                 "File Corrupted", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
         }
+        catch (LegacyDataMigrationConflictException ex)
+        {
+            Debug.WriteLine(ex.Message);
+            MessageBox.Show(
+                $"Existing application data prevented an automatic migration.\n\n" +
+                $"Old data: {ex.SourceDirectory}\n" +
+                $"Target: {ex.TargetDirectory}\n\n" +
+                "No data was changed. Move or back up the conflicting target files, then start the application again.",
+                "Data Migration Conflict",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return false;
+        }
         catch (UnauthorizedAccessException)
         {
             Debug.WriteLine("Unauthorized Access Exception occurred, user does not have permission to access the main data file.");
@@ -337,32 +350,14 @@ public static class ThingData
 
     private static void MigrateLegacyDataIfNeeded(string targetDataDirectory)
     {
-        if (File.Exists(AppPaths.RootFilePath))
-            return;
-
-        foreach (string legacyDataDirectory in AppPaths.LegacyDataDirectories)
+        LegacyDataMigrationResult result = LegacyDataMigrator.MigrateIfNeeded(
+            targetDataDirectory,
+            AppPaths.LegacyDataDirectories);
+        if (result.Status == LegacyDataMigrationStatus.Conflict)
         {
-            string legacyRootPath = Path.Combine(legacyDataDirectory, "0.nte");
-            if (!File.Exists(legacyRootPath))
-                continue;
-
-            CopyDirectoryIfMissing(legacyDataDirectory, targetDataDirectory);
-            Debug.WriteLine($"Migrated legacy data from {legacyDataDirectory} to {targetDataDirectory}.");
-            return;
-        }
-    }
-
-    private static void CopyDirectoryIfMissing(string sourceDirectory, string destinationDirectory)
-    {
-        Directory.CreateDirectory(destinationDirectory);
-
-        foreach (string sourceFile in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
-        {
-            string relativePath = Path.GetRelativePath(sourceDirectory, sourceFile);
-            string destinationFile = Path.Combine(destinationDirectory, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
-            if (!File.Exists(destinationFile))
-                File.Copy(sourceFile, destinationFile);
+            throw new LegacyDataMigrationConflictException(
+                result.SourceDirectory!,
+                targetDataDirectory);
         }
     }
 
@@ -653,7 +648,8 @@ public static class ThingData
                 link.Size,
                 link.PreviewContent is null ? null : (byte[])link.PreviewContent.Clone())
             {
-                CreatedAt = link.CreatedAt
+                CreatedAt = link.CreatedAt,
+                Extension = link.Extension
             })
             .ToList();
         return clone;
@@ -834,10 +830,12 @@ public static class ThingData
                 file.ID,
                 file.Name,
                 file.Type,
-                file.Content?.LongLength ?? 0);
+                file.Content?.LongLength ?? 0,
+                extension: file.Extension);
             link.Name = file.Name;
             link.Type = file.Type;
             link.Size = file.Content?.LongLength ?? link.Size;
+            link.Extension = file.Extension;
 
             file.ParentID = folder.ID;
             await SaveFileAsync(file);

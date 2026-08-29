@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.22000.0</TargetFramework>
+    <TargetFramework>net11.0-windows10.0.22000.0</TargetFramework>
+    <SatelliteResourceLanguages>en;de</SatelliteResourceLanguages>
     <RootNamespace>NET_Thing_Encryptor</RootNamespace>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
@@ -18,9 +19,9 @@
 	<ErrorReport>send</ErrorReport>
 	<RepositoryUrl>https://github.com/Joelbu537/NET-Thing-Encryptor</RepositoryUrl>
 	<StartupObject>NET_Thing_Encryptor.Program</StartupObject>
-	<Version>3.6.1</Version>
-	<AssemblyVersion>3.6.1.0</AssemblyVersion>
-	<FileVersion>3.6.1.0</FileVersion>
+	<Version>3.7.0</Version>
+	<AssemblyVersion>3.7.0.0</AssemblyVersion>
+	<FileVersion>3.7.0.0</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -36,14 +37,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.10.0" />
-    <PackageReference Include="LibVLCSharp.WinForms" Version="3.10.0" />
-    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.14.0" />
-    <PackageReference Include="Magick.NET.Core" Version="14.14.0" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
+    <PackageReference Include="LibVLCSharp.WinForms" Version="3.10.1" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.16.0" />
+    <PackageReference Include="Magick.NET.Core" Version="14.16.0" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Core" Version="1.1.5" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" />
   </ItemGroup>
 

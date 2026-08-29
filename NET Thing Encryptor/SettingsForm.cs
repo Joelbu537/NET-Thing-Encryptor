@@ -19,8 +19,12 @@ namespace NET_Thing_Encryptor
             textBoxImportLocation.Text = Path.GetFullPath(ThingData.Root.ImportLocation);
             textBoxExportLocation.Text = Path.GetFullPath(ThingData.Root.ExportLocation);
             checkBoxDarkMode.Checked = ThingData.Root.DarkMode;
+            numericAutoLockMinutes.Value = ThingData.Root.AutoLockMinutes;
             numericPreviousImageBuffer.Value = ThingData.Root.ImageViewerPreviousBufferCount;
             numericNextImageBuffer.Value = ThingData.Root.ImageViewerNextBufferCount;
+            checkBoxRandomiseSelectedImage.Checked = ThingData.Root.RandomiseSelectedImage;
+            numericAutoplaySeconds.Value = ThingData.Root.ImageAutoplayIntervalSeconds;
+            checkBoxLoopOnAutoplay.Checked = ThingData.Root.LoopOnAutoplay;
         }
 
         private async void buttonApply_Click(object sender, EventArgs e)
@@ -61,11 +65,19 @@ namespace NET_Thing_Encryptor
                 // Dark Mode
                 ThingData.Root.DarkMode = checkBoxDarkMode.Checked;
 
+                // Security
+                ThingData.Root.AutoLockMinutes =
+                    decimal.ToInt32(numericAutoLockMinutes.Value);
+
                 // Image viewer buffering
                 ThingData.Root.ImageViewerPreviousBufferCount =
                     decimal.ToInt32(numericPreviousImageBuffer.Value);
                 ThingData.Root.ImageViewerNextBufferCount =
                     decimal.ToInt32(numericNextImageBuffer.Value);
+                ThingData.Root.RandomiseSelectedImage = checkBoxRandomiseSelectedImage.Checked;
+                ThingData.Root.ImageAutoplayIntervalSeconds =
+                    decimal.ToInt32(numericAutoplaySeconds.Value);
+                ThingData.Root.LoopOnAutoplay = checkBoxLoopOnAutoplay.Checked;
 
                 await ThingData.SaveRootAsync();
                 Close();

@@ -1,357 +1,386 @@
-﻿namespace NET_Thing_Encryptor
+namespace NET_Thing_Encryptor
 {
     partial class SettingsForm
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
-            {
                 components.Dispose();
-            }
             base.Dispose(disposing);
         }
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
-            tableLayoutPanel1 = new TableLayoutPanel();
-            tableLayoutPanel = new TableLayoutPanel();
-            buttonExportLocation = new Button();
-            textBoxExportLocation = new TextBox();
-            label2 = new Label();
-            buttonImportLocation = new Button();
-            textBoxImportLocation = new TextBox();
-            label1 = new Label();
-            label0 = new Label();
+            rootLayout = new TableLayoutPanel();
+            headerPanel = new Panel();
+            labelHeaderSubtitleMuted = new Label();
+            labelHeader = new Label();
+            settingsPanel = new Panel();
+            settingsLayout = new TableLayoutPanel();
+            groupBoxStorage = new GroupBox();
+            storageLayout = new TableLayoutPanel();
+            labelSaveLocation = new Label();
             textBoxSaveLocation = new TextBox();
             buttonSaveLocation = new Button();
-            label3 = new Label();
+            labelImportLocation = new Label();
+            textBoxImportLocation = new TextBox();
+            buttonImportLocation = new Button();
+            labelExportLocation = new Label();
+            textBoxExportLocation = new TextBox();
+            buttonExportLocation = new Button();
+            groupBoxAppearance = new GroupBox();
+            appearanceLayout = new TableLayoutPanel();
             checkBoxDarkMode = new CheckBox();
+            labelDarkModeHintMuted = new Label();
+            groupBoxSecurity = new GroupBox();
+            securityLayout = new TableLayoutPanel();
+            labelAutoLock = new Label();
+            numericAutoLockMinutes = new NumericUpDown();
+            labelAutoLockHintMuted = new Label();
+            groupBoxImageViewer = new GroupBox();
+            imageViewerLayout = new TableLayoutPanel();
             labelPreviousImageBuffer = new Label();
             numericPreviousImageBuffer = new NumericUpDown();
             labelNextImageBuffer = new Label();
             numericNextImageBuffer = new NumericUpDown();
-            flowLayoutPanel1 = new FlowLayoutPanel();
+            checkBoxRandomiseSelectedImage = new CheckBox();
+            labelAutoplayInterval = new Label();
+            numericAutoplaySeconds = new NumericUpDown();
+            checkBoxLoopOnAutoplay = new CheckBox();
+            footerPanel = new FlowLayoutPanel();
             buttonApply = new Button();
             buttonCancel = new Button();
-            tableLayoutPanel1.SuspendLayout();
-            tableLayoutPanel.SuspendLayout();
+            rootLayout.SuspendLayout();
+            headerPanel.SuspendLayout();
+            settingsPanel.SuspendLayout();
+            settingsLayout.SuspendLayout();
+            groupBoxStorage.SuspendLayout();
+            storageLayout.SuspendLayout();
+            groupBoxAppearance.SuspendLayout();
+            appearanceLayout.SuspendLayout();
+            groupBoxSecurity.SuspendLayout();
+            securityLayout.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numericAutoLockMinutes).BeginInit();
+            groupBoxImageViewer.SuspendLayout();
+            imageViewerLayout.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numericPreviousImageBuffer).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numericNextImageBuffer).BeginInit();
-            flowLayoutPanel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numericAutoplaySeconds).BeginInit();
+            footerPanel.SuspendLayout();
             SuspendLayout();
-            // 
-            // tableLayoutPanel1
-            // 
-            tableLayoutPanel1.ColumnCount = 1;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.Controls.Add(tableLayoutPanel, 0, 0);
-            tableLayoutPanel1.Controls.Add(flowLayoutPanel1, 0, 1);
-            tableLayoutPanel1.Dock = DockStyle.Fill;
-            tableLayoutPanel1.Location = new Point(0, 0);
-            tableLayoutPanel1.Name = "tableLayoutPanel1";
-            tableLayoutPanel1.RowCount = 2;
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel1.Size = new Size(1080, 504);
-            tableLayoutPanel1.TabIndex = 0;
-            // 
-            // tableLayoutPanel
-            // 
-            tableLayoutPanel.AutoSize = true;
-            tableLayoutPanel.ColumnCount = 3;
-            tableLayoutPanel.ColumnStyles.Add(new ColumnStyle());
-            tableLayoutPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel.ColumnStyles.Add(new ColumnStyle());
-            tableLayoutPanel.Controls.Add(buttonExportLocation, 2, 2);
-            tableLayoutPanel.Controls.Add(textBoxExportLocation, 1, 2);
-            tableLayoutPanel.Controls.Add(label2, 0, 2);
-            tableLayoutPanel.Controls.Add(buttonImportLocation, 2, 1);
-            tableLayoutPanel.Controls.Add(textBoxImportLocation, 1, 1);
-            tableLayoutPanel.Controls.Add(label1, 0, 1);
-            tableLayoutPanel.Controls.Add(label0, 0, 0);
-            tableLayoutPanel.Controls.Add(textBoxSaveLocation, 1, 0);
-            tableLayoutPanel.Controls.Add(buttonSaveLocation, 2, 0);
-            tableLayoutPanel.Controls.Add(label3, 0, 3);
-            tableLayoutPanel.Controls.Add(checkBoxDarkMode, 1, 3);
-            tableLayoutPanel.Controls.Add(labelPreviousImageBuffer, 0, 4);
-            tableLayoutPanel.Controls.Add(numericPreviousImageBuffer, 1, 4);
-            tableLayoutPanel.Controls.Add(labelNextImageBuffer, 0, 5);
-            tableLayoutPanel.Controls.Add(numericNextImageBuffer, 1, 5);
-            tableLayoutPanel.Dock = DockStyle.Fill;
-            tableLayoutPanel.Location = new Point(11, 4);
-            tableLayoutPanel.Margin = new Padding(11, 4, 4, 4);
-            tableLayoutPanel.Name = "tableLayoutPanel";
-            tableLayoutPanel.RowCount = 7;
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 47F));
-            tableLayoutPanel.Size = new Size(1065, 449);
-            tableLayoutPanel.TabIndex = 1;
-            // 
-            // buttonExportLocation
-            // 
-            buttonExportLocation.Dock = DockStyle.Fill;
-            buttonExportLocation.Location = new Point(1025, 97);
-            buttonExportLocation.Name = "buttonExportLocation";
-            buttonExportLocation.Size = new Size(37, 41);
-            buttonExportLocation.TabIndex = 9;
-            buttonExportLocation.Text = "...";
-            buttonExportLocation.UseVisualStyleBackColor = true;
-            buttonExportLocation.Click += buttonExportLocation_Click;
-            // 
-            // textBoxExportLocation
-            // 
-            textBoxExportLocation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            textBoxExportLocation.Location = new Point(212, 100);
-            textBoxExportLocation.Name = "textBoxExportLocation";
-            textBoxExportLocation.Size = new Size(807, 34);
-            textBoxExportLocation.TabIndex = 8;
-            // 
-            // label2
-            // 
-            label2.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            label2.AutoSize = true;
-            label2.Location = new Point(4, 103);
-            label2.Margin = new Padding(4, 0, 4, 0);
-            label2.Name = "label2";
-            label2.Size = new Size(201, 28);
-            label2.TabIndex = 7;
-            label2.Text = "Default Export Folder";
-            label2.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // buttonImportLocation
-            // 
-            buttonImportLocation.Dock = DockStyle.Fill;
-            buttonImportLocation.Location = new Point(1025, 50);
-            buttonImportLocation.Name = "buttonImportLocation";
-            buttonImportLocation.Size = new Size(37, 41);
-            buttonImportLocation.TabIndex = 6;
-            buttonImportLocation.Text = "...";
-            buttonImportLocation.UseVisualStyleBackColor = true;
-            buttonImportLocation.Click += buttonImportLocation_Click;
-            // 
-            // textBoxImportLocation
-            // 
-            textBoxImportLocation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            textBoxImportLocation.Location = new Point(212, 53);
-            textBoxImportLocation.Name = "textBoxImportLocation";
-            textBoxImportLocation.Size = new Size(807, 34);
-            textBoxImportLocation.TabIndex = 5;
-            // 
-            // label1
-            // 
-            label1.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            label1.AutoSize = true;
-            label1.Location = new Point(4, 56);
-            label1.Margin = new Padding(4, 0, 4, 0);
-            label1.Name = "label1";
-            label1.Size = new Size(201, 28);
-            label1.TabIndex = 4;
-            label1.Text = "Default Import Folder";
-            label1.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // label0
-            // 
-            label0.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            label0.AutoSize = true;
-            label0.Location = new Point(4, 9);
-            label0.Margin = new Padding(4, 0, 4, 0);
-            label0.Name = "label0";
-            label0.Size = new Size(201, 28);
-            label0.TabIndex = 1;
-            label0.Text = "Save Data Location";
-            label0.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // textBoxSaveLocation
-            // 
+            rootLayout.ColumnCount = 1;
+            rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            rootLayout.Controls.Add(headerPanel, 0, 0);
+            rootLayout.Controls.Add(settingsPanel, 0, 1);
+            rootLayout.Controls.Add(footerPanel, 0, 2);
+            rootLayout.Dock = DockStyle.Fill;
+            rootLayout.RowCount = 3;
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 76F));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 62F));
+            headerPanel.Controls.Add(labelHeaderSubtitleMuted);
+            headerPanel.Controls.Add(labelHeader);
+            headerPanel.Dock = DockStyle.Fill;
+            headerPanel.Padding = new Padding(20, 12, 20, 8);
+            headerPanel.Name = "headerPanel";
+            labelHeader.AutoSize = true;
+            labelHeader.Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold);
+            labelHeader.Location = new Point(20, 10);
+            labelHeader.Name = "labelHeader";
+            labelHeader.Text = "Settings";
+            labelHeaderSubtitleMuted.AutoSize = true;
+            labelHeaderSubtitleMuted.Location = new Point(22, 47);
+            labelHeaderSubtitleMuted.Name = "labelHeaderSubtitleMuted";
+            labelHeaderSubtitleMuted.Text = "Storage, security and image viewer preferences";
+            settingsPanel.AutoScroll = true;
+            settingsPanel.Controls.Add(settingsLayout);
+            settingsPanel.Dock = DockStyle.Fill;
+            settingsPanel.Name = "settingsPanel";
+            settingsPanel.Padding = new Padding(16, 6, 16, 12);
+            settingsLayout.AutoSize = true;
+            settingsLayout.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            settingsLayout.ColumnCount = 1;
+            settingsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            settingsLayout.Controls.Add(groupBoxStorage, 0, 0);
+            settingsLayout.Controls.Add(groupBoxAppearance, 0, 1);
+            settingsLayout.Controls.Add(groupBoxSecurity, 0, 2);
+            settingsLayout.Controls.Add(groupBoxImageViewer, 0, 3);
+            settingsLayout.Dock = DockStyle.Top;
+            settingsLayout.Name = "settingsLayout";
+            settingsLayout.RowCount = 4;
+            groupBoxStorage.AutoSize = true;
+            groupBoxStorage.Controls.Add(storageLayout);
+            groupBoxStorage.Dock = DockStyle.Top;
+            groupBoxStorage.Margin = new Padding(0, 0, 0, 12);
+            groupBoxStorage.Name = "groupBoxStorage";
+            groupBoxStorage.Padding = new Padding(14, 10, 14, 14);
+            groupBoxStorage.Text = "Storage";
+            storageLayout.AutoSize = true;
+            storageLayout.ColumnCount = 3;
+            storageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190F));
+            storageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            storageLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 46F));
+            storageLayout.Controls.Add(labelSaveLocation, 0, 0);
+            storageLayout.Controls.Add(textBoxSaveLocation, 1, 0);
+            storageLayout.Controls.Add(buttonSaveLocation, 2, 0);
+            storageLayout.Controls.Add(labelImportLocation, 0, 1);
+            storageLayout.Controls.Add(textBoxImportLocation, 1, 1);
+            storageLayout.Controls.Add(buttonImportLocation, 2, 1);
+            storageLayout.Controls.Add(labelExportLocation, 0, 2);
+            storageLayout.Controls.Add(textBoxExportLocation, 1, 2);
+            storageLayout.Controls.Add(buttonExportLocation, 2, 2);
+            storageLayout.Dock = DockStyle.Fill;
+            storageLayout.RowCount = 3;
+            storageLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            storageLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            storageLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            labelSaveLocation.Anchor = AnchorStyles.Left;
+            labelSaveLocation.AutoSize = true;
+            labelSaveLocation.Text = "Encrypted data location";
             textBoxSaveLocation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            textBoxSaveLocation.Location = new Point(212, 6);
             textBoxSaveLocation.Name = "textBoxSaveLocation";
-            textBoxSaveLocation.Size = new Size(807, 34);
-            textBoxSaveLocation.TabIndex = 2;
-            // 
-            // buttonSaveLocation
-            // 
             buttonSaveLocation.Dock = DockStyle.Fill;
-            buttonSaveLocation.Location = new Point(1025, 3);
+            buttonSaveLocation.Margin = new Padding(6, 4, 0, 4);
             buttonSaveLocation.Name = "buttonSaveLocation";
-            buttonSaveLocation.Size = new Size(37, 41);
-            buttonSaveLocation.TabIndex = 3;
-            buttonSaveLocation.Text = "...";
-            buttonSaveLocation.UseVisualStyleBackColor = true;
+            buttonSaveLocation.Text = "…";
             buttonSaveLocation.Click += buttonSaveLocation_Click;
-            // 
-            // label3
-            // 
-            label3.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            label3.AutoSize = true;
-            label3.Location = new Point(4, 150);
-            label3.Margin = new Padding(4, 0, 4, 0);
-            label3.Name = "label3";
-            label3.Size = new Size(201, 28);
-            label3.TabIndex = 10;
-            label3.Text = "Dark Mode?";
-            label3.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // checkBoxDarkMode
-            // 
+            labelImportLocation.Anchor = AnchorStyles.Left;
+            labelImportLocation.AutoSize = true;
+            labelImportLocation.Text = "Default import folder";
+            textBoxImportLocation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            textBoxImportLocation.Name = "textBoxImportLocation";
+            buttonImportLocation.Dock = DockStyle.Fill;
+            buttonImportLocation.Margin = new Padding(6, 4, 0, 4);
+            buttonImportLocation.Name = "buttonImportLocation";
+            buttonImportLocation.Text = "…";
+            buttonImportLocation.Click += buttonImportLocation_Click;
+            labelExportLocation.Anchor = AnchorStyles.Left;
+            labelExportLocation.AutoSize = true;
+            labelExportLocation.Text = "Default export folder";
+            textBoxExportLocation.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            textBoxExportLocation.Name = "textBoxExportLocation";
+            buttonExportLocation.Dock = DockStyle.Fill;
+            buttonExportLocation.Margin = new Padding(6, 4, 0, 4);
+            buttonExportLocation.Name = "buttonExportLocation";
+            buttonExportLocation.Text = "…";
+            buttonExportLocation.Click += buttonExportLocation_Click;
+            groupBoxAppearance.AutoSize = true;
+            groupBoxAppearance.Controls.Add(appearanceLayout);
+            groupBoxAppearance.Dock = DockStyle.Top;
+            groupBoxAppearance.Margin = new Padding(0, 0, 0, 12);
+            groupBoxAppearance.Name = "groupBoxAppearance";
+            groupBoxAppearance.Padding = new Padding(14, 10, 14, 14);
+            groupBoxAppearance.Text = "Appearance";
+            appearanceLayout.AutoSize = true;
+            appearanceLayout.ColumnCount = 1;
+            appearanceLayout.Controls.Add(checkBoxDarkMode, 0, 0);
+            appearanceLayout.Controls.Add(labelDarkModeHintMuted, 0, 1);
+            appearanceLayout.Dock = DockStyle.Fill;
             checkBoxDarkMode.AutoSize = true;
-            checkBoxDarkMode.Dock = DockStyle.Fill;
-            checkBoxDarkMode.Location = new Point(212, 144);
             checkBoxDarkMode.Name = "checkBoxDarkMode";
-            checkBoxDarkMode.Size = new Size(807, 41);
-            checkBoxDarkMode.TabIndex = 11;
-            checkBoxDarkMode.Text = "Dark Mode! (Requires restart)";
+            checkBoxDarkMode.Text = "Use dark mode";
             checkBoxDarkMode.UseVisualStyleBackColor = true;
-            //
-            // labelPreviousImageBuffer
-            //
-            labelPreviousImageBuffer.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            labelDarkModeHintMuted.AutoSize = true;
+            labelDarkModeHintMuted.Margin = new Padding(24, 3, 3, 0);
+            labelDarkModeHintMuted.Name = "labelDarkModeHintMuted";
+            labelDarkModeHintMuted.Text = "The new theme is applied after restarting the application.";
+            groupBoxSecurity.AutoSize = true;
+            groupBoxSecurity.Controls.Add(securityLayout);
+            groupBoxSecurity.Dock = DockStyle.Top;
+            groupBoxSecurity.Margin = new Padding(0, 0, 0, 12);
+            groupBoxSecurity.Name = "groupBoxSecurity";
+            groupBoxSecurity.Padding = new Padding(14, 10, 14, 14);
+            groupBoxSecurity.Text = "Security";
+            securityLayout.AutoSize = true;
+            securityLayout.ColumnCount = 2;
+            securityLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 260F));
+            securityLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            securityLayout.Controls.Add(labelAutoLock, 0, 0);
+            securityLayout.Controls.Add(numericAutoLockMinutes, 1, 0);
+            securityLayout.Controls.Add(labelAutoLockHintMuted, 0, 1);
+            securityLayout.SetColumnSpan(labelAutoLockHintMuted, 2);
+            securityLayout.Dock = DockStyle.Fill;
+            labelAutoLock.Anchor = AnchorStyles.Left;
+            labelAutoLock.AutoSize = true;
+            labelAutoLock.Text = "Automatically lock after (minutes)";
+            numericAutoLockMinutes.Anchor = AnchorStyles.Left;
+            numericAutoLockMinutes.Maximum = ThingRoot.MaximumAutoLockMinutes;
+            numericAutoLockMinutes.Name = "numericAutoLockMinutes";
+            numericAutoLockMinutes.Size = new Size(120, 30);
+            labelAutoLockHintMuted.AutoSize = true;
+            labelAutoLockHintMuted.Margin = new Padding(0, 5, 3, 0);
+            labelAutoLockHintMuted.Name = "labelAutoLockHintMuted";
+            labelAutoLockHintMuted.Text = "Set to 0 to disable automatic locking.";
+            groupBoxImageViewer.AutoSize = true;
+            groupBoxImageViewer.Controls.Add(imageViewerLayout);
+            groupBoxImageViewer.Dock = DockStyle.Top;
+            groupBoxImageViewer.Margin = new Padding(0);
+            groupBoxImageViewer.Name = "groupBoxImageViewer";
+            groupBoxImageViewer.Padding = new Padding(14, 10, 14, 14);
+            groupBoxImageViewer.Text = "Image viewer";
+            imageViewerLayout.AutoSize = true;
+            imageViewerLayout.ColumnCount = 2;
+            imageViewerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 260F));
+            imageViewerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            imageViewerLayout.Controls.Add(labelPreviousImageBuffer, 0, 0);
+            imageViewerLayout.Controls.Add(numericPreviousImageBuffer, 1, 0);
+            imageViewerLayout.Controls.Add(labelNextImageBuffer, 0, 1);
+            imageViewerLayout.Controls.Add(numericNextImageBuffer, 1, 1);
+            imageViewerLayout.Controls.Add(checkBoxRandomiseSelectedImage, 0, 2);
+            imageViewerLayout.SetColumnSpan(checkBoxRandomiseSelectedImage, 2);
+            imageViewerLayout.Controls.Add(labelAutoplayInterval, 0, 3);
+            imageViewerLayout.Controls.Add(numericAutoplaySeconds, 1, 3);
+            imageViewerLayout.Controls.Add(checkBoxLoopOnAutoplay, 0, 4);
+            imageViewerLayout.SetColumnSpan(checkBoxLoopOnAutoplay, 2);
+            imageViewerLayout.Dock = DockStyle.Fill;
+            imageViewerLayout.RowCount = 5;
+            imageViewerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            imageViewerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            imageViewerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+            imageViewerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            imageViewerLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            labelPreviousImageBuffer.Anchor = AnchorStyles.Left;
             labelPreviousImageBuffer.AutoSize = true;
-            labelPreviousImageBuffer.Location = new Point(4, 197);
-            labelPreviousImageBuffer.Margin = new Padding(4, 0, 4, 0);
-            labelPreviousImageBuffer.Name = "labelPreviousImageBuffer";
-            labelPreviousImageBuffer.Size = new Size(201, 28);
-            labelPreviousImageBuffer.TabIndex = 12;
             labelPreviousImageBuffer.Text = "Buffered previous images";
-            labelPreviousImageBuffer.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // numericPreviousImageBuffer
-            //
             numericPreviousImageBuffer.Anchor = AnchorStyles.Left;
-            numericPreviousImageBuffer.Location = new Point(212, 194);
-            numericPreviousImageBuffer.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            numericPreviousImageBuffer.Maximum = ThingRoot.MaximumImageViewerBufferCount;
             numericPreviousImageBuffer.Name = "numericPreviousImageBuffer";
-            numericPreviousImageBuffer.Size = new Size(120, 34);
-            numericPreviousImageBuffer.TabIndex = 13;
-            numericPreviousImageBuffer.Value = new decimal(new int[] { 1, 0, 0, 0 });
-            //
-            // labelNextImageBuffer
-            //
-            labelNextImageBuffer.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            numericPreviousImageBuffer.Size = new Size(120, 30);
+            numericPreviousImageBuffer.Value = 1;
+            labelNextImageBuffer.Anchor = AnchorStyles.Left;
             labelNextImageBuffer.AutoSize = true;
-            labelNextImageBuffer.Location = new Point(4, 244);
-            labelNextImageBuffer.Margin = new Padding(4, 0, 4, 0);
-            labelNextImageBuffer.Name = "labelNextImageBuffer";
-            labelNextImageBuffer.Size = new Size(201, 28);
-            labelNextImageBuffer.TabIndex = 14;
             labelNextImageBuffer.Text = "Buffered next images";
-            labelNextImageBuffer.TextAlign = ContentAlignment.MiddleLeft;
-            //
-            // numericNextImageBuffer
-            //
             numericNextImageBuffer.Anchor = AnchorStyles.Left;
-            numericNextImageBuffer.Location = new Point(212, 241);
-            numericNextImageBuffer.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+            numericNextImageBuffer.Maximum = ThingRoot.MaximumImageViewerBufferCount;
             numericNextImageBuffer.Name = "numericNextImageBuffer";
-            numericNextImageBuffer.Size = new Size(120, 34);
-            numericNextImageBuffer.TabIndex = 15;
-            numericNextImageBuffer.Value = new decimal(new int[] { 2, 0, 0, 0 });
-            // 
-            // flowLayoutPanel1
-            // 
-            flowLayoutPanel1.AutoSize = true;
-            flowLayoutPanel1.Controls.Add(buttonApply);
-            flowLayoutPanel1.Controls.Add(buttonCancel);
-            flowLayoutPanel1.Dock = DockStyle.Fill;
-            flowLayoutPanel1.FlowDirection = FlowDirection.RightToLeft;
-            flowLayoutPanel1.Location = new Point(3, 460);
-            flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(1074, 41);
-            flowLayoutPanel1.TabIndex = 2;
-            // 
-            // buttonApply
-            // 
+            numericNextImageBuffer.Size = new Size(120, 30);
+            numericNextImageBuffer.Value = 2;
+            checkBoxRandomiseSelectedImage.Anchor = AnchorStyles.Left;
+            checkBoxRandomiseSelectedImage.AutoSize = true;
+            checkBoxRandomiseSelectedImage.Name = "checkBoxRandomiseSelectedImage";
+            checkBoxRandomiseSelectedImage.Text = "Include the selected image when randomising the order";
+            checkBoxRandomiseSelectedImage.UseVisualStyleBackColor = true;
+            labelAutoplayInterval.Anchor = AnchorStyles.Left;
+            labelAutoplayInterval.AutoSize = true;
+            labelAutoplayInterval.Text = "Autoplay interval (seconds)";
+            numericAutoplaySeconds.Anchor = AnchorStyles.Left;
+            numericAutoplaySeconds.Minimum = 1;
+            numericAutoplaySeconds.Maximum = ThingRoot.MaximumAutoplayIntervalSeconds;
+            numericAutoplaySeconds.Name = "numericAutoplaySeconds";
+            numericAutoplaySeconds.Size = new Size(120, 30);
+            numericAutoplaySeconds.Value = 5;
+            checkBoxLoopOnAutoplay.Anchor = AnchorStyles.Left;
+            checkBoxLoopOnAutoplay.AutoSize = true;
+            checkBoxLoopOnAutoplay.Name = "checkBoxLoopOnAutoplay";
+            checkBoxLoopOnAutoplay.Text = "Loop on Autoplay";
+            checkBoxLoopOnAutoplay.UseVisualStyleBackColor = true;
+            footerPanel.Controls.Add(buttonApply);
+            footerPanel.Controls.Add(buttonCancel);
+            footerPanel.Dock = DockStyle.Fill;
+            footerPanel.FlowDirection = FlowDirection.RightToLeft;
+            footerPanel.Name = "footerPanel";
+            footerPanel.Padding = new Padding(16, 10, 16, 10);
             buttonApply.AutoSize = true;
-            buttonApply.Location = new Point(968, 3);
+            buttonApply.MinimumSize = new Size(100, 38);
             buttonApply.Name = "buttonApply";
-            buttonApply.Size = new Size(103, 38);
-            buttonApply.TabIndex = 0;
             buttonApply.Text = "Apply";
             buttonApply.UseVisualStyleBackColor = true;
             buttonApply.Click += buttonApply_Click;
-            // 
-            // buttonCancel
-            // 
             buttonCancel.AutoSize = true;
-            buttonCancel.Location = new Point(859, 3);
+            buttonCancel.DialogResult = DialogResult.Cancel;
+            buttonCancel.MinimumSize = new Size(100, 38);
             buttonCancel.Name = "buttonCancel";
-            buttonCancel.Size = new Size(103, 38);
-            buttonCancel.TabIndex = 1;
             buttonCancel.Text = "Cancel";
             buttonCancel.UseVisualStyleBackColor = true;
             buttonCancel.Click += buttonCancel_Click;
-            // 
-            // SettingsForm
-            // 
             AcceptButton = buttonApply;
-            AutoScaleDimensions = new SizeF(11F, 28F);
+            AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            AutoSize = true;
             CancelButton = buttonCancel;
-            ClientSize = new Size(1080, 504);
-            Controls.Add(tableLayoutPanel1);
-            Font = new Font("Segoe UI", 10F);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            Margin = new Padding(4);
-            MaximizeBox = false;
-            MinimizeBox = false;
+            ClientSize = new Size(850, 720);
+            Controls.Add(rootLayout);
+            MinimumSize = new Size(720, 600);
             Name = "SettingsForm";
             ShowIcon = false;
-            StartPosition = FormStartPosition.CenterScreen;
+            StartPosition = FormStartPosition.CenterParent;
             Text = "Settings";
             Load += SettingsForm_Load;
-            tableLayoutPanel1.ResumeLayout(false);
-            tableLayoutPanel1.PerformLayout();
-            tableLayoutPanel.ResumeLayout(false);
-            tableLayoutPanel.PerformLayout();
+            rootLayout.ResumeLayout(false);
+            headerPanel.ResumeLayout(false);
+            headerPanel.PerformLayout();
+            settingsPanel.ResumeLayout(false);
+            settingsPanel.PerformLayout();
+            settingsLayout.ResumeLayout(false);
+            settingsLayout.PerformLayout();
+            groupBoxStorage.ResumeLayout(false);
+            groupBoxStorage.PerformLayout();
+            storageLayout.ResumeLayout(false);
+            storageLayout.PerformLayout();
+            groupBoxAppearance.ResumeLayout(false);
+            groupBoxAppearance.PerformLayout();
+            appearanceLayout.ResumeLayout(false);
+            appearanceLayout.PerformLayout();
+            groupBoxSecurity.ResumeLayout(false);
+            groupBoxSecurity.PerformLayout();
+            securityLayout.ResumeLayout(false);
+            securityLayout.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numericAutoLockMinutes).EndInit();
+            groupBoxImageViewer.ResumeLayout(false);
+            groupBoxImageViewer.PerformLayout();
+            imageViewerLayout.ResumeLayout(false);
+            imageViewerLayout.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)numericPreviousImageBuffer).EndInit();
             ((System.ComponentModel.ISupportInitialize)numericNextImageBuffer).EndInit();
-            flowLayoutPanel1.ResumeLayout(false);
-            flowLayoutPanel1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numericAutoplaySeconds).EndInit();
+            footerPanel.ResumeLayout(false);
+            footerPanel.PerformLayout();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private TableLayoutPanel tableLayoutPanel1;
-        private TableLayoutPanel tableLayoutPanel;
-        private Label label0;
+        private TableLayoutPanel rootLayout;
+        private Panel headerPanel;
+        private Label labelHeader;
+        private Label labelHeaderSubtitleMuted;
+        private Panel settingsPanel;
+        private TableLayoutPanel settingsLayout;
+        private GroupBox groupBoxStorage;
+        private TableLayoutPanel storageLayout;
+        private Label labelSaveLocation;
         private TextBox textBoxSaveLocation;
         private Button buttonSaveLocation;
-        private FlowLayoutPanel flowLayoutPanel1;
-        private Button buttonApply;
-        private Button buttonCancel;
-        private Label label1;
-        private Button buttonExportLocation;
-        private TextBox textBoxExportLocation;
-        private Label label2;
-        private Button buttonImportLocation;
+        private Label labelImportLocation;
         private TextBox textBoxImportLocation;
-        private Label label3;
+        private Button buttonImportLocation;
+        private Label labelExportLocation;
+        private TextBox textBoxExportLocation;
+        private Button buttonExportLocation;
+        private GroupBox groupBoxAppearance;
+        private TableLayoutPanel appearanceLayout;
         private CheckBox checkBoxDarkMode;
+        private Label labelDarkModeHintMuted;
+        private GroupBox groupBoxSecurity;
+        private TableLayoutPanel securityLayout;
+        private Label labelAutoLock;
+        private NumericUpDown numericAutoLockMinutes;
+        private Label labelAutoLockHintMuted;
+        private GroupBox groupBoxImageViewer;
+        private TableLayoutPanel imageViewerLayout;
         private Label labelPreviousImageBuffer;
         private NumericUpDown numericPreviousImageBuffer;
         private Label labelNextImageBuffer;
         private NumericUpDown numericNextImageBuffer;
+        private CheckBox checkBoxRandomiseSelectedImage;
+        private Label labelAutoplayInterval;
+        private NumericUpDown numericAutoplaySeconds;
+        private CheckBox checkBoxLoopOnAutoplay;
+        private FlowLayoutPanel footerPanel;
+        private Button buttonApply;
+        private Button buttonCancel;
     }
 }

@@ -28,15 +28,21 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ImageViewForm));
             pictureBox = new PictureBox();
             textBoxIndex = new TextBox();
+            contextMenuImage = new ContextMenuStrip(components);
+            randomiseOrderToolStripMenuItem = new ToolStripMenuItem();
+            autoplayToolStripMenuItem = new ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)pictureBox).BeginInit();
+            contextMenuImage.SuspendLayout();
             SuspendLayout();
             // 
             // pictureBox
             // 
             pictureBox.BackColor = Color.Transparent;
+            pictureBox.ContextMenuStrip = contextMenuImage;
             pictureBox.Dock = DockStyle.Fill;
             pictureBox.ErrorImage = Properties.Resources.fileError;
             pictureBox.InitialImage = Properties.Resources.loading;
@@ -67,6 +73,27 @@
             textBoxIndex.Enter += textBoxIndex_Enter;
             textBoxIndex.KeyDown += textBoxIndex_KeyDown;
             textBoxIndex.Leave += textBoxIndex_Leave;
+            //
+            // contextMenuImage
+            //
+            contextMenuImage.Items.AddRange(new ToolStripItem[] { randomiseOrderToolStripMenuItem, autoplayToolStripMenuItem });
+            contextMenuImage.Name = "contextMenuImage";
+            contextMenuImage.Size = new Size(222, 52);
+            contextMenuImage.Opening += contextMenuImage_Opening;
+            //
+            // randomiseOrderToolStripMenuItem
+            //
+            randomiseOrderToolStripMenuItem.Name = "randomiseOrderToolStripMenuItem";
+            randomiseOrderToolStripMenuItem.Size = new Size(221, 24);
+            randomiseOrderToolStripMenuItem.Text = "Randomise Order";
+            randomiseOrderToolStripMenuItem.Click += randomiseOrderToolStripMenuItem_Click;
+            //
+            // autoplayToolStripMenuItem
+            //
+            autoplayToolStripMenuItem.Name = "autoplayToolStripMenuItem";
+            autoplayToolStripMenuItem.Size = new Size(221, 24);
+            autoplayToolStripMenuItem.Text = "Start Autoplay";
+            autoplayToolStripMenuItem.Click += autoplayToolStripMenuItem_Click;
             // 
             // ImageViewForm
             // 
@@ -74,6 +101,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(31, 31, 31);
             ClientSize = new Size(2231, 1274);
+            ContextMenuStrip = contextMenuImage;
             Controls.Add(textBoxIndex);
             Controls.Add(pictureBox);
             Font = new Font("Segoe UI", 12F);
@@ -86,6 +114,7 @@
             FormClosing += ImageViewForm_FormClosing;
             KeyDown += ImageViewForm_KeyDown;
             ((System.ComponentModel.ISupportInitialize)pictureBox).EndInit();
+            contextMenuImage.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -94,5 +123,8 @@
 
         private PictureBox pictureBox;
         private TextBox textBoxIndex;
+        private ContextMenuStrip contextMenuImage;
+        private ToolStripMenuItem randomiseOrderToolStripMenuItem;
+        private ToolStripMenuItem autoplayToolStripMenuItem;
     }
 }

@@ -71,6 +71,8 @@ namespace NET_Thing_Encryptor
     public class ThingRoot : ThingObject, ICloneable
     {
         public const int MaximumImageViewerBufferCount = 20;
+        public const int MaximumAutoLockMinutes = 1440;
+        public const int MaximumAutoplayIntervalSeconds = 3600;
 
         public byte[] Salt { get; set; }
         private string? _saveLocation;
@@ -146,6 +148,25 @@ namespace NET_Thing_Encryptor
                 Math.Clamp(value, 0, MaximumImageViewerBufferCount);
         }
 
+        private int _autoLockMinutes = 5;
+        public int AutoLockMinutes
+        {
+            get => _autoLockMinutes;
+            set => _autoLockMinutes = Math.Clamp(value, 0, MaximumAutoLockMinutes);
+        }
+
+        public bool RandomiseSelectedImage { get; set; }
+
+        private int _imageAutoplayIntervalSeconds = 5;
+        public int ImageAutoplayIntervalSeconds
+        {
+            get => _imageAutoplayIntervalSeconds;
+            set => _imageAutoplayIntervalSeconds =
+                Math.Clamp(value, 1, MaximumAutoplayIntervalSeconds);
+        }
+
+        public bool LoopOnAutoplay { get; set; }
+
         public string ContentEncrypted { get; set; }
         public List<ThingObjectLink>? Content { get; set; }
 
@@ -178,14 +199,22 @@ namespace NET_Thing_Encryptor
         public FileType Type { get; set; }
         public DateOnly CreatedAt { get; set; } = DateOnly.FromDateTime(DateTime.Now);
         public long Size { get; set; } = 0;
+        public string Extension { get; set; } = string.Empty;
         public byte[]? PreviewContent { get; set; }
-        public ThingObjectLink(ulong id, string name, FileType type, long size, byte[]? previewContent = null)
+        public ThingObjectLink(
+            ulong id,
+            string name,
+            FileType type,
+            long size,
+            byte[]? previewContent = null,
+            string extension = "")
         {
             ID = id;
             Name = name;
             Type = type;
             Size = size;
             PreviewContent = previewContent;
+            Extension = extension;
         }
     }
 
