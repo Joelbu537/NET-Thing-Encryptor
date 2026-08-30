@@ -181,9 +181,9 @@ if ([string]::IsNullOrWhiteSpace($TimestampUrl)) {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $solutionFile = Join-Path $repoRoot "build\desktop.slnf"
-$projectFile = Join-Path $repoRoot "NET Thing Encryptor\NET Thing Encryptor.csproj"
+$projectFile = Join-Path $repoRoot "Nte.Desktop\Nte.Desktop.csproj"
 $innoScript = Join-Path $repoRoot "installer\NETThingEncryptor.iss"
-$iconPath = Join-Path $repoRoot "NET Thing Encryptor\image.ico"
+$iconPath = Join-Path $repoRoot "Nte.Desktop\image.ico"
 $artifactRoot = Join-Path $repoRoot "artifacts"
 $publishDir = Join-Path $artifactRoot "publish\NET Thing Encryptor\$Runtime"
 $installerOutputDir = Join-Path $artifactRoot "installer"
@@ -242,33 +242,20 @@ $publishArguments = @(
 Write-Host "Publishing NET Thing Encryptor $version for $Runtime..."
 Invoke-DotNet -Arguments $publishArguments
 
-$libVlcDirectory = Join-Path $publishDir "libvlc"
-if (Test-Path -LiteralPath $libVlcDirectory -PathType Container) {
-    Get-ChildItem -LiteralPath $libVlcDirectory -Directory |
-        Where-Object { $_.Name -like "win-*" -and $_.Name -ne $Runtime } |
-        ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }
-}
-
 $publishedExecutable = Join-Path $publishDir "NET Thing Encryptor.exe"
-$requiredPublishedFiles = @(
-    $publishedExecutable,
-    (Join-Path $publishDir "Nte.Core.dll"),
-    (Join-Path $publishDir "Nte.Storage.dll"),
-    (Join-Path $publishDir "LibVLCSharp.dll"),
-    (Join-Path $publishDir "Magick.NET.Core.dll")
-)
+$requiredPublishedFiles = @($publishedExecutable)
+if (-not $SingleFile) {
+    $requiredPublishedFiles += @(
+        (Join-Path $publishDir "Avalonia.dll"),
+        (Join-Path $publishDir "Nte.App.dll"),
+        (Join-Path $publishDir "Nte.Core.dll"),
+        (Join-Path $publishDir "Nte.Storage.dll"),
+        (Join-Path $publishDir "hostfxr.dll")
+    )
+}
 foreach ($requiredFile in $requiredPublishedFiles) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
         throw "The published application is incomplete. Missing: $requiredFile"
-    }
-}
-
-if (-not $SingleFile) {
-    $nativeVlc = Get-ChildItem -LiteralPath $publishDir -Filter "libvlc.dll" -File -Recurse |
-        Where-Object { $_.FullName -match 'win-x64' } |
-        Select-Object -First 1
-    if (-not $nativeVlc) {
-        throw "The published application does not contain the native x64 libvlc.dll."
     }
 }
 

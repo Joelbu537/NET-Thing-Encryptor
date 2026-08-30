@@ -86,11 +86,28 @@ try {
         if (-not $installedVersion.StartsWith($ExpectedVersion, [StringComparison]::OrdinalIgnoreCase)) {
             throw "Installed executable version '$installedVersion' does not match '$ExpectedVersion'."
         }
-        $nativeVlc = Get-ChildItem -LiteralPath $installDirectory -Filter "libvlc.dll" -File -Recurse |
-            Where-Object { $_.FullName -match 'win-x64' } |
-            Select-Object -First 1
-        if (-not $nativeVlc) {
-            throw "The $language installation is missing native x64 VLC files."
+
+        foreach ($requiredFile in @("Avalonia.dll", "Nte.App.dll", "Nte.Core.dll", "Nte.Storage.dll")) {
+            if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $requiredFile) -PathType Leaf)) {
+                throw "The $language installation is missing $requiredFile."
+            }
+        }
+
+        $probeOutputLog = Join-Path $testRoot "startup-probe-$language.out.log"
+        $probeErrorLog = Join-Path $testRoot "startup-probe-$language.err.log"
+        $probeEnvironment = @{ NTE_DATA_DIRECTORY = Join-Path $testRoot "probe-data-$language" }
+        $probeProcess = Start-Process `
+            -FilePath $installedExecutable `
+            -ArgumentList "--startup-probe" `
+            -WorkingDirectory $installDirectory `
+            -RedirectStandardOutput $probeOutputLog `
+            -RedirectStandardError $probeErrorLog `
+            -Environment $probeEnvironment `
+            -WindowStyle Hidden `
+            -Wait `
+            -PassThru
+        if ($probeProcess.ExitCode -ne 0) {
+            throw "The installed $language application failed its startup probe with exit code $($probeProcess.ExitCode). See $probeOutputLog and $probeErrorLog"
         }
 
         $uninstaller = Get-ChildItem -LiteralPath $installDirectory -Filter "unins*.exe" -File |

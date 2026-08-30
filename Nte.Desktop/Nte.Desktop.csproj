@@ -8,6 +8,9 @@
     <AssemblyName>NET Thing Encryptor</AssemblyName>
     <RootNamespace>Nte.Desktop</RootNamespace>
     <Version>3.7.0</Version>
+    <AssemblyVersion>3.7.0.0</AssemblyVersion>
+    <FileVersion>3.7.0.0</FileVersion>
+    <ApplicationIcon>image.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 

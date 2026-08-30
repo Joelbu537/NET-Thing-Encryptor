@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "../NET Thing Encryptor.sln",
+    "projects": [
+      "NET Thing Encryptor\\NET Thing Encryptor.csproj",
+      "NET Thing Encryptor.Tests\\NET Thing Encryptor.Tests.csproj",
+      "Nte.Core\\Nte.Core.csproj",
+      "Nte.Storage\\Nte.Storage.csproj"
+    ]
+  }
+}

@@ -7,9 +7,18 @@ namespace Nte.Desktop;
 
 internal static class Program
 {
+    private const string ApplicationMutexName = "NET Thing Encryptor";
+
     [STAThread]
     public static void Main(string[] args)
     {
+        using Mutex applicationMutex = new(
+            initiallyOwned: true,
+            ApplicationMutexName,
+            out bool ownsApplicationMutex);
+        if (!ownsApplicationMutex)
+            return;
+
         bool startupProbe = args.Contains("--startup-probe", StringComparer.Ordinal);
         string? configuredDataDirectory = Environment.GetEnvironmentVariable("NTE_DATA_DIRECTORY");
         string? probeDirectory = startupProbe && string.IsNullOrWhiteSpace(configuredDataDirectory)

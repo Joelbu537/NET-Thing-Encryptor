@@ -19,7 +19,7 @@
 #endif
 
 #ifndef IconPath
-#define IconPath "..\NET Thing Encryptor\image.ico"
+#define IconPath "..\Nte.Desktop\image.ico"
 #endif
 
 [Setup]
@@ -74,6 +74,13 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[InstallDelete]
+; M6 replaces the WinForms/media package in place. Remove only known obsolete
+; dependencies; never delete {app}\Data because it may contain a portable vault.
+Type: filesandordirs; Name: "{app}\libvlc"
+Type: files; Name: "{app}\LibVLCSharp*.dll"
+Type: files; Name: "{app}\Magick*.dll"
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"

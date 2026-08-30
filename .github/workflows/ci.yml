@@ -1,4 +1,4 @@
-name: Build and test installer
+name: Cross-platform build and release gate
 
 on:
   push:
@@ -9,44 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  android:
+  shared-linux:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: 1
-      DOTNET_NOLOGO: true
-      AVALONIA_TELEMETRY_OPTOUT: 1
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Set up .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.400
-
-      - name: Install Android workload
-        run: dotnet workload install android
-
-      - name: Build Android APK
-        run: dotnet build ./Nte.Android/Nte.Android.csproj -c Release
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: NET-Thing-Encryptor-Android
-          path: ./Nte.Android/bin/Release/net10.0-android/*.apk
-          if-no-files-found: error
-
-  core-linux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: true
@@ -70,10 +35,17 @@ jobs:
         run: dotnet test ./Nte.App.Tests/Nte.App.Tests.csproj -c Release
 
       - name: Publish Linux desktop client
-        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r linux-x64 --self-contained false -o ./artifacts/m3/linux-x64
+        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r linux-x64 --self-contained false -o ./artifacts/desktop/linux-x64
 
       - name: Probe Linux desktop startup
-        run: xvfb-run -a dotnet "./artifacts/m3/linux-x64/NET Thing Encryptor.dll" --startup-probe
+        run: xvfb-run -a dotnet "./artifacts/desktop/linux-x64/NET Thing Encryptor.dll" --startup-probe
+
+      - name: Upload Linux cross-publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-linux-x64
+          path: ./artifacts/desktop/linux-x64
+          if-no-files-found: error
 
   desktop-macos:
     runs-on: macos-latest
@@ -92,7 +64,62 @@ jobs:
           dotnet-version: 10.0.400
 
       - name: Publish macOS desktop client
-        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r osx-arm64 --self-contained false -o ./artifacts/m3/osx-arm64
+        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r osx-arm64 --self-contained false -o ./artifacts/desktop/osx-arm64
+
+      - name: Upload macOS cross-publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-osx-arm64
+          path: ./artifacts/desktop/osx-arm64
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+      AVALONIA_TELEMETRY_OPTOUT: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Build Android release packages
+        run: dotnet publish ./Nte.Android/Nte.Android.csproj -c Release
+
+      - name: Verify Android package formats
+        shell: pwsh
+        run: |
+          $output = '.\Nte.Android\bin\Release\net10.0-android'
+          if (-not (Get-ChildItem $output -Filter '*.aab' -File -Recurse)) {
+            throw 'Android release did not create an AAB.'
+          }
+          if (-not (Get-ChildItem $output -Filter '*.apk' -File -Recurse)) {
+            throw 'Android release did not create an APK.'
+          }
+
+      - name: Upload Android test packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Android-unsigned
+          path: |
+            ./Nte.Android/bin/Release/net10.0-android/*.aab
+            ./Nte.Android/bin/Release/net10.0-android/*.apk
+          if-no-files-found: error
 
   windows-installer:
     runs-on: windows-latest
@@ -105,12 +132,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up .NET 10 and .NET 11 Preview 7
+      - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            10.0.400
-            11.0.100-preview.7.26381.103
+          dotnet-version: 10.0.400
 
       - name: Install Inno Setup
         shell: pwsh
@@ -120,10 +145,10 @@ jobs:
             choco install innosetup --no-progress --yes
           }
 
-      - name: Build and test installer
+      - name: Build and test Avalonia installer
         shell: pwsh
         run: |
-          [xml]$project = Get-Content '.\NET Thing Encryptor\NET Thing Encryptor.csproj'
+          [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
           $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           .\build\build-installer.ps1 -Clean -ExpectedVersion $version
           $installer = ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe"
@@ -137,3 +162,23 @@ jobs:
             artifacts/installer/*.exe
             artifacts/installer/*.sha256
           if-no-files-found: error
+
+  legacy-winforms:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 and .NET 11 Preview 7
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.400
+            11.0.100-preview.7.26381.103
+
+      - name: Test WinForms rollback source
+        run: dotnet test ./build/legacy-winforms.slnf -c Release

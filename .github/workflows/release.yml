@@ -9,7 +9,127 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  android-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+      AVALONIA_TELEMETRY_OPTOUT: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Import Android signing material
+        id: android_signing
+        shell: pwsh
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:KEYSTORE_BASE64) -or
+              [string]::IsNullOrWhiteSpace($env:KEY_PASSWORD) -or
+              [string]::IsNullOrWhiteSpace($env:STORE_PASSWORD)) {
+            throw 'Android keystore and password secrets are required for releases.'
+          }
+          $encoding = [Text.UTF8Encoding]::new($false)
+          $keystorePath = Join-Path $env:RUNNER_TEMP 'NETThingEncryptor.keystore'
+          $keyPasswordPath = Join-Path $env:RUNNER_TEMP 'NETThingEncryptor-key-password.txt'
+          $storePasswordPath = Join-Path $env:RUNNER_TEMP 'NETThingEncryptor-store-password.txt'
+          [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          [IO.File]::WriteAllText($keyPasswordPath, $env:KEY_PASSWORD, $encoding)
+          [IO.File]::WriteAllText($storePasswordPath, $env:STORE_PASSWORD, $encoding)
+          "keystore=$keystorePath" >> $env:GITHUB_OUTPUT
+          "key_password=$keyPasswordPath" >> $env:GITHUB_OUTPUT
+          "store_password=$storePasswordPath" >> $env:GITHUB_OUTPUT
+
+      - name: Build and verify signed Android packages
+        shell: pwsh
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ANDROID_KEY_ALIAS)) {
+            throw 'Repository secret ANDROID_SIGNING_KEY_ALIAS is required for releases.'
+          }
+          [xml]$desktopProject = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
+          [xml]$androidProject = Get-Content '.\Nte.Android\Nte.Android.csproj'
+          $version = $desktopProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $androidVersion = $androidProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $tagVersion = $env:GITHUB_REF_NAME.TrimStart('v')
+          if ($tagVersion -ne $version -or $androidVersion -ne $version) {
+            throw "Tag '$tagVersion', desktop '$version', and Android '$androidVersion' versions must match."
+          }
+          $arguments = @(
+            'publish', '.\Nte.Android\Nte.Android.csproj', '-c', 'Release',
+            '/p:AndroidKeyStore=true',
+            "/p:AndroidSigningKeyStore=${{ steps.android_signing.outputs.keystore }}",
+            "/p:AndroidSigningKeyAlias=$env:ANDROID_KEY_ALIAS",
+            "/p:AndroidSigningKeyPass=file:${{ steps.android_signing.outputs.key_password }}",
+            "/p:AndroidSigningStorePass=file:${{ steps.android_signing.outputs.store_password }}"
+          )
+          & dotnet clean '.\Nte.Android\Nte.Android.csproj' -c Release
+          if ($LASTEXITCODE -ne 0) { throw "Android clean failed with exit code $LASTEXITCODE." }
+          & dotnet @arguments
+          if ($LASTEXITCODE -ne 0) { throw "Android publish failed with exit code $LASTEXITCODE." }
+
+          $output = '.\Nte.Android\bin\Release\net10.0-android'
+          $aab = Get-ChildItem $output -Filter '*-Signed.aab' -File -Recurse | Select-Object -First 1
+          $apk = Get-ChildItem $output -Filter '*-Signed.apk' -File -Recurse | Select-Object -First 1
+          if (-not $aab -or -not $apk) { throw 'Signed Android AAB or APK is missing.' }
+          & jarsigner -verify $aab.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'AAB signature verification failed.' }
+          $apksigner = Get-ChildItem $env:ANDROID_HOME -Filter 'apksigner' -File -Recurse |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $apksigner) { throw 'apksigner was not found in the Android SDK.' }
+          & $apksigner.FullName verify $apk.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
+
+          $artifactDirectory = New-Item -ItemType Directory -Force '.\artifacts\android'
+          foreach ($package in @($aab, $apk)) {
+            $destination = Join-Path $artifactDirectory.FullName "NET-Thing-Encryptor-Android-$version$($package.Extension)"
+            Copy-Item $package.FullName $destination
+            $hash = Get-FileHash $destination -Algorithm SHA256
+            "$($hash.Hash.ToLowerInvariant()) *$([IO.Path]::GetFileName($destination))" |
+              Set-Content "$destination.sha256" -Encoding ascii
+          }
+
+      - name: Upload signed Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Android-${{ github.ref_name }}
+          path: artifacts/android
+          if-no-files-found: error
+
+      - name: Remove Android signing files
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($path in @(
+            '${{ steps.android_signing.outputs.keystore }}',
+            '${{ steps.android_signing.outputs.key_password }}',
+            '${{ steps.android_signing.outputs.store_password }}')) {
+            if ($path -and (Test-Path -LiteralPath $path)) {
+              Remove-Item -LiteralPath $path -Force
+            }
+          }
+
+  windows-release:
+    needs: android-release
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -20,12 +140,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up .NET 10 and .NET 11 Preview 7
+      - name: Set up .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            10.0.400
-            11.0.100-preview.7.26381.103
+          dotnet-version: 10.0.400
 
       - name: Install Inno Setup
         shell: pwsh
@@ -42,19 +160,19 @@ jobs:
           CERTIFICATE_BASE64: ${{ secrets.CODE_SIGNING_CERTIFICATE_BASE64 }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_BASE64)) {
-            throw "Repository secret CODE_SIGNING_CERTIFICATE_BASE64 is required for releases."
+            throw 'Repository secret CODE_SIGNING_CERTIFICATE_BASE64 is required for releases.'
           }
           $certificatePath = Join-Path $env:RUNNER_TEMP 'NETThingEncryptor-signing.pfx'
           [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
           "path=$certificatePath" >> $env:GITHUB_OUTPUT
 
-      - name: Build, sign, and smoke-test release
+      - name: Build, sign, and smoke-test Windows release
         shell: pwsh
         env:
           NTE_SIGN_CERTIFICATE_PATH: ${{ steps.certificate.outputs.path }}
           NTE_SIGN_CERTIFICATE_PASSWORD: ${{ secrets.CODE_SIGNING_CERTIFICATE_PASSWORD }}
         run: |
-          [xml]$project = Get-Content '.\NET Thing Encryptor\NET Thing Encryptor.csproj'
+          [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
           $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           $tagVersion = $env:GITHUB_REF_NAME.TrimStart('v')
           if ($tagVersion -ne $version) {
@@ -64,13 +182,20 @@ jobs:
           $installer = ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe"
           .\build\test-installer.ps1 -InstallerPath $installer -ExpectedVersion $version -RunInstallation -RequireSignature
 
-      - name: Upload signed artifacts
+      - name: Download signed Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Android-${{ github.ref_name }}
+          path: artifacts/android
+
+      - name: Upload signed release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: NET-Thing-Encryptor-${{ github.ref_name }}
           path: |
             artifacts/installer/*.exe
             artifacts/installer/*.sha256
+            artifacts/android/*
           if-no-files-found: error
 
       - name: Publish GitHub release
@@ -78,8 +203,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $assets = Get-ChildItem '.\artifacts\installer' -File |
-            Where-Object { $_.Extension -eq '.exe' -or $_.Name.EndsWith('.exe.sha256') } |
+          $assets = Get-ChildItem '.\artifacts\installer', '.\artifacts\android' -File |
+            Where-Object {
+              $_.Extension -in @('.exe', '.aab', '.apk') -or $_.Name.EndsWith('.sha256')
+            } |
             ForEach-Object { $_.FullName }
           gh release create $env:GITHUB_REF_NAME @assets `
             --verify-tag `
