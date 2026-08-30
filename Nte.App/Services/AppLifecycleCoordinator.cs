@@ -14,7 +14,7 @@ public sealed class AppLifecycleCoordinator : IDisposable
 {
     private readonly object _gate = new();
     private readonly Action<SessionLockReason> _requestLock;
-    private readonly TimeSpan _inactivityTimeout;
+    private TimeSpan? _inactivityTimeout;
     private readonly TimeSpan _externalInteractionGracePeriod;
     private readonly Func<DateTimeOffset> _getUtcNow;
     private readonly Timer _timer;
@@ -120,7 +120,7 @@ public sealed class AppLifecycleCoordinator : IDisposable
             _lockDispatched = false;
             _backgroundTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             _lastInteraction = _getUtcNow();
-            ScheduleInactivityCheckLocked(_inactivityTimeout);
+            ScheduleInactivityCheckLocked();
         }
     }
 
@@ -132,7 +132,22 @@ public sealed class AppLifecycleCoordinator : IDisposable
                 return;
             _lockDispatched = false;
             _lastInteraction = _getUtcNow();
-            ScheduleInactivityCheckLocked(_inactivityTimeout);
+            ScheduleInactivityCheckLocked();
+        }
+    }
+
+    public void UpdateInactivityTimeout(TimeSpan? inactivityTimeout)
+    {
+        if (inactivityTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(inactivityTimeout));
+
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _inactivityTimeout = inactivityTimeout;
+            _lastInteraction = _getUtcNow();
+            _lockDispatched = false;
+            ScheduleInactivityCheckLocked();
         }
     }
 
@@ -144,15 +159,18 @@ public sealed class AppLifecycleCoordinator : IDisposable
             if (_disposed || _isBackgrounded || _lockDispatched)
                 return;
 
+            if (!_inactivityTimeout.HasValue)
+                return;
+            TimeSpan timeout = _inactivityTimeout.Value;
             TimeSpan idle = _getUtcNow() - _lastInteraction;
-            if (idle >= _inactivityTimeout)
+            if (idle >= timeout)
             {
                 _lockDispatched = true;
                 shouldLock = true;
             }
             else
             {
-                ScheduleInactivityCheckLocked(_inactivityTimeout - idle);
+                ScheduleInactivityCheckLocked(timeout - idle);
             }
         }
 
@@ -223,6 +241,20 @@ public sealed class AppLifecycleCoordinator : IDisposable
 
         if (shouldLock)
             _requestLock(SessionLockReason.Background);
+    }
+
+    private void ScheduleInactivityCheckLocked()
+    {
+        if (_isBackgrounded || !_inactivityTimeout.HasValue)
+        {
+            _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            return;
+        }
+
+        TimeSpan dueTime = _inactivityTimeout.Value - (_getUtcNow() - _lastInteraction);
+        _timer.Change(
+            dueTime <= TimeSpan.Zero ? TimeSpan.Zero : dueTime,
+            Timeout.InfiniteTimeSpan);
     }
 
     private void ScheduleInactivityCheckLocked(TimeSpan dueTime) =>

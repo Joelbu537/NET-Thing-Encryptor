@@ -81,6 +81,65 @@ public sealed class ApplicationBoundaryTests
         }
     }
 
+    [Fact]
+    public async Task ThingDataAdapter_CompletesM5SearchMutationContentAndSettingsFlow()
+    {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        string directory = CreateTemporaryDirectory();
+        try
+        {
+            using var service = new ThingDataVaultService(new FileSystemVaultStorage(directory));
+            Assert.True(await service.InitializeAsync(cancellationToken));
+            Assert.True(await service.UnlockAsync("M5 test password", cancellationToken));
+            await service.CreateFolderAsync("Documents", 0, cancellationToken);
+            await service.CreateFolderAsync("Archive", 0, cancellationToken);
+            IReadOnlyList<VaultItem> root = await service.GetFolderItemsAsync(0, cancellationToken);
+            VaultItem documents = root.Single(item => item.Name == "Documents");
+            VaultItem archive = root.Single(item => item.Name == "Archive");
+            using var source = new MemoryStream("before"u8.ToArray());
+            await service.ImportFileAsync(
+                source,
+                "note.txt",
+                documents.Id,
+                "note",
+                cancellationToken);
+            VaultItem note = Assert.Single(await service.GetFolderItemsAsync(documents.Id, cancellationToken));
+
+            VaultFileContent content = await service.ReadFileAsync(note.Id, cancellationToken);
+            Assert.Equal("before"u8.ToArray(), content.Content);
+            await service.SaveFileContentAsync(note.Id, "after text"u8.ToArray(), cancellationToken);
+            VaultItem resized = Assert.Single(await service.GetFolderItemsAsync(documents.Id, cancellationToken));
+            Assert.Equal(10, resized.Size);
+
+            IReadOnlyList<VaultItem> results = await service.SearchFilesAsync(
+                new VaultSearchCriteria("note", FileType.text, "txt"),
+                cancellationToken);
+            Assert.Equal("Root/Documents", Assert.Single(results).Location);
+            Assert.Contains(
+                await service.GetFolderTargetsAsync(cancellationToken),
+                target => target.Id == archive.Id && target.Path.EndsWith("Archive"));
+
+            await service.RenameObjectAsync(note.Id, "final", cancellationToken);
+            await service.MoveObjectAsync(note.Id, archive.Id, cancellationToken);
+            Assert.Empty(await service.GetFolderItemsAsync(documents.Id, cancellationToken));
+            Assert.Equal("final", Assert.Single(await service.GetFolderItemsAsync(archive.Id, cancellationToken)).Name);
+
+            VaultPreferences preferences = await service.GetPreferencesAsync(cancellationToken);
+            VaultPreferences changed = preferences with { DarkMode = true, AutoLockMinutes = 17 };
+            await service.SavePreferencesAsync(changed, cancellationToken);
+            Assert.Equal(changed, await service.GetPreferencesAsync(cancellationToken));
+
+            await service.DeleteObjectAsync(archive.Id, cancellationToken);
+            Assert.DoesNotContain(
+                await service.GetFolderItemsAsync(0, cancellationToken),
+                item => item.Id == archive.Id);
+        }
+        finally
+        {
+            TryDelete(directory);
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         string directory = Path.Combine(

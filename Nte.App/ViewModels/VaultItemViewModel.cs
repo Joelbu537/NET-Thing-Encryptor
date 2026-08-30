@@ -11,6 +11,8 @@ public sealed class VaultItemViewModel(VaultItem item)
     public long Size { get; } = item.Size;
     public string Extension { get; } = item.Extension;
     public DateOnly CreatedAt { get; } = item.CreatedAt;
+    public string Location { get; } = item.Location;
+    public bool HasLocation { get; } = !string.IsNullOrWhiteSpace(item.Location);
     public bool IsFolder { get; } = item.IsFolder;
     public string KindText { get; } = GetKindText(item.Type);
     public string SizeText { get; } = item.IsFolder ? "Ordner" : item.Size.Sizeify();

@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nte.App.ViewModels"
+             x:Class="Nte.App.Views.VaultDocumentView"
+             x:DataType="vm:VaultDocumentViewModel">
+  <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+      <StackPanel>
+        <TextBlock Classes="page-title" Text="{Binding DisplayName}" TextWrapping="Wrap" />
+        <TextBlock Text="Geschützte Inhaltsansicht" Opacity="0.65" />
+      </StackPanel>
+      <Button Grid.Column="1" Content="Zurück" Command="{Binding CloseCommand}" />
+    </Grid>
+
+    <Grid Grid.Row="1">
+      <Grid IsVisible="{Binding IsText}" RowDefinitions="Auto,*" RowSpacing="8">
+        <WrapPanel>
+          <Button Content="Bearbeiten / Schreibschutz" Command="{Binding ToggleEditingCommand}" Margin="0,0,8,6" />
+          <Button Content="Speichern" Classes="primary" Command="{Binding SaveCommand}" Margin="0,0,8,6" />
+          <Button Content="Rückgängig" Click="Undo_Click" Margin="0,0,8,6" />
+          <Button Content="Wiederholen" Click="Redo_Click" Margin="0,0,12,6" />
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Im Text suchen"
+                   Width="220" Margin="0,0,8,6" />
+          <TextBlock Text="{Binding SearchResultText}" VerticalAlignment="Center" Margin="0,0,8,6" />
+        </WrapPanel>
+        <TextBox x:Name="TextEditor" Grid.Row="1" Text="{Binding Text, Mode=TwoWay}"
+                 IsReadOnly="{Binding IsReadOnly}" AcceptsReturn="True" AcceptsTab="True"
+                 TextWrapping="NoWrap" ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono,Consolas,monospace"
+                 KeyDown="TextEditor_KeyDown" />
+      </Grid>
+
+      <Border IsVisible="{Binding IsImage}" BorderThickness="1" BorderBrush="#40607080" CornerRadius="8">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+          <Image Source="{Binding Image}" Stretch="Uniform" />
+        </ScrollViewer>
+      </Border>
+
+      <Border IsVisible="{Binding IsGeneric}" Padding="24" BorderThickness="1"
+              BorderBrush="#40607080" CornerRadius="8">
+        <TextBlock Text="{Binding GenericMessage}" TextWrapping="Wrap"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" />
+      </Border>
+    </Grid>
+
+    <StackPanel Grid.Row="2" Spacing="8">
+      <WrapPanel IsVisible="{Binding IsText}">
+        <TextBlock Text="{Binding EncodingText}" Opacity="0.65" Margin="0,0,16,0" />
+        <TextBlock Text="{Binding CharacterCountText}" Opacity="0.65" />
+      </WrapPanel>
+      <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
+      <Border Padding="10" CornerRadius="6" Background="#20D13438"
+              IsVisible="{Binding ShowDiscardConfirmation}">
+        <StackPanel Spacing="8">
+          <TextBlock Text="Ungespeicherte Textänderungen verwerfen?" FontWeight="SemiBold" />
+          <WrapPanel>
+            <Button Content="Änderungen verwerfen" Command="{Binding DiscardAndCloseCommand}" Margin="0,0,8,0" />
+            <Button Content="Weiter bearbeiten" Command="{Binding CancelCloseCommand}" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </Grid>
+</UserControl>

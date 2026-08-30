@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Nte.App.Services;
 using Nte.App.ViewModels;
@@ -52,7 +53,7 @@ public sealed partial class App : Application
         var picker = new AvaloniaFilePickerService(
             () => _activeShellView is null ? null : TopLevel.GetTopLevel(_activeShellView),
             _lifecycleCoordinator);
-        _shell = new AppShellViewModel(vault, picker);
+        _shell = new AppShellViewModel(vault, picker, applyPreferences: ApplyPreferences);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -154,6 +155,15 @@ public sealed partial class App : Application
 
     private void OnKeyDown(object? sender, KeyEventArgs args) =>
         _lifecycleCoordinator?.NotifyUserInteraction();
+
+    private void ApplyPreferences(VaultPreferences preferences)
+    {
+        RequestedThemeVariant = preferences.DarkMode ? ThemeVariant.Dark : ThemeVariant.Light;
+        _lifecycleCoordinator?.UpdateInactivityTimeout(
+            preferences.AutoLockMinutes == 0
+                ? null
+                : TimeSpan.FromMinutes(preferences.AutoLockMinutes));
+    }
 
     private void DisposeApplication()
     {

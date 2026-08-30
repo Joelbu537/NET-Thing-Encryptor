@@ -6,6 +6,51 @@ namespace NET_Thing_Encryptor.Tests;
 public sealed class ObjectOperationTests
 {
     [Fact]
+    public async Task ReplaceFileContent_AtomicallyUpdatesFileAndParentSize()
+    {
+        await using var environment = await TestEnvironment.CreateAsync();
+        ThingFolder parent = environment.CreateRootFolder("parent");
+        ThingFile file = environment.CreateFile("note", ".txt", "old"u8.ToArray(), parent.ID);
+        parent.Content.Add(new ThingObjectLink(file.ID, file.Name, file.Type, 3));
+        await ThingData.SaveFileAsync(parent);
+        await ThingData.SaveFileAsync(file);
+        await ThingData.SaveRootAsync();
+
+        await ThingData.ReplaceFileContentAsync(
+            file.ID,
+            "replacement"u8.ToArray(),
+            TestContext.Current.CancellationToken);
+
+        ThingFile stored = (await ThingData.LoadFileAsync<ThingFile>(file.ID))!;
+        ThingObjectLink link = Assert.Single((await ThingData.LoadFileAsync<ThingFolder>(parent.ID))!.Content);
+        Assert.Equal("replacement"u8.ToArray(), stored.Content);
+        Assert.Equal(11, link.Size);
+        Assert.Equal(0, ThingData.Saving);
+    }
+
+    [Fact]
+    public async Task RootSettings_AreClampedAndPersistedWithoutChangingEncryptedContent()
+    {
+        await using var environment = await TestEnvironment.CreateAsync();
+        await ThingData.SaveRootAsync();
+
+        await ThingData.UpdateRootSettingsAsync(
+            new ThingRootSettings(true, 5000, -4, 99, true, 0, true),
+            TestContext.Current.CancellationToken);
+
+        ThingRootSettings settings = ThingData.GetRootSettings();
+        Assert.True(settings.DarkMode);
+        Assert.Equal(ThingRoot.MaximumAutoLockMinutes, settings.AutoLockMinutes);
+        Assert.Equal(0, settings.ImageViewerPreviousBufferCount);
+        Assert.Equal(ThingRoot.MaximumImageViewerBufferCount, settings.ImageViewerNextBufferCount);
+        Assert.Equal(1, settings.ImageAutoplayIntervalSeconds);
+        Assert.True(settings.RandomiseSelectedImage);
+        Assert.True(settings.LoopOnAutoplay);
+        Assert.NotEmpty(environment.Root.ContentEncrypted);
+        Assert.Equal(0, ThingData.Saving);
+    }
+
+    [Fact]
     public async Task CreateFolder_PersistsRootAndNestedMembership()
     {
         await using var environment = await TestEnvironment.CreateAsync();

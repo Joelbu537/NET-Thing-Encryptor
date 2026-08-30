@@ -19,6 +19,10 @@
       <Setter Property="Foreground" Value="#D13438" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="#D13438" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
   </Application.Styles>
 
   <Application.DataTemplates>
@@ -30,6 +34,9 @@
     </DataTemplate>
     <DataTemplate DataType="vm:VaultViewModel">
       <views:VaultView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:VaultDocumentViewModel">
+      <views:VaultDocumentView />
     </DataTemplate>
   </Application.DataTemplates>
 </Application>

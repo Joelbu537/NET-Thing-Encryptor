@@ -19,6 +19,34 @@ public interface IVaultApplicationService : IDisposable
         string name,
         ulong parentFolderId,
         CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VaultItem>> SearchFilesAsync(
+        VaultSearchCriteria criteria,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VaultFolderTarget>> GetFolderTargetsAsync(
+        CancellationToken cancellationToken = default);
+    Task RenameObjectAsync(
+        ulong id,
+        string newName,
+        CancellationToken cancellationToken = default);
+    Task MoveObjectAsync(
+        ulong id,
+        ulong targetFolderId,
+        CancellationToken cancellationToken = default);
+    Task DeleteObjectAsync(
+        ulong id,
+        CancellationToken cancellationToken = default);
+    Task<VaultFileContent> ReadFileAsync(
+        ulong id,
+        CancellationToken cancellationToken = default);
+    Task SaveFileContentAsync(
+        ulong id,
+        ReadOnlyMemory<byte> content,
+        CancellationToken cancellationToken = default);
+    Task<VaultPreferences> GetPreferencesAsync(
+        CancellationToken cancellationToken = default);
+    Task SavePreferencesAsync(
+        VaultPreferences preferences,
+        CancellationToken cancellationToken = default);
     Task ImportFileAsync(
         Stream source,
         string fileName,

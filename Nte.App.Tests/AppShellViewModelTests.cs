@@ -1,3 +1,4 @@
+using NET_Thing_Encryptor;
 using Nte.App.Tests.Fakes;
 using Nte.App.Services;
 using Nte.App.ViewModels;
@@ -59,6 +60,50 @@ public sealed class AppShellViewModelTests
 
         Assert.Equal("Hinweis: Testmeldung", shell.StatusMessage);
         shell.Dispose();
+        Assert.True(vault.Disposed);
+    }
+
+    [Fact]
+    public async Task Dispose_ClosesActiveDecryptedDocumentBeforeReleasingService()
+    {
+        var folder = new VaultItem(
+            10,
+            "Dokumente",
+            FileType.folder,
+            0,
+            string.Empty,
+            new DateOnly(2026, 8, 30));
+        var file = new VaultItem(
+            20,
+            "Notiz",
+            FileType.text,
+            6,
+            "txt",
+            new DateOnly(2026, 8, 30));
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [folder];
+        vault.Folders[10] = [file];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "secret"u8.ToArray());
+        var shell = new AppShellViewModel(vault, new FakeFilePickerService());
+        await shell.InitializeAsync();
+        var unlock = Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        unlock.Password = "correct horse battery staple";
+        await unlock.UnlockCommand.ExecuteAsync();
+        var page = Assert.IsType<VaultViewModel>(shell.CurrentPage);
+        page.SelectedItem = Assert.Single(page.Items);
+        await page.OpenSelectedCommand.ExecuteAsync();
+        page.SelectedItem = Assert.Single(page.Items);
+        await page.OpenSelectedCommand.ExecuteAsync();
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(page.ActiveDocument);
+
+        shell.Dispose();
+
+        Assert.Equal(string.Empty, document.Text);
         Assert.True(vault.Disposed);
     }
 

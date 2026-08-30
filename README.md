@@ -2,7 +2,7 @@
 
 NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Der veröffentlichte Installer enthält weiterhin die bewährte Windows-/WinForms-Anwendung als selbstenthaltendes x64-Paket.
 
-Mit M4 steht daneben ein plattformübergreifender Avalonia-Client für Windows, Android, Linux und macOS bereit. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und exportieren sowie vollständige `.ntevault`-Archive übertragen. Android verwendet einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox und Transfer.
+Mit M5 steht daneben ein plattformübergreifender Avalonia-Client für Windows, Android, Linux und macOS bereit. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und exportieren sowie vollständige `.ntevault`-Archive übertragen. Hinzu kommen lokale und globale Suche, Mehrfachauswahl, Umbenennen, Verschieben, rekursives Löschen, Textbearbeitung, Einzelbildansicht und portable Einstellungen. Android verwendet einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox und Transfer.
 
 ## Unterstützte Systeme
 
@@ -12,7 +12,7 @@ Veröffentlichte WinForms-Referenz:
 - x64-Prozessor
 - Installation pro Benutzer, ohne Administratorrechte
 
-Avalonia-M4-Client aus dem Quellcode:
+Avalonia-M5-Client aus dem Quellcode:
 
 - Windows x64, lokal gestartet und geprüft
 - Android 12 oder neuer (API 31 bis 36); APK auf einem API-35-Emulator geprüft
@@ -57,7 +57,7 @@ dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
 dotnet test ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release
 ```
 
-CI führt die drei plattformneutralen Tests zusätzlich unter Linux aus, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64 und baut ein Android-Release-APK. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md) und [docs/m4-android-client.md](docs/m4-android-client.md).
+CI führt die drei plattformneutralen Tests zusätzlich unter Linux aus, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64 und baut ein Android-Release-APK. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md), [docs/m4-android-client.md](docs/m4-android-client.md) und [docs/m5-feature-parity.md](docs/m5-feature-parity.md).
 
 ## Installer bauen
 

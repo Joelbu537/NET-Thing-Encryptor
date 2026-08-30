@@ -8,7 +8,8 @@ public sealed record VaultItem(
     FileType Type,
     long Size,
     string Extension,
-    DateOnly CreatedAt)
+    DateOnly CreatedAt,
+    string Location = "")
 {
     public bool IsFolder => Type == FileType.folder;
 }

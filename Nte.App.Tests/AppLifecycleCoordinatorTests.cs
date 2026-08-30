@@ -86,4 +86,25 @@ public sealed class AppLifecycleCoordinatorTests
 
         Assert.Equal([SessionLockReason.Inactivity], reasons);
     }
+
+    [Fact]
+    public void UpdatedInactivityTimeout_IsAppliedAndCanBeDisabled()
+    {
+        DateTimeOffset now = new(2026, 8, 30, 12, 0, 0, TimeSpan.Zero);
+        var reasons = new List<SessionLockReason>();
+        using var coordinator = new AppLifecycleCoordinator(
+            reasons.Add,
+            TimeSpan.FromMinutes(5),
+            () => now);
+
+        coordinator.UpdateInactivityTimeout(null);
+        now = now.AddHours(1);
+        coordinator.CheckInactivity();
+        Assert.Empty(reasons);
+
+        coordinator.UpdateInactivityTimeout(TimeSpan.FromMinutes(2));
+        now = now.AddMinutes(2);
+        coordinator.CheckInactivity();
+        Assert.Equal([SessionLockReason.Inactivity], reasons);
+    }
 }

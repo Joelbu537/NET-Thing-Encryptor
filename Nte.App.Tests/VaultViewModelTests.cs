@@ -125,6 +125,138 @@ public sealed class VaultViewModelTests
         Assert.EndsWith(".ntevault", picker.VaultExport.Name);
     }
 
+    [Fact]
+    public async Task LocalAndGlobalSearch_FilterAndExposeResultLocation()
+    {
+        var secondFolder = Folder with { Id = 11, Name = "Fotos" };
+        var globalResult = TextFile with { Location = "Tresor/Dokumente" };
+        var vault = new FakeVaultApplicationService
+        {
+            SearchResults = [globalResult]
+        };
+        vault.Folders[0] = [Folder, secondFolder];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+
+        viewModel.SearchQuery = "foto";
+        Assert.Equal("Fotos", Assert.Single(viewModel.Items).Name);
+
+        viewModel.SearchGlobally = true;
+        viewModel.SearchQuery = "not";
+        viewModel.SearchExtension = "txt";
+        viewModel.SelectedSearchType = "Text";
+        await viewModel.SearchCommand.ExecuteAsync();
+
+        Assert.True(viewModel.IsShowingGlobalResults);
+        Assert.Equal("Tresor/Dokumente", Assert.Single(viewModel.Items).Location);
+        Assert.Equal(FileType.text, vault.LastSearchCriteria?.Type);
+        Assert.Equal("txt", vault.LastSearchCriteria?.Extension);
+    }
+
+    [Fact]
+    public async Task RenameMoveAndConfirmedDelete_UseApplicationService()
+    {
+        var target = new VaultFolderTarget(30, "Tresor › Archiv");
+        var vault = new FakeVaultApplicationService { FolderTargets = [new(0, "Tresor"), target] };
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [TextFile];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        viewModel.RenameName = "Final";
+        await viewModel.RenameCommand.ExecuteAsync();
+        Assert.Equal(((ulong)20, "Final"), Assert.Single(vault.Renames));
+
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        viewModel.SelectedMoveTarget = viewModel.FolderTargets.Single(item => item.Id == 30);
+        await viewModel.MoveCommand.ExecuteAsync();
+        Assert.Equal(((ulong)20, (ulong)30), Assert.Single(vault.Moves));
+
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.RequestDeleteCommand.ExecuteAsync();
+        Assert.True(viewModel.ShowDeleteConfirmation);
+        await viewModel.ConfirmDeleteCommand.ExecuteAsync();
+        Assert.Equal([(ulong)20], vault.Deletes);
+    }
+
+    [Fact]
+    public async Task MultipleSelection_MovesAndDeletesEverySelectedObject()
+    {
+        VaultItem second = Folder with { Id = 11, Name = "Fotos" };
+        var target = new VaultFolderTarget(30, "Tresor › Archiv");
+        var vault = new FakeVaultApplicationService { FolderTargets = [new(0, "Tresor"), target] };
+        vault.Folders[0] = [Folder, second];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+
+        viewModel.SetSelectedItems(viewModel.Items);
+        Assert.Equal("2 Objekte ausgewählt", viewModel.SelectionCountText);
+        viewModel.SelectedMoveTarget = viewModel.FolderTargets.Single(item => item.Id == 30);
+        await viewModel.MoveCommand.ExecuteAsync();
+
+        Assert.Equal(2, vault.Moves.Count);
+        viewModel.SetSelectedItems(viewModel.Items);
+        await viewModel.RequestDeleteCommand.ExecuteAsync();
+        Assert.Contains("2 ausgewählte", viewModel.DeleteConfirmationText);
+        await viewModel.ConfirmDeleteCommand.ExecuteAsync();
+        Assert.Equal(2, vault.Deletes.Count);
+    }
+
+    [Fact]
+    public async Task TextContent_CanBeOpenedEditedAndSaved()
+    {
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [TextFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "vorher"u8.ToArray());
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        await document.ToggleEditingCommand.ExecuteAsync();
+        document.Text = "nachher";
+        await document.SaveCommand.ExecuteAsync();
+
+        Assert.Equal("nachher"u8.ToArray(), Assert.Single(vault.SavedContents).Content);
+        Assert.False(document.IsDirty);
+    }
+
+    [Fact]
+    public async Task Preferences_AreAppliedAtUnlockAndPersistedOnSave()
+    {
+        var initial = new VaultPreferences(false, 12, 3, 4, true, 9, true);
+        var applied = new List<VaultPreferences>();
+        var vault = new FakeVaultApplicationService { Preferences = initial };
+        var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            applied.Add);
+
+        await viewModel.InitializeAsync();
+        Assert.Equal(initial, Assert.Single(applied));
+        viewModel.DarkMode = true;
+        viewModel.AutoLockMinutes = 0;
+        await viewModel.SavePreferencesCommand.ExecuteAsync();
+
+        Assert.True(vault.Preferences.DarkMode);
+        Assert.Equal(0, vault.Preferences.AutoLockMinutes);
+        Assert.Equal(vault.Preferences, applied[^1]);
+    }
+
     private static VaultViewModel CreateViewModel(
         FakeVaultApplicationService vault,
         FakeFilePickerService picker) => new(vault, picker, () => { }, _ => { });

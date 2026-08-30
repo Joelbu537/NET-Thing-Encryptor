@@ -7,6 +7,7 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
 {
     private readonly IVaultApplicationService _vault;
     private readonly IFilePickerService _filePicker;
+    private readonly Action<VaultPreferences> _applyPreferences;
     private readonly SynchronizationContext? _synchronizationContext;
     private object _currentPage = new LoadingViewModel();
     private string _statusMessage = "Bereit";
@@ -15,10 +16,12 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
     public AppShellViewModel(
         IVaultApplicationService vault,
         IFilePickerService filePicker,
-        SynchronizationContext? synchronizationContext = null)
+        SynchronizationContext? synchronizationContext = null,
+        Action<VaultPreferences>? applyPreferences = null)
     {
         _vault = vault;
         _filePicker = filePicker;
+        _applyPreferences = applyPreferences ?? (_ => { });
         _synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
         _vault.NotificationRaised += OnNotificationRaised;
     }
@@ -61,7 +64,7 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
             return false;
 
         string message = reason == SessionLockReason.Inactivity
-            ? "Tresor nach fünf Minuten Inaktivität automatisch gesperrt."
+            ? "Tresor nach der eingestellten Inaktivitätszeit automatisch gesperrt."
             : "Tresor beim Verlassen der App automatisch gesperrt.";
         vault.LockImmediately(message);
         return true;
@@ -72,6 +75,8 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
         if (_disposed)
             return;
         _vault.NotificationRaised -= OnNotificationRaised;
+        if (CurrentPage is VaultViewModel vaultPage)
+            vaultPage.Dispose();
         _vault.Dispose();
         _disposed = true;
     }
@@ -88,7 +93,12 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
 
     private async Task ShowVaultAsync()
     {
-        var page = new VaultViewModel(_vault, _filePicker, () => ShowUnlock(), SetStatus);
+        var page = new VaultViewModel(
+            _vault,
+            _filePicker,
+            () => ShowUnlock(),
+            SetStatus,
+            _applyPreferences);
         CurrentPage = page;
         await page.InitializeAsync();
     }

@@ -77,6 +77,165 @@ public sealed class ThingDataVaultService : IVaultApplicationService
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<VaultItem>> SearchFilesAsync(
+        VaultSearchCriteria criteria,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(criteria);
+        IReadOnlyList<GlobalFileSearchResult> results = await GlobalFileSearch.SearchAsync(
+            new GlobalFileSearchCriteria(
+                criteria.Name,
+                criteria.Type,
+                criteria.Extension,
+                criteria.MinimumSize,
+                criteria.MaximumSize,
+                criteria.CreatedFrom,
+                criteria.CreatedTo),
+            cancellationToken).ConfigureAwait(false);
+        return results.Select(result => new VaultItem(
+            result.ID,
+            result.Name,
+            result.Type,
+            result.Size,
+            result.Extension,
+            result.CreatedAt,
+            result.FolderPath)).ToArray();
+    }
+
+    public async Task<IReadOnlyList<VaultFolderTarget>> GetFolderTargetsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        ThingRoot root = ThingData.Root
+            ?? throw new InvalidOperationException("The root data has not been loaded.");
+        var targets = new List<VaultFolderTarget> { new(0, "Tresor") };
+        var visited = new HashSet<ulong>();
+        await CollectFolderTargetsAsync(
+            root.Content ?? [],
+            "Tresor",
+            targets,
+            visited,
+            cancellationToken).ConfigureAwait(false);
+        return targets;
+    }
+
+    public Task RenameObjectAsync(
+        ulong id,
+        string newName,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        return ThingData.RenameObjectAsync(id, newName);
+    }
+
+    public async Task MoveObjectAsync(
+        ulong id,
+        ulong targetFolderId,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        ThingObject obj = await ThingData.LoadFileAsync(id).ConfigureAwait(false)
+            ?? throw new FileNotFoundException("The object could not be loaded.");
+        if (obj is ThingFolder folder)
+        {
+            await ThingData.MoveFolderToFolderAsync(folder.ID, targetFolderId)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (obj is not ThingFile file)
+            throw new InvalidDataException("The stored object has an unsupported type.");
+        try
+        {
+            await ThingData.MoveFileToFolderAsync(file, targetFolderId).ConfigureAwait(false);
+        }
+        finally
+        {
+            file.ReleaseContent();
+        }
+    }
+
+    public Task DeleteObjectAsync(
+        ulong id,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        return ThingData.DeleteObject(id);
+    }
+
+    public async Task<VaultFileContent> ReadFileAsync(
+        ulong id,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        ThingFile file = await ThingData.LoadFileAsync<ThingFile>(id).ConfigureAwait(false)
+            ?? throw new FileNotFoundException("The file could not be loaded.");
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            byte[] content = file.Content?.ToArray()
+                ?? throw new InvalidDataException("The stored file has no content.");
+            return new VaultFileContent(
+                file.ID,
+                file.Name,
+                file.Type,
+                file.Extension,
+                content);
+        }
+        finally
+        {
+            file.ReleaseContent();
+        }
+    }
+
+    public Task SaveFileContentAsync(
+        ulong id,
+        ReadOnlyMemory<byte> content,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        return ThingData.ReplaceFileContentAsync(id, content, cancellationToken);
+    }
+
+    public Task<VaultPreferences> GetPreferencesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        cancellationToken.ThrowIfCancellationRequested();
+        ThingRootSettings settings = ThingData.GetRootSettings();
+        return Task.FromResult(new VaultPreferences(
+            settings.DarkMode,
+            settings.AutoLockMinutes,
+            settings.ImageViewerPreviousBufferCount,
+            settings.ImageViewerNextBufferCount,
+            settings.RandomiseSelectedImage,
+            settings.ImageAutoplayIntervalSeconds,
+            settings.LoopOnAutoplay));
+    }
+
+    public Task SavePreferencesAsync(
+        VaultPreferences preferences,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(preferences);
+        return ThingData.UpdateRootSettingsAsync(
+            new ThingRootSettings(
+                preferences.DarkMode,
+                preferences.AutoLockMinutes,
+                preferences.PreviousImageBufferCount,
+                preferences.NextImageBufferCount,
+                preferences.IncludeSelectedImageWhenRandomising,
+                preferences.ImageAutoplayIntervalSeconds,
+                preferences.LoopImageAutoplay),
+            cancellationToken);
+    }
+
     public async Task ImportFileAsync(
         Stream source,
         string fileName,
@@ -143,6 +302,35 @@ public sealed class ThingDataVaultService : IVaultApplicationService
 
     private void ForwardNotification(object? sender, VaultNotificationEventArgs args) =>
         NotificationRaised?.Invoke(this, args);
+
+    private static async Task CollectFolderTargetsAsync(
+        IEnumerable<ThingObjectLink> content,
+        string parentPath,
+        ICollection<VaultFolderTarget> targets,
+        ISet<ulong> visited,
+        CancellationToken cancellationToken)
+    {
+        foreach (ThingObjectLink link in content.Where(item => item.Type == FileType.folder)
+                     .OrderBy(item => item.Name, new NaturalStringComparer()))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!visited.Add(link.ID))
+                continue;
+            string path = $"{parentPath} › {link.Name}";
+            targets.Add(new VaultFolderTarget(link.ID, path));
+            ThingFolder? folder = await ThingData.LoadFileAsync<ThingFolder>(link.ID)
+                .ConfigureAwait(false);
+            if (folder is not null)
+            {
+                await CollectFolderTargetsAsync(
+                    folder.Content,
+                    path,
+                    targets,
+                    visited,
+                    cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 }
