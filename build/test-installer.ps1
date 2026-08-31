@@ -12,6 +12,41 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+function Assert-InstalledVlcRuntime {
+    param(
+        [string]$InstallDirectory,
+        [string]$Description
+    )
+
+    $libVlcDirectory = Join-Path $InstallDirectory "libvlc"
+    $runtimeDirectory = Join-Path $libVlcDirectory "win-x64"
+    foreach ($fileName in @("libvlc.dll", "libvlccore.dll")) {
+        $filePath = Join-Path $runtimeDirectory $fileName
+        if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+            throw "The $Description is missing the native VLC file $filePath."
+        }
+    }
+
+    $pluginDirectory = Join-Path $runtimeDirectory "plugins"
+    foreach ($relativePluginPath in @(
+        "audio_output\libwasapi_plugin.dll",
+        "codec\libavcodec_plugin.dll",
+        "demux\libmkv_plugin.dll",
+        "demux\libmp4_plugin.dll",
+        "video_output\libdirect3d11_plugin.dll")) {
+        $pluginPath = Join-Path $pluginDirectory $relativePluginPath
+        if (-not (Test-Path -LiteralPath $pluginPath -PathType Leaf)) {
+            throw "The $Description is missing the native VLC plugin $pluginPath."
+        }
+    }
+
+    $unexpectedRuntimes = Get-ChildItem -LiteralPath $libVlcDirectory -Directory |
+        Where-Object { $_.Name -like "win-*" -and $_.Name -ne "win-x64" }
+    if ($unexpectedRuntimes) {
+        throw "The $Description contains VLC runtimes other than win-x64: $($unexpectedRuntimes.Name -join ', ')"
+    }
+}
+
 $resolvedInstaller = (Resolve-Path -LiteralPath $InstallerPath).Path
 $installerItem = Get-Item -LiteralPath $resolvedInstaller
 if (-not $installerItem.VersionInfo.ProductVersion.StartsWith($ExpectedVersion, [StringComparison]::OrdinalIgnoreCase)) {
@@ -87,11 +122,20 @@ try {
             throw "Installed executable version '$installedVersion' does not match '$ExpectedVersion'."
         }
 
-        foreach ($requiredFile in @("Avalonia.dll", "Nte.App.dll", "Nte.Core.dll", "Nte.Storage.dll")) {
+        foreach ($requiredFile in @(
+            "Avalonia.dll",
+            "LibVLCSharp.dll",
+            "LibVLCSharp.Avalonia.dll",
+            "Nte.App.dll",
+            "Nte.Core.dll",
+            "Nte.Storage.dll")) {
             if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $requiredFile) -PathType Leaf)) {
                 throw "The $language installation is missing $requiredFile."
             }
         }
+        Assert-InstalledVlcRuntime `
+            -InstallDirectory $installDirectory `
+            -Description "$language installation"
 
         $probeOutputLog = Join-Path $testRoot "startup-probe-$language.out.log"
         $probeErrorLog = Join-Path $testRoot "startup-probe-$language.err.log"

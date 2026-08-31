@@ -1,4 +1,5 @@
 using Avalonia;
+using LibVLCSharp.Avalonia;
 using NET_Thing_Encryptor;
 using Nte.App.Services;
 using AvaloniaApplication = Nte.App.App;
@@ -37,6 +38,16 @@ internal static class Program
                 dataDirectory,
                 dataDirectory,
                 legacyDirectories)));
+        AvaloniaApplication.ConfigureVideoSurfaceFactory(mediaPlayer =>
+        {
+            var videoView = new VideoView
+            {
+                MediaPlayer = mediaPlayer
+            };
+            return new VideoSurfaceRegistration(
+                videoView,
+                () => videoView.MediaPlayer = null);
+        });
         AvaloniaApplication.ConfigureStartupProbe(startupProbe);
         string[] lifetimeArguments = args
             .Where(argument => !string.Equals(argument, "--startup-probe", StringComparison.Ordinal))

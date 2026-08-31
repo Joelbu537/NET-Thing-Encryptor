@@ -484,6 +484,46 @@ public sealed class VaultViewModelTests
         Assert.Empty(viewModel.Items);
     }
 
+    [Fact]
+    public async Task LockImmediately_ClosesVideoAndClearsItsOwnedContent()
+    {
+        var video = new VaultItem(
+            90,
+            "Clip",
+            FileType.video,
+            5,
+            "mp4",
+            new DateOnly(2026, 9, 1));
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [video];
+        vault.FileContents[90] = new VaultFileContent(
+            90,
+            "Clip",
+            FileType.video,
+            "mp4",
+            [1, 2, 3, 4, 5]);
+        var playback = new FakeVideoPlaybackService();
+        var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            videoPlaybackService: playback);
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+
+        Assert.NotNull(viewModel.ActiveDocument);
+        Assert.False(playback.Session.IsDisposed);
+
+        viewModel.LockImmediately("Gesperrt");
+
+        Assert.Null(viewModel.ActiveDocument);
+        Assert.Equal(1, playback.Session.DisposeCount);
+        Assert.True(playback.Session.ContentIsCleared);
+    }
+
     private static VaultViewModel CreateViewModel(
         FakeVaultApplicationService vault,
         FakeFilePickerService picker) => new(vault, picker, () => { }, _ => { });

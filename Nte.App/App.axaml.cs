@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using LibVLCSharp.Shared;
 using Nte.App.Services;
 using Nte.App.ViewModels;
 using Nte.App.Views;
@@ -16,16 +17,22 @@ public sealed partial class App : Application
 {
     private static readonly TimeSpan InactivityTimeout = TimeSpan.FromMinutes(5);
     private static Func<IVaultApplicationService>? _vaultServiceFactory;
+    private static Func<MediaPlayer, VideoSurfaceRegistration>? _videoSurfaceFactory;
     private static Action<IApplicationLifetime, Func<Control>>? _singleViewLifetimeConfigurator;
     private static bool _exitAfterInitialization;
     private AppShellViewModel? _shell;
     private AppLifecycleCoordinator? _lifecycleCoordinator;
+    private IVideoPlaybackService? _videoPlaybackService;
     private AppShellView? _activeShellView;
     private TopLevel? _activeTopLevel;
     private Task? _initializationTask;
 
     public static void ConfigureVaultService(Func<IVaultApplicationService> factory) =>
         _vaultServiceFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+
+    public static void ConfigureVideoSurfaceFactory(
+        Func<MediaPlayer, VideoSurfaceRegistration> factory) =>
+        _videoSurfaceFactory = factory ?? throw new ArgumentNullException(nameof(factory));
 
     public static void ConfigureSingleViewLifetime(
         Action<IApplicationLifetime, Func<Control>> configurator) =>
@@ -56,11 +63,15 @@ public sealed partial class App : Application
         var picker = new AvaloniaFilePickerService(
             GetActiveTopLevel,
             _lifecycleCoordinator);
+        _videoPlaybackService = _videoSurfaceFactory is null
+            ? null
+            : new LibVlcVideoPlaybackService(_videoSurfaceFactory);
         _shell = new AppShellViewModel(
             vault,
             picker,
             applyPreferences: ApplyPreferences,
-            useDocumentWindows: ApplicationLifetime is IClassicDesktopStyleApplicationLifetime);
+            useDocumentWindows: ApplicationLifetime is IClassicDesktopStyleApplicationLifetime,
+            videoPlaybackService: _videoPlaybackService);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -184,5 +195,7 @@ public sealed partial class App : Application
         _lifecycleCoordinator = null;
         _shell?.Dispose();
         _shell = null;
+        _videoPlaybackService?.Dispose();
+        _videoPlaybackService = null;
     }
 }

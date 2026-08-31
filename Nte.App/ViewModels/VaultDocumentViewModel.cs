@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using NET_Thing_Encryptor;
 using Nte.App.Services;
@@ -18,6 +19,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private readonly bool _includeSelectedImageWhenRandomising;
     private readonly bool _loopAutoplay;
     private readonly TimeSpan _autoplayInterval;
+    private IVideoPlaybackSession? _videoSession;
+    private Control? _videoSurface;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private ulong _id;
     private string _name;
@@ -33,6 +36,14 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _isAutoplayRunning;
     private bool _showDiscardConfirmation;
+    private bool _isVideoPlaying;
+    private bool _canSeekVideo;
+    private bool _isVideoSeeking;
+    private bool _isUpdatingVideoState;
+    private bool _resumeVideoAfterSeek;
+    private bool _videoStartRequested;
+    private double _videoPositionMilliseconds;
+    private double _videoDurationMilliseconds;
     private bool _disposed;
     private CancellationTokenSource? _saveCancellation;
     private CancellationTokenSource? _autoplayCancellation;
@@ -43,7 +54,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         Action close,
         Action<string> setStatus,
         VaultImageSeriesOptions? imageSeries = null,
-        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage = null)
+        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage = null,
+        IVideoPlaybackService? videoPlaybackService = null)
         : this(
             file,
             save,
@@ -52,7 +64,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             imageSeries,
             loadImage,
             static (delay, cancellationToken) => Task.Delay(delay, cancellationToken),
-            DecodeImage)
+            DecodeImage,
+            videoPlaybackService)
     {
     }
 
@@ -64,7 +77,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         VaultImageSeriesOptions? imageSeries,
         Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage,
         Func<TimeSpan, CancellationToken, Task> delay,
-        Func<byte[], Bitmap?>? decodeImage = null)
+        Func<byte[], Bitmap?>? decodeImage = null,
+        IVideoPlaybackService? videoPlaybackService = null)
     {
         ArgumentNullException.ThrowIfNull(file);
         _save = save ?? throw new ArgumentNullException(nameof(save));
@@ -98,6 +112,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             _autoplayInterval = TimeSpan.FromSeconds(5);
         }
 
+        bool videoSessionOwnsContent = false;
         try
         {
             if (file.Type == FileType.text)
@@ -111,6 +126,27 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
                 _image = _decodeImage(file.Content);
                 _hasDecodedImage = true;
             }
+            else if (file.Type == FileType.video && videoPlaybackService is not null)
+            {
+                IVideoPlaybackSession? session = videoPlaybackService.CreateSession(file.Content);
+                try
+                {
+                    _videoSurface = session.Surface;
+                    session.StateChanged += VideoSession_StateChanged;
+                    session.Failed += VideoSession_Failed;
+                    _videoSession = session;
+                    videoSessionOwnsContent = true;
+                    session = null;
+                }
+                finally
+                {
+                    session?.Dispose();
+                }
+            }
+            else if (file.Type == FileType.video)
+            {
+                ErrorMessage = "Der Videoplayer ist auf dieser Plattform nicht verfügbar.";
+            }
         }
         catch (Exception ex)
         {
@@ -118,7 +154,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(file.Content);
+            if (!videoSessionOwnsContent)
+                CryptographicOperations.ZeroMemory(file.Content);
         }
 
         SaveCommand = new AsyncCommand(SaveAsync, () => IsText && IsDirty && !IsBusy);
@@ -138,6 +175,16 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         ToggleAutoplayCommand = new AsyncCommand(
             ToggleAutoplayAsync,
             CanToggleAutoplay);
+        StartVideoCommand = new AsyncCommand(StartVideoAsync, CanStartVideo);
+        ToggleVideoPlaybackCommand = new AsyncCommand(
+            ToggleVideoPlaybackAsync,
+            () => IsVideo && _videoSession is not null);
+        SeekVideoBackwardCommand = new AsyncCommand(
+            () => SeekVideoByAsync(TimeSpan.FromSeconds(-10)),
+            () => IsVideo && _videoSession is not null && CanSeekVideo);
+        SeekVideoForwardCommand = new AsyncCommand(
+            () => SeekVideoByAsync(TimeSpan.FromSeconds(10)),
+            () => IsVideo && _videoSession is not null && CanSeekVideo);
     }
 
     public ulong Id => _id;
@@ -151,10 +198,12 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public bool IsImageDocument => Type == FileType.image;
     public bool IsImage => IsImageDocument && _hasDecodedImage;
     public bool IsImageSeries => Type == FileType.image && _loadImage is not null && _images.Count > 1;
+    public bool IsVideo => Type == FileType.video;
+    public bool IsAudio => Type == FileType.audio;
     public bool IsMedia => Type is FileType.audio or FileType.video;
-    public bool IsGeneric => !IsText && !IsImageDocument;
-    public string GenericMessage => IsMedia
-        ? "Audio- und Videowiedergabe benötigt noch ein gemeinsam geprüftes Medien-Backend. Der verschlüsselte Inhalt kann sicher exportiert werden."
+    public bool IsGeneric => !IsText && !IsImageDocument && !IsVideo;
+    public string GenericMessage => IsAudio
+        ? "Für Audiodateien ist noch keine interne Wiedergabe verfügbar. Der Inhalt kann sicher exportiert werden."
         : "Für diesen Dateityp ist keine interne Vorschau verfügbar. Der Inhalt kann sicher exportiert werden.";
     public string ImagePositionText => _images.Count == 0
         ? string.Empty
@@ -162,8 +211,71 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             ? $"Zufallsfolge bereit · {_images.Count} Bilder"
             : $"{_imageIndex + 1} / {_images.Count}";
     public string AutoplayButtonText => IsAutoplayRunning ? "Autoplay stoppen" : "Autoplay starten";
+    public bool HasVideoPlayback => _videoSession is not null;
+    public bool ShowVideoPlaceholder => IsVideo && !HasVideoPlayback;
+    public Control? VideoSurface => _videoSurface;
+    public string VideoPlayPauseSymbol => IsVideoPlaying ? "⏸" : "▶";
+    public string VideoPlayPauseToolTip => IsVideoPlaying ? "Pause (Leertaste)" : "Wiedergabe (Leertaste)";
+    public double VideoTimelineMaximum => Math.Max(1, VideoDurationMilliseconds);
+    public string VideoTimeText =>
+        $"{FormatMediaTime(VideoPositionMilliseconds, VideoDurationMilliseconds)} / " +
+        FormatMediaTime(VideoDurationMilliseconds, VideoDurationMilliseconds);
 
     public Bitmap? Image => _image;
+
+    public bool IsVideoPlaying
+    {
+        get => _isVideoPlaying;
+        private set
+        {
+            if (!SetProperty(ref _isVideoPlaying, value))
+                return;
+            OnPropertyChanged(nameof(VideoPlayPauseSymbol));
+            OnPropertyChanged(nameof(VideoPlayPauseToolTip));
+        }
+    }
+
+    public bool CanSeekVideo
+    {
+        get => _canSeekVideo;
+        private set
+        {
+            if (!SetProperty(ref _canSeekVideo, value))
+                return;
+            SeekVideoBackwardCommand.NotifyCanExecuteChanged();
+            SeekVideoForwardCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    public double VideoPositionMilliseconds
+    {
+        get => _videoPositionMilliseconds;
+        set
+        {
+            double maximum = Math.Max(0, VideoDurationMilliseconds);
+            double position = Math.Clamp(value, 0, maximum);
+            if (!SetProperty(ref _videoPositionMilliseconds, position))
+                return;
+            OnPropertyChanged(nameof(VideoTimeText));
+            if (!_isUpdatingVideoState && !_isVideoSeeking &&
+                _videoSession is not null && CanSeekVideo)
+            {
+                _videoSession.Seek((long)position);
+            }
+        }
+    }
+
+    public double VideoDurationMilliseconds
+    {
+        get => _videoDurationMilliseconds;
+        private set
+        {
+            if (!SetProperty(ref _videoDurationMilliseconds, Math.Max(0, value)))
+                return;
+            OnPropertyChanged(nameof(VideoTimelineMaximum));
+            OnPropertyChanged(nameof(VideoTimeText));
+        }
+    }
 
     public string Text
     {
@@ -253,6 +365,10 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public AsyncCommand NextImageCommand { get; }
     public AsyncCommand RandomiseImagesCommand { get; }
     public AsyncCommand ToggleAutoplayCommand { get; }
+    public AsyncCommand StartVideoCommand { get; }
+    public AsyncCommand ToggleVideoPlaybackCommand { get; }
+    public AsyncCommand SeekVideoBackwardCommand { get; }
+    public AsyncCommand SeekVideoForwardCommand { get; }
 
     public bool HandleBackRequested()
     {
@@ -277,8 +393,114 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         Bitmap? image = Image;
         SetImage(null, decoded: false);
         image?.Dispose();
+        IVideoPlaybackSession? videoSession = _videoSession;
+        _videoSession = null;
+        if (videoSession is not null)
+        {
+            videoSession.StateChanged -= VideoSession_StateChanged;
+            videoSession.Failed -= VideoSession_Failed;
+            videoSession.Dispose();
+        }
+        _videoSurface = null;
         _text = string.Empty;
         _savedText = string.Empty;
+    }
+
+    public void BeginVideoSeek()
+    {
+        if (_videoSession is null || !CanSeekVideo || _isVideoSeeking)
+            return;
+        _isVideoSeeking = true;
+        _resumeVideoAfterSeek = IsVideoPlaying;
+        if (_resumeVideoAfterSeek)
+            _videoSession.Pause();
+    }
+
+    public void CompleteVideoSeek()
+    {
+        if (_videoSession is null || !_isVideoSeeking)
+            return;
+        _isVideoSeeking = false;
+        _videoSession.Seek((long)VideoPositionMilliseconds);
+        if (_resumeVideoAfterSeek)
+            _videoSession.Play();
+        _resumeVideoAfterSeek = false;
+    }
+
+    private Task StartVideoAsync()
+    {
+        if (_videoSession is null || _videoStartRequested)
+            return Task.CompletedTask;
+        _videoStartRequested = true;
+        StartVideoCommand.NotifyCanExecuteChanged();
+        _videoSession.Play();
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleVideoPlaybackAsync()
+    {
+        if (_videoSession is null)
+            return Task.CompletedTask;
+        _videoStartRequested = true;
+        StartVideoCommand.NotifyCanExecuteChanged();
+        if (IsVideoPlaying)
+            _videoSession.Pause();
+        else
+            _videoSession.Play();
+        return Task.CompletedTask;
+    }
+
+    private Task SeekVideoByAsync(TimeSpan offset)
+    {
+        if (_videoSession is null || !CanSeekVideo)
+            return Task.CompletedTask;
+        long target = (long)Math.Clamp(
+            VideoPositionMilliseconds + offset.TotalMilliseconds,
+            0,
+            VideoDurationMilliseconds);
+        _videoSession.Seek(target);
+        return Task.CompletedTask;
+    }
+
+    private bool CanStartVideo() =>
+        IsVideo && _videoSession is not null && !_videoStartRequested;
+
+    private void VideoSession_StateChanged(
+        object? sender,
+        VideoPlaybackStateChangedEventArgs args)
+    {
+        if (_disposed)
+            return;
+        IsVideoPlaying = args.IsPlaying;
+        CanSeekVideo = args.CanSeek;
+        VideoDurationMilliseconds = args.DurationMilliseconds;
+        if (!_isVideoSeeking)
+        {
+            _isUpdatingVideoState = true;
+            try
+            {
+                VideoPositionMilliseconds = args.PositionMilliseconds;
+            }
+            finally
+            {
+                _isUpdatingVideoState = false;
+            }
+        }
+        ToggleVideoPlaybackCommand.NotifyCanExecuteChanged();
+    }
+
+    private void VideoSession_Failed(object? sender, VideoPlaybackFailedEventArgs args)
+    {
+        if (!_disposed)
+            ErrorMessage = args.Message;
+    }
+
+    private static string FormatMediaTime(double milliseconds, double durationMilliseconds)
+    {
+        TimeSpan value = TimeSpan.FromMilliseconds(Math.Max(0, milliseconds));
+        return durationMilliseconds >= TimeSpan.FromHours(1).TotalMilliseconds
+            ? $"{(int)value.TotalHours}:{value.Minutes:00}:{value.Seconds:00}"
+            : $"{(int)value.TotalMinutes}:{value.Seconds:00}";
     }
 
     private async Task SaveAsync()

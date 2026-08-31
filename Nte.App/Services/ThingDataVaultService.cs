@@ -178,7 +178,7 @@ public sealed class ThingDataVaultService : IVaultApplicationService
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            byte[] content = file.Content?.ToArray()
+            byte[] content = file.DetachContent()
                 ?? throw new InvalidDataException("The stored file has no content.");
             return new VaultFileContent(
                 file.ID,

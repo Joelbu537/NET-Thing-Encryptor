@@ -2,6 +2,7 @@ using Android.App;
 using Android.Runtime;
 using Avalonia.Android;
 using Avalonia.Controls.ApplicationLifetimes;
+using LibVLCSharp.Shared;
 using NET_Thing_Encryptor;
 using Nte.App.Services;
 using AvaloniaApplication = Nte.App.App;
@@ -16,6 +17,7 @@ public class NteAndroidApplication : AvaloniaAndroidApplication<AvaloniaApplicat
     {
         AvaloniaApplication.ConfigureVaultService(CreateVaultService);
         AvaloniaApplication.ConfigureSingleViewLifetime(ConfigureSingleViewLifetime);
+        AvaloniaApplication.ConfigureVideoSurfaceFactory(CreateVideoSurface);
     }
 
     private ThingDataVaultService CreateVaultService()
@@ -23,6 +25,12 @@ public class NteAndroidApplication : AvaloniaAndroidApplication<AvaloniaApplicat
         string filesDirectory = FilesDir?.AbsolutePath
             ?? throw new InvalidOperationException("Android did not provide a private files directory.");
         return new ThingDataVaultService(new AppSandboxVaultStorage(filesDirectory));
+    }
+
+    private static VideoSurfaceRegistration CreateVideoSurface(MediaPlayer mediaPlayer)
+    {
+        var host = new AndroidVideoSurfaceHost(mediaPlayer);
+        return new VideoSurfaceRegistration(host, host.Detach);
     }
 
     private static void ConfigureSingleViewLifetime(

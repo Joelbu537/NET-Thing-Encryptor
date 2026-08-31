@@ -1,6 +1,6 @@
 # NET Thing Encryptor
 
-NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Seit M6 ist der plattformübergreifende Avalonia-Client das kanonische Produkt für den Windows-Installer und Android-Releases. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und einzeln, mehrfach oder als Ordnerstruktur exportieren sowie vollständige `.ntevault`-Archive übertragen. Hinzu kommen lokale und globale Suche, Mehrfachauswahl, Umbenennen, Verschieben, rekursives Löschen, Textbearbeitung, Bildserien mit Zufallsreihenfolge und Autoplay sowie portable Einstellungen. Android verwendet einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox und Transfer.
+NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Seit M6 ist der plattformübergreifende Avalonia-Client das kanonische Produkt für den Windows-Installer und Android-Releases. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und einzeln, mehrfach oder als Ordnerstruktur exportieren sowie vollständige `.ntevault`-Archive übertragen. Hinzu kommen lokale und globale Suche, Mehrfachauswahl, Umbenennen, Verschieben, rekursives Löschen, Textbearbeitung, Bildserien mit Zufallsreihenfolge und Autoplay, Videowiedergabe aus dem Arbeitsspeicher sowie portable Einstellungen. Android verwendet einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox und Transfer.
 
 Der frühere WinForms-Client bleibt vorerst als eingefrorener, separat getesteter Rückfallpfad im Quellbaum. Neue Produktfunktionen und reguläre Pakete entstehen ausschließlich in den Avalonia-Projekten.
 
@@ -15,9 +15,9 @@ Linux und macOS sind weiter technische Vorschauen: Die CI prüft die Publishes, 
 
 ## Plattformspezifische Bedienung
 
-Der Windows-Client verwendet eine kompakte Symbolleiste, eine Dateiliste in Detailansicht und eine feste Statuszeile mit Version, Meldung, Datei- und Ordnerzahl sowie sichtbarer Gesamtgröße. Ordner und Dokumente werden per Doppelklick geöffnet; Auswahlaktionen liegen im Rechtsklick-Kontextmenü. Die Einstellungen erscheinen als eigenes modales Fenster, der vollständige Tresorexport liegt dort im Bereich „Tresorsicherung“.
+Der Windows-Client verwendet eine kompakte Symbolleiste, eine Dateiliste in Detailansicht und eine feste Statuszeile mit Version, Meldung, Datei- und Ordnerzahl sowie sichtbarer Gesamtgröße. Ordner und Dokumente werden per Doppelklick geöffnet; Auswahlaktionen liegen im Rechtsklick-Kontextmenü. Die Einstellungen erscheinen als eigenes modales Fenster, der vollständige Tresorexport liegt dort im Bereich „Tresorsicherung“. Videos öffnen in einem eigenen Fenster und können über Schaltflächen, Zeitleiste oder Tastatur gesteuert werden.
 
-Android verwendet dieselben Funktionen und Dateitypsymbole in einer kompakteren Zeilenansicht. Auswahlaktionen sind über den Drei-Punkte-Knopf einer Zeile erreichbar, die Desktop-Statuszeile entfällt und die Einstellungen belegen als deckende Seite die verfügbare App-Fläche. Der genaue UI-Vertrag und die Prüfschritte stehen in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md).
+Android verwendet dieselben Funktionen und Dateitypsymbole in einer kompakteren Zeilenansicht. Auswahlaktionen sind über den Drei-Punkte-Knopf einer Zeile erreichbar, die Desktop-Statuszeile entfällt und die Einstellungen belegen als deckende Seite die verfügbare App-Fläche. Der genaue UI-Vertrag und die Prüfschritte stehen in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md); Architektur, Speicherregeln und Abnahme des Videoplayers beschreibt [docs/video-player.md](docs/video-player.md).
 
 ## Avalonia-Desktop-Client starten
 
@@ -39,7 +39,9 @@ $env:AVALONIA_TELEMETRY_OPTOUT = '1'
 dotnet publish ".\Nte.Android\Nte.Android.csproj" -c Release
 ```
 
-Die AAB- und APK-Dateien liegen anschließend unter `Nte.Android\bin\Release\net10.0-android`. Lokal erzeugte Ausgaben dienen nur Entwicklung und Tests. Der Tag-Workflow verlangt einen geschützten Produktionsschlüssel, prüft beide Signaturen und veröffentlicht beide Formate mit SHA-256-Prüfsummen. Bei jeder Android-Veröffentlichung muss neben `Version` auch der monotone ganzzahlige `ApplicationVersion`-Wert erhöht werden.
+Die AAB- und APK-Dateien liegen anschließend unter `Nte.Android\bin\Release\net10.0-android`. Lokal erzeugte Ausgaben dienen nur Entwicklung und Tests. Der Tag-Workflow verlangt einen geschützten Produktionsschlüssel, prüft beide Signaturen und veröffentlicht beide Formate mit SHA-256-Prüfsummen. Bei jeder Android-Veröffentlichung muss neben `Version` auch der monotone ganzzahlige `ApplicationVersion`-Wert erhöht werden. Die plattformgebundene VideoLAN-Laufzeit erhöht die Größe der Android-Pakete deutlich.
+
+Der Android-Videoplayer verwendet `VideoLAN.LibVLC.Android` 3.7.0-beta für `arm64-v8a` und `x86_64`. Die stabile Version 3.6.5 erzeugte im aktuellen Android-Release-Build vier `XA0141`-Warnungen wegen fehlender Android-16-/16-KB-Seitengrößenunterstützung; 3.7.0-beta baut ohne diese Warnungen. Da es sich um eine Vorabversion handelt, bleibt die Videowiedergabe auf realer Android-Hardware ein verpflichtendes Release-Gate.
 
 ## Tests ausführen
 
@@ -79,13 +81,13 @@ Nützliche Optionen:
 .\build\build-installer.ps1 -SkipTests
 
 # Sicherstellen, dass Projekt und Release-Tag dieselbe Version verwenden
-.\build\build-installer.ps1 -ExpectedVersion 4.1.1
+.\build\build-installer.ps1 -ExpectedVersion 4.2.0
 
 # Optionales Single-File-Paket; vor einer Veröffentlichung separat prüfen
 .\build\build-installer.ps1 -SingleFile
 ```
 
-Die Multi-File-Ausgabe bleibt der geprüfte Standard. Der Installer enthält seit M6 `Nte.Desktop`; beim Upgrade entfernt er eindeutig veraltete VLC- und ImageMagick-Bibliotheken der WinForms-Ausgabe, ohne den möglicherweise portablen `Data`-Ordner im Installationsverzeichnis zu verändern.
+Die Multi-File-Ausgabe bleibt der geprüfte Standard. Der Installer enthält `Nte.Desktop` einschließlich der für den Videoplayer benötigten Windows-Laufzeit von VideoLAN. Beim Upgrade entfernt er ausschließlich eindeutig veraltete Medien- und ImageMagick-Komponenten der WinForms-Ausgabe, ohne aktive Laufzeitdateien oder den möglicherweise portablen `Data`-Ordner im Installationsverzeichnis zu verändern. Durch die native Videolaufzeit ist das Setup größer als die bisherigen Avalonia-Installer ohne Wiedergabebackend.
 
 ### WinForms-Rückfallpaket
 
@@ -118,16 +120,16 @@ Die statische Prüfung validiert Version, SHA-256-Prüfsumme und optional die Si
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.1.1.exe" `
-  -ExpectedVersion 4.1.1
+  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.2.0.exe" `
+  -ExpectedVersion 4.2.0
 ```
 
 Der vollständige Smoke-Test installiert und deinstalliert die englische und deutsche Variante. Er darf nur in einem isolierten CI-Konto oder einer Test-VM ausgeführt werden:
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.1.1.exe" `
-  -ExpectedVersion 4.1.1 `
+  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.2.0.exe" `
+  -ExpectedVersion 4.2.0 `
   -RunInstallation `
   -AllowLocalMachineChanges
 ```
@@ -155,7 +157,7 @@ Ein alter `Data`-Ordner neben einer portablen EXE wird beim ersten Start atomisc
 ### Unbeaufsichtigte Installation
 
 ```powershell
-NET-Thing-Encryptor-Setup-4.1.1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+NET-Thing-Encryptor-Setup-4.2.0.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
 Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselben Silent-Schalter.
@@ -163,7 +165,7 @@ Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselb
 ## Automatisierte Releases
 
 - `.github/workflows/ci.yml` testet auf Pull Requests und auf `master` die gemeinsamen Komponenten, beide priorisierten Plattformen, die sekundären Desktop-Publishes sowie den WinForms-Rückfallbuild und das in-place Upgrade auf Avalonia.
-- `.github/workflows/release.yml` wird durch Tags wie `v4.1.1` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
+- `.github/workflows/release.yml` wird durch Tags wie `v4.2.0` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
 
 Für signierte Releases werden diese Repository-Secrets benötigt:
 

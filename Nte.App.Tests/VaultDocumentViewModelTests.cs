@@ -1,5 +1,6 @@
 using NET_Thing_Encryptor;
 using Nte.App.Services;
+using Nte.App.Tests.Fakes;
 using Nte.App.ViewModels;
 
 namespace Nte.App.Tests;
@@ -177,6 +178,87 @@ public sealed class VaultDocumentViewModelTests
         Assert.All(brokenBuffer, value => Assert.Equal((byte)0, value));
     }
 
+    [Fact]
+    public async Task VideoSession_RetainsContentUntilDisposeAndMapsPlaybackControls()
+    {
+        byte[] content = [1, 2, 3, 4, 5];
+        var service = new FakeVideoPlaybackService();
+        var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(7, "clip", FileType.video, "mp4", content),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            videoPlaybackService: service);
+
+        Assert.True(viewModel.IsVideo);
+        Assert.True(viewModel.HasVideoPlayback);
+        Assert.False(viewModel.IsGeneric);
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5 }, content);
+
+        await viewModel.StartVideoCommand.ExecuteAsync();
+        Assert.Equal(1, service.Session.PlayCount);
+
+        service.Session.Publish(
+            isPlaying: true,
+            canSeek: true,
+            positionMilliseconds: 1_500,
+            durationMilliseconds: 10_000);
+        Assert.True(viewModel.IsVideoPlaying);
+        Assert.True(viewModel.CanSeekVideo);
+        Assert.Equal("0:01 / 0:10", viewModel.VideoTimeText);
+
+        await viewModel.SeekVideoForwardCommand.ExecuteAsync();
+        Assert.Equal(10_000, service.Session.LastSeekMilliseconds);
+
+        viewModel.BeginVideoSeek();
+        viewModel.VideoPositionMilliseconds = 4_000;
+        viewModel.CompleteVideoSeek();
+        Assert.Equal(4_000, service.Session.LastSeekMilliseconds);
+        Assert.Equal(2, service.Session.PlayCount);
+        Assert.Equal(1, service.Session.PauseCount);
+
+        service.Session.Publish(
+            isPlaying: false,
+            canSeek: true,
+            positionMilliseconds: 10_000,
+            durationMilliseconds: 10_000);
+        Assert.False(viewModel.IsVideoPlaying);
+        Assert.Equal("0:10 / 0:10", viewModel.VideoTimeText);
+
+        viewModel.Dispose();
+        viewModel.Dispose();
+
+        Assert.True(service.Session.IsDisposed);
+        Assert.Equal(1, service.Session.DisposeCount);
+        Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
+    [Fact]
+    public void VideoSessionCreationFailure_ZeroesContentAndKeepsFallbackVisible()
+    {
+        byte[] content = [1, 2, 3, 4, 5];
+        using var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(7, "broken", FileType.video, "mp4", content),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            videoPlaybackService: new ThrowingVideoPlaybackService());
+
+        Assert.True(viewModel.ShowVideoPlaceholder);
+        Assert.Contains("Backend nicht verfügbar", viewModel.ErrorMessage);
+        Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
     private static byte[] OnePixelPng() => Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAXSURBVBhXY/jPwPCfoYHhPwMDw38wAABD1Al4TlSdlQAAAABJRU5ErkJggg==");
+
+    private sealed class ThrowingVideoPlaybackService : IVideoPlaybackService
+    {
+        public IVideoPlaybackSession CreateSession(byte[] decryptedContent) =>
+            throw new InvalidOperationException("Backend nicht verfügbar");
+
+        public void Dispose()
+        {
+        }
+    }
 }

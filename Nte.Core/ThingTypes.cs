@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -65,7 +66,16 @@ namespace NET_Thing_Encryptor
 
         public void ReleaseContent()
         {
+            if (_content is not null)
+                CryptographicOperations.ZeroMemory(_content);
             _content = null;
+        }
+
+        public byte[]? DetachContent()
+        {
+            byte[]? content = _content;
+            _content = null;
+            return content;
         }
     }
     public class ThingRoot : ThingObject, ICloneable

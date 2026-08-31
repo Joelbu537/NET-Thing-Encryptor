@@ -17,7 +17,7 @@ Der Installer verteilt den Avalonia-Desktop-Client von NET Thing Encryptor als p
 | Benutzerdaten | Werden weder vom Installer noch vom Uninstaller gelöscht |
 | Portable Altversion | Der Datenbestand wird beim ersten App-Start atomisch in das Benutzerprofil kopiert |
 | Migrationskonflikt | Keine Datei wird überschrieben; der Start wird mit einer Konfliktmeldung beendet |
-| Upgrade von WinForms | Gleiche App-ID und gleicher Datenpfad; eindeutig alte VLC-/ImageMagick-Dateien werden entfernt |
+| Upgrade von WinForms | Gleiche App-ID und gleicher Datenpfad; obsolete WinForms-Komponenten werden entfernt, die aktive VideoLAN-Laufzeit wird installiert |
 | Silent Setup | Keine Interaktion; Rückgabecode ungleich null bei Fehlern |
 
 ## Versionierung
@@ -47,7 +47,7 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 3. Dieselbe `Version` und einen höheren `ApplicationVersion`-Wert in `Nte.Android` setzen.
 4. Änderungen auf `master` zusammenführen.
 5. Windows- und Android-Signierungs-Secrets im Repository prüfen.
-6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.1.1`.
+6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.2.0`.
 7. Den Workflow „Signed release“ abwarten.
 8. Signaturen und SHA-256-Prüfsummen der veröffentlichten Dateien stichprobenartig prüfen.
 9. Upgrade von der zuletzt veröffentlichten WinForms- beziehungsweise Avalonia-Version in einer Windows-Test-VM durchführen.
@@ -59,6 +59,8 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 - [ ] Start ohne vorinstalliertes .NET Runtime-Paket
 - [ ] Automatische Startprobe der installierten Avalonia-Anwendung
 - [ ] Bildanzeige für die in M5 unterstützten Formate
+- [ ] Videowiedergabe aus dem verschlüsselten Tresor einschließlich Play/Pause, Zeitleiste und Zehn-Sekunden-Sprüngen
+- [ ] Videofenster schließen und automatische Sperre während laufender sowie pausierter Wiedergabe
 - [ ] Upgrade von der zuletzt veröffentlichten WinForms-Version
 - [ ] Upgrade von der zuletzt veröffentlichten Avalonia-Version
 - [ ] Upgrade bei zunächst laufender Anwendung
@@ -73,7 +75,8 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 - [ ] Veröffentlichte SHA-256-Prüfsumme stimmt überein
 - [ ] Signiertes AAB lässt sich in einen internen Android-Testkanal laden
 - [ ] Signierte APK lässt sich auf einem realen Android-12+-Gerät installieren und starten
-- [ ] Sperren im Hintergrund und Dokumentanbieter-Import/-Export auf einem realen Gerät geprüft
+- [ ] Videowiedergabe und native Videoansicht auf einem realen Android-12+-Gerät geprüft
+- [ ] Sperren im Hintergrund, dabei laufenden Videoplayer schließen, und Dokumentanbieter-Import/-Export auf einem realen Gerät geprüft
 
 ## Automatisierter WinForms-Upgrade-Nachweis
 
@@ -84,7 +87,7 @@ M7 ergänzt einen isolierten CI-Test für den direkten Wechsel der installierten
 1. kopiert das unveränderte M0-/3.7-Kompatibilitätsfixture in den echten Benutzer-Datenpfad;
 2. installiert das WinForms-Rückfallpaket;
 3. aktualisiert dieselbe App-ID und dasselbe Verzeichnis mit dem Avalonia-Installer;
-4. prüft Avalonia-Assemblies, Startprobe und Entfernung alter Medienbibliotheken;
+4. prüft Avalonia-Assemblies, Startprobe, aktive VideoLAN-Laufzeit und Entfernung ausschließlich obsoleter WinForms-Komponenten;
 5. vergleicht jede Fixture-Datei nach Pfad, Länge und SHA-256;
 6. deinstalliert die Anwendung und vergleicht das Fixture erneut.
 

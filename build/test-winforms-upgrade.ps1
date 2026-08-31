@@ -65,6 +65,38 @@ function Get-DirectoryFingerprint {
     )
 }
 
+function Assert-ActiveVlcRuntime {
+    param([string]$InstallDirectory)
+
+    $libVlcDirectory = Join-Path $InstallDirectory "libvlc"
+    $runtimeDirectory = Join-Path $libVlcDirectory "win-x64"
+    foreach ($fileName in @("libvlc.dll", "libvlccore.dll")) {
+        $filePath = Join-Path $runtimeDirectory $fileName
+        if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+            throw "The upgraded Avalonia installation is missing the native VLC file $filePath."
+        }
+    }
+
+    $pluginDirectory = Join-Path $runtimeDirectory "plugins"
+    foreach ($relativePluginPath in @(
+        "audio_output\libwasapi_plugin.dll",
+        "codec\libavcodec_plugin.dll",
+        "demux\libmkv_plugin.dll",
+        "demux\libmp4_plugin.dll",
+        "video_output\libdirect3d11_plugin.dll")) {
+        $pluginPath = Join-Path $pluginDirectory $relativePluginPath
+        if (-not (Test-Path -LiteralPath $pluginPath -PathType Leaf)) {
+            throw "The upgraded Avalonia installation is missing the native VLC plugin $pluginPath."
+        }
+    }
+
+    $unexpectedRuntimes = Get-ChildItem -LiteralPath $libVlcDirectory -Directory |
+        Where-Object { $_.Name -like "win-*" -and $_.Name -ne "win-x64" }
+    if ($unexpectedRuntimes) {
+        throw "The upgraded installation contains VLC runtimes other than win-x64: $($unexpectedRuntimes.Name -join ', ')"
+    }
+}
+
 $legacyInstaller = Resolve-TestInstaller `
     -Path $LegacyInstallerPath `
     -Label "WinForms rollback" `
@@ -135,6 +167,11 @@ try {
     if (-not (Get-ChildItem -LiteralPath $installDirectory -Filter "Magick.NET.Core.dll" -File -Recurse | Select-Object -First 1)) {
         throw "The WinForms rollback installation is missing ImageMagick files."
     }
+    $obsoleteVlcSentinel = Join-Path $installDirectory `
+        "libvlc\win-x64\plugins\obsolete-upgrade-runtime.sentinel"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $obsoleteVlcSentinel) |
+        Out-Null
+    Set-Content -LiteralPath $obsoleteVlcSentinel -Value "must be removed during upgrade" -Encoding ascii
     $cleanupUninstaller = Get-ChildItem -LiteralPath $installDirectory -Filter "unins*.exe" -File |
         Select-Object -First 1
     if (-not $cleanupUninstaller) {
@@ -157,17 +194,24 @@ try {
         -Arguments $upgradeArguments `
         -Description "Avalonia in-place upgrade"
 
-    foreach ($requiredFile in @("Avalonia.dll", "Nte.App.dll", "Nte.Core.dll", "Nte.Storage.dll")) {
+    foreach ($requiredFile in @(
+        "Avalonia.dll",
+        "LibVLCSharp.dll",
+        "LibVLCSharp.Avalonia.dll",
+        "Nte.App.dll",
+        "Nte.Core.dll",
+        "Nte.Storage.dll")) {
         if (-not (Test-Path -LiteralPath (Join-Path $installDirectory $requiredFile) -PathType Leaf)) {
             throw "The upgraded installation is missing $requiredFile."
         }
     }
-    if (Test-Path -LiteralPath (Join-Path $installDirectory "libvlc")) {
-        throw "The Avalonia upgrade left the legacy libvlc directory behind."
+    Assert-ActiveVlcRuntime -InstallDirectory $installDirectory
+    if (Test-Path -LiteralPath $obsoleteVlcSentinel -PathType Leaf) {
+        throw "The Avalonia upgrade did not replace the legacy VLC runtime directory."
     }
     if (Get-ChildItem -LiteralPath $installDirectory -File |
-        Where-Object { $_.Name -like "LibVLCSharp*.dll" -or $_.Name -like "Magick*.dll" }) {
-        throw "The Avalonia upgrade left legacy media assemblies behind."
+        Where-Object { $_.Name -eq "LibVLCSharp.WinForms.dll" -or $_.Name -like "Magick*.dll" }) {
+        throw "The Avalonia upgrade left retired WinForms media assemblies behind."
     }
 
     $upgradedVersion = (Get-Item -LiteralPath $installedExecutable).VersionInfo.ProductVersion

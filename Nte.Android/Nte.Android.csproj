@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationId>com.joelbu.netthingencryptor</ApplicationId>
-    <Version>4.1.1</Version>
-    <ApplicationVersion>40101</ApplicationVersion>
+    <Version>4.2.0</Version>
+    <ApplicationVersion>40200</ApplicationVersion>
     <ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
     <AndroidPackageFormats Condition="'$(Configuration)' == 'Debug'">apk</AndroidPackageFormats>
     <AndroidPackageFormats Condition="'$(Configuration)' == 'Release'">aab;apk</AndroidPackageFormats>
@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" Version="12.1.1" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
+    <PackageReference Include="VideoLAN.LibVLC.Android" Version="3.7.0-beta" />
   </ItemGroup>
 
   <ItemGroup>

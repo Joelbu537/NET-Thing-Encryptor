@@ -42,6 +42,14 @@
       <Setter Property="Background" Value="#D13438" />
       <Setter Property="Foreground" Value="White" />
     </Style>
+    <Style Selector="Button.media-icon">
+      <Setter Property="MinWidth" Value="42" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
   </Application.Styles>
 
   <Application.DataTemplates>

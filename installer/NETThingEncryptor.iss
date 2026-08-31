@@ -80,8 +80,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Excludes: "*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
-; M6 replaces the WinForms/media package in place. Remove only known obsolete
-; dependencies; never delete {app}\Data because it may contain a portable vault.
+; Replace the bundled VLC runtime and managed wrappers before [Files] installs
+; the current versions. Retire ImageMagick, but never delete portable {app}\Data.
 Type: filesandordirs; Name: "{app}\libvlc"
 Type: files; Name: "{app}\LibVLCSharp*.dll"
 Type: files; Name: "{app}\Magick*.dll"

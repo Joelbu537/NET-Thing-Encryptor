@@ -267,10 +267,15 @@ Write-Host "Publishing NET Thing Encryptor $version ($ProductLine) for $Runtime.
 Invoke-DotNet -Arguments $publishArguments
 
 $libVlcDirectory = Join-Path $publishDir "libvlc"
-if ($isWinFormsRollback -and (Test-Path -LiteralPath $libVlcDirectory -PathType Container)) {
-    Get-ChildItem -LiteralPath $libVlcDirectory -Directory |
-        Where-Object { $_.Name -like "win-*" -and $_.Name -ne $Runtime } |
-        ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }
+if (Test-Path -LiteralPath $libVlcDirectory -PathType Container) {
+    $unusedVlcRuntimes = Get-ChildItem -LiteralPath $libVlcDirectory -Directory |
+        Where-Object { $_.Name -like "win-*" -and $_.Name -ne $Runtime }
+    foreach ($unusedVlcRuntime in $unusedVlcRuntimes) {
+        Assert-PathWithinDirectory `
+            -Path $unusedVlcRuntime.FullName `
+            -ParentDirectory $libVlcDirectory
+        Remove-Item -LiteralPath $unusedVlcRuntime.FullName -Recurse -Force
+    }
 }
 
 $publishedExecutable = Join-Path $publishDir "NET Thing Encryptor.exe"
@@ -288,6 +293,8 @@ if (-not $SingleFile) {
     else {
         $requiredPublishedFiles += @(
             (Join-Path $publishDir "Avalonia.dll"),
+            (Join-Path $publishDir "LibVLCSharp.dll"),
+            (Join-Path $publishDir "LibVLCSharp.Avalonia.dll"),
             (Join-Path $publishDir "Nte.App.dll"),
             (Join-Path $publishDir "Nte.Core.dll"),
             (Join-Path $publishDir "Nte.Storage.dll"),
@@ -301,12 +308,26 @@ foreach ($requiredFile in $requiredPublishedFiles) {
     }
 }
 
-if ($isWinFormsRollback -and -not $SingleFile) {
-    $nativeVlc = Get-ChildItem -LiteralPath $publishDir -Filter "libvlc.dll" -File -Recurse |
-        Where-Object { $_.FullName -match 'win-x64' } |
-        Select-Object -First 1
-    if (-not $nativeVlc) {
-        throw "The WinForms rollback publish does not contain native x64 VLC files."
+if (-not (Test-Path -LiteralPath $libVlcDirectory -PathType Container)) {
+    throw "The published application is missing the bundled VLC runtime directory: $libVlcDirectory"
+}
+$libVlcRuntimeDirectory = Join-Path $libVlcDirectory $Runtime
+foreach ($requiredVlcFileName in @("libvlc.dll", "libvlccore.dll")) {
+    $requiredVlcFile = Join-Path $libVlcRuntimeDirectory $requiredVlcFileName
+    if (-not (Test-Path -LiteralPath $requiredVlcFile -PathType Leaf)) {
+        throw "The published application is missing the native $Runtime VLC file: $requiredVlcFile"
+    }
+}
+$vlcPluginDirectory = Join-Path $libVlcRuntimeDirectory "plugins"
+foreach ($requiredVlcPlugin in @(
+    "audio_output\libwasapi_plugin.dll",
+    "codec\libavcodec_plugin.dll",
+    "demux\libmkv_plugin.dll",
+    "demux\libmp4_plugin.dll",
+    "video_output\libdirect3d11_plugin.dll")) {
+    $requiredVlcPluginPath = Join-Path $vlcPluginDirectory $requiredVlcPlugin
+    if (-not (Test-Path -LiteralPath $requiredVlcPluginPath -PathType Leaf)) {
+        throw "The published application is missing the native $Runtime VLC plugin: $requiredVlcPluginPath"
     }
 }
 

@@ -1,6 +1,6 @@
 # Plattformspezifische Oberflächenangleichung vor M9
 
-Diese Änderung verfeinert den nach M8 ausgelieferten Avalonia-Client bis einschließlich Version 4.1.1. Sie ist kein Beginn von M9. Ziel ist eine vertrautere Windows-Bedienung, ohne Android in ein ungeeignetes Desktop-Raster zu zwingen.
+Diese Änderung verfeinert den nach M8 ausgelieferten Avalonia-Client bis einschließlich Version 4.2.0. Sie ist kein Beginn von M9. Ziel ist eine vertrautere Windows-Bedienung, ohne Android in ein ungeeignetes Desktop-Raster zu zwingen.
 
 ## Windows-Vertrag
 
@@ -21,7 +21,9 @@ Der Sperrbildschirm unterscheidet zwischen einem bestehenden Tresor und der Erst
 
 Die Einstellungen sind ein eigenes, dem Hauptfenster zugeordnetes modales Fenster. Schließen verwirft den noch nicht gespeicherten Entwurf, „Speichern und anwenden“ persistiert ihn. Der vollständige `.ntevault`-Export befindet sich im Abschnitt „Tresorsicherung“. Der aktive Einstellungsdialog ist zugleich Eigentümer nativer Dateiauswahldialoge und meldet Tastatur- sowie Zeigeraktivität an die automatische Sperre.
 
-Dokumente öffnen auf Desktop-Systemen in einem eigenen, dem Hauptfenster zugeordneten Fenster; Android behält die eingebettete Ansicht. Bilder werden ohne Scrollcontainer proportional an die tatsächlich verfügbare Fläche angepasst. Bei Bildserien navigiert ein Klick oder Tippen auf die linke beziehungsweise rechte Bildhälfte zum vorherigen beziehungsweise nächsten Bild; die sichtbaren Navigationsknöpfe entfallen. Die Pfeiltasten bleiben als Tastaturalternative erhalten. Audio und Video öffnen ebenfalls im Dokumentfenster, besitzen aber weiterhin kein internes Wiedergabe-Backend.
+Dokumente öffnen auf Desktop-Systemen in einem eigenen, dem Hauptfenster zugeordneten Fenster; Android behält die eingebettete Ansicht. Bilder werden ohne Scrollcontainer proportional an die tatsächlich verfügbare Fläche angepasst. Bei Bildserien navigiert ein Klick oder Tippen auf die linke beziehungsweise rechte Bildhälfte zum vorherigen beziehungsweise nächsten Bild; die sichtbaren Navigationsknöpfe entfallen. Die Pfeiltasten bleiben als Tastaturalternative erhalten.
+
+Videos verwenden ab Version 4.2.0 ein LibVLCSharp-Wiedergabebackend. Auf Desktop-Systemen rendert `LibVLCSharp.Avalonia.VideoView` im eigenen Dokumentfenster; Android bindet die native Videoansicht über einen `NativeControlHost` ein. Play/Pause, Sprünge um zehn Sekunden und die Zeitleiste sind direkt bedienbar. Leertaste schaltet Play/Pause um, Links/Rechts sowie J/L springen zurück beziehungsweise vor. Die entschlüsselte Datei wird nicht in eine temporäre Klartextdatei geschrieben. Details zu Besitz, Speicherbereinigung und Plattformgrenzen stehen in [video-player.md](video-player.md). Audio besitzt weiterhin kein internes Wiedergabebackend.
 
 ## Android-Vertrag
 
@@ -67,6 +69,8 @@ Die manuelle Windows-Prüfung verwendet einen isolierten Ordner über `NTE_DATA_
 - Öffnen des separaten Einstellungsfensters und Kontrolle des Bereichs „Tresorsicherung“
 - Kontrolle der eigenen Windows-Titelleiste einschließlich Verschieben, Größenänderung und Fensterknöpfen
 - Öffnen eines Bildes im eigenen Fenster, Größenanpassung sowie Navigation über beide Bildhälften und Pfeiltasten
+- Öffnen eines Videos im eigenen Fenster, Start/Pause, Zeitleiste, Zehn-Sekunden-Sprünge und die Tastenkürzel Leertaste, Links/Rechts und J/L
+- Schließen des Videofensters sowie automatische Tresorsperre bei laufendem und pausiertem Video
 - Kontrolle der vertikalen Textzentrierung und der Reihenfolge Abbrechen links / Bestätigen rechts
 - Kontrolle, dass die Hauptansicht keine zusätzliche breite Produktleiste enthält
 

@@ -4,7 +4,7 @@
              x:Class="Nte.App.Views.VaultDocumentView"
              x:DataType="vm:VaultDocumentViewModel"
              Focusable="True"
-             KeyDown="VaultDocumentView_KeyDown">
+             Loaded="VaultDocumentView_Loaded">
   <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="10">
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
       <StackPanel>
@@ -49,6 +49,48 @@
             </Grid>
           </Grid>
         </Border>
+      </Grid>
+
+      <Grid IsVisible="{Binding IsVideo}" RowDefinitions="*,Auto" RowSpacing="10">
+        <Border BorderThickness="1" BorderBrush="#40607080" CornerRadius="8"
+                Background="Black" ClipToBounds="True" MinHeight="120">
+          <Grid>
+            <ContentControl Content="{Binding VideoSurface}"
+                            IsVisible="{Binding HasVideoPlayback}"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch" />
+            <TextBlock Text="Der Videoplayer ist auf dieser Plattform nicht verfügbar."
+                       IsVisible="{Binding ShowVideoPlaceholder}"
+                       Foreground="White" TextWrapping="Wrap"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="24" />
+          </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+          <Button Grid.Column="0" Classes="media-icon"
+                  Content="{Binding VideoPlayPauseSymbol}"
+                  Command="{Binding ToggleVideoPlaybackCommand}"
+                  ToolTip.Tip="{Binding VideoPlayPauseToolTip}" />
+          <Button Grid.Column="1" Classes="media-icon" Content="−10"
+                  Command="{Binding SeekVideoBackwardCommand}"
+                  ToolTip.Tip="10 Sekunden zurück (Pfeil links oder J)" />
+          <Button Grid.Column="2" Classes="media-icon" Content="+10"
+                  Command="{Binding SeekVideoForwardCommand}"
+                  ToolTip.Tip="10 Sekunden vor (Pfeil rechts oder L)" />
+          <Slider x:Name="VideoTimeline" Grid.Column="3"
+                  Minimum="0" Maximum="{Binding VideoTimelineMaximum}"
+                  Value="{Binding VideoPositionMilliseconds, Mode=TwoWay}"
+                  IsEnabled="{Binding CanSeekVideo}"
+                  VerticalAlignment="Center"
+                  PointerPressed="VideoTimeline_PointerPressed"
+                  PointerReleased="VideoTimeline_PointerReleased"
+                  PointerCaptureLost="VideoTimeline_PointerCaptureLost"
+                  ToolTip.Tip="Klicken oder ziehen, um die Wiedergabeposition zu ändern" />
+          <TextBlock Grid.Column="4" Text="{Binding VideoTimeText}"
+                     FontFamily="Cascadia Mono,Consolas,monospace"
+                     VerticalAlignment="Center" />
+        </Grid>
       </Grid>
 
       <Border IsVisible="{Binding IsGeneric}" Padding="24" BorderThickness="1"

@@ -14,8 +14,16 @@ public sealed class CoreModelTests
         file.Content = [4, 5];
         Assert.Equal(ThingData.GetMD5Hash([4, 5]), file.MD5Hash);
 
+        byte[] detached = Assert.IsType<byte[]>(file.DetachContent());
+        Assert.Equal(new byte[] { 4, 5 }, detached);
+        Assert.Null(file.Content);
+
+        byte[] released = detached.ToArray();
+        file.Content = released;
+
         file.ReleaseContent();
         Assert.Null(file.Content);
+        Assert.All(released, value => Assert.Equal((byte)0, value));
         Assert.NotEqual(0UL, file.ID);
 
         file.Clear();

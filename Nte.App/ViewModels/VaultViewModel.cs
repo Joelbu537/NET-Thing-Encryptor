@@ -14,6 +14,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private readonly Action<string> _setStatus;
     private readonly Action<VaultPreferences> _applyPreferences;
     private readonly bool _useDocumentWindows;
+    private readonly IVideoPlaybackService? _videoPlaybackService;
     private readonly List<(ulong Id, string Name)> _path = [(0, "Tresor")];
     private readonly List<VaultItemViewModel> _folderItems = [];
     private readonly List<VaultItemViewModel> _selectedItems = [];
@@ -56,7 +57,8 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         Action onLocked,
         Action<string> setStatus,
         Action<VaultPreferences>? applyPreferences = null,
-        bool useDocumentWindows = false)
+        bool useDocumentWindows = false,
+        IVideoPlaybackService? videoPlaybackService = null)
     {
         _vault = vault;
         _filePicker = filePicker;
@@ -64,6 +66,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         _setStatus = setStatus;
         _applyPreferences = applyPreferences ?? (_ => { });
         _useDocumentWindows = useDocumentWindows;
+        _videoPlaybackService = videoPlaybackService;
 
         BackCommand = new AsyncCommand(GoBackAsync, () => !IsBusy);
         GoRootCommand = new AsyncCommand(GoRootAsync, () => !IsBusy);
@@ -481,7 +484,8 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                 CloseActiveDocumentAndRefresh,
                 _setStatus,
                 imageSeries,
-                imageSeries is null ? null : _vault.ReadFileAsync);
+                imageSeries is null ? null : _vault.ReadFileAsync,
+                videoPlaybackService: _videoPlaybackService);
         }, "Der Inhalt konnte nicht geöffnet werden");
     }
 

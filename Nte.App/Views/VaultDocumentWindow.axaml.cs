@@ -17,6 +17,7 @@ public sealed partial class VaultDocumentWindow : Window
             .Configure(this);
         PointerPressed += OnPointerPressed;
         KeyDown += OnKeyDown;
+        Opened += OnOpened;
         Closing += OnClosing;
     }
 
@@ -28,6 +29,12 @@ public sealed partial class VaultDocumentWindow : Window
 
     private static void OnPointerPressed(object? sender, PointerPressedEventArgs args) =>
         App.NotifyUserInteraction();
+
+    private void OnOpened(object? sender, EventArgs args)
+    {
+        if (DataContext is VaultDocumentViewModel { IsVideo: true })
+            WindowState = WindowState.Maximized;
+    }
 
     private void OnKeyDown(object? sender, KeyEventArgs args)
     {
