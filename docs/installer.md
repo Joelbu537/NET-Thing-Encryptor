@@ -73,6 +73,21 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 - [ ] Signierte APK lässt sich auf einem realen Android-12+-Gerät installieren und starten
 - [ ] Sperren im Hintergrund und Dokumentanbieter-Import/-Export auf einem realen Gerät geprüft
 
+## Automatisierter WinForms-Upgrade-Nachweis
+
+M7 ergänzt einen isolierten CI-Test für den direkten Wechsel der installierten Produktlinie. `build/build-installer.ps1 -ProductLine WinFormsRollback` erzeugt ein eindeutig benanntes Rückfallpaket unter `artifacts/legacy-winforms`; der normale Release-Workflow veröffentlicht es nicht.
+
+`build/test-winforms-upgrade.ps1` verweigert die Ausführung, wenn im Testkonto bereits eine Installation oder ein Benutzerdatenordner vorhanden ist. Der Test:
+
+1. kopiert das unveränderte M0-/3.7-Kompatibilitätsfixture in den echten Benutzer-Datenpfad;
+2. installiert das WinForms-Rückfallpaket;
+3. aktualisiert dieselbe App-ID und dasselbe Verzeichnis mit dem Avalonia-Installer;
+4. prüft Avalonia-Assemblies, Startprobe und Entfernung alter Medienbibliotheken;
+5. vergleicht jede Fixture-Datei nach Pfad, Länge und SHA-256;
+6. deinstalliert die Anwendung und vergleicht das Fixture erneut.
+
+Der Test ersetzt nicht das manuelle Upgrade einer produktionsnahen Tresorkopie, schließt aber die Lücke zwischen getrennten Clean-Install-Smoke-Tests.
+
 ## Wiederherstellung bei Release-Problemen
 
 Ein fehlerhaftes Release wird nicht durch Überschreiben des bestehenden Tags repariert. Stattdessen wird der Release-Eintrag als problematisch markiert, die Ursache behoben, die Patch-Version erhöht und ein neues signiertes Release erzeugt. Da Windows-Downgrades blockiert sind und Android einen monoton steigenden Versionscode verlangt, muss auch eine aus dem WinForms-Rückfallzweig gebaute Ersatzversion höhere Desktop- und Android-Versionswerte erhalten. Der Rückfall darf niemals ein älteres Datenformat zurückschreiben; vor Aktivierung wird eine Kopie eines produktionsnahen Tresors mit beiden Clients geprüft.

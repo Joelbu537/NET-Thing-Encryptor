@@ -2,6 +2,8 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
+    [ValidateSet("Avalonia", "WinFormsRollback")]
+    [string]$ProductLine = "Avalonia",
     [string]$ExpectedVersion,
     [switch]$SingleFile,
     [switch]$SkipInstaller,
@@ -180,15 +182,37 @@ if ([string]::IsNullOrWhiteSpace($TimestampUrl)) {
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$solutionFile = Join-Path $repoRoot "build\desktop.slnf"
-$projectFile = Join-Path $repoRoot "Nte.Desktop\Nte.Desktop.csproj"
+$isWinFormsRollback = $ProductLine -eq "WinFormsRollback"
+$solutionFile = Join-Path $repoRoot $(if ($isWinFormsRollback) {
+    "build\legacy-winforms.slnf"
+} else {
+    "build\desktop.slnf"
+})
+$projectFile = Join-Path $repoRoot $(if ($isWinFormsRollback) {
+    "NET Thing Encryptor\NET Thing Encryptor.csproj"
+} else {
+    "Nte.Desktop\Nte.Desktop.csproj"
+})
 $innoScript = Join-Path $repoRoot "installer\NETThingEncryptor.iss"
-$iconPath = Join-Path $repoRoot "Nte.Desktop\image.ico"
-$artifactRoot = Join-Path $repoRoot "artifacts"
+$iconPath = Join-Path $repoRoot $(if ($isWinFormsRollback) {
+    "NET Thing Encryptor\image.ico"
+} else {
+    "Nte.Desktop\image.ico"
+})
+$artifactRoot = Join-Path $repoRoot $(if ($isWinFormsRollback) {
+    "artifacts\legacy-winforms"
+} else {
+    "artifacts"
+})
 $publishDir = Join-Path $artifactRoot "publish\NET Thing Encryptor\$Runtime"
 $installerOutputDir = Join-Path $artifactRoot "installer"
 $version = Get-ProjectProperty -ProjectFile $projectFile -PropertyName "Version" -DefaultValue "0.0.0"
 $fileVersion = Get-ProjectProperty -ProjectFile $projectFile -PropertyName "FileVersion" -DefaultValue "$version.0"
+$outputBaseFilename = if ($isWinFormsRollback) {
+    "NET-Thing-Encryptor-WinForms-Rollback-Setup-$version"
+} else {
+    "NET-Thing-Encryptor-Setup-$version"
+}
 $singleFileValue = if ($SingleFile) { "true" } else { "false" }
 $signingConfiguration = Get-SigningConfiguration
 
@@ -239,23 +263,50 @@ $publishArguments = @(
     "/p:PublishReadyToRun=false"
 )
 
-Write-Host "Publishing NET Thing Encryptor $version for $Runtime..."
+Write-Host "Publishing NET Thing Encryptor $version ($ProductLine) for $Runtime..."
 Invoke-DotNet -Arguments $publishArguments
+
+$libVlcDirectory = Join-Path $publishDir "libvlc"
+if ($isWinFormsRollback -and (Test-Path -LiteralPath $libVlcDirectory -PathType Container)) {
+    Get-ChildItem -LiteralPath $libVlcDirectory -Directory |
+        Where-Object { $_.Name -like "win-*" -and $_.Name -ne $Runtime } |
+        ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }
+}
 
 $publishedExecutable = Join-Path $publishDir "NET Thing Encryptor.exe"
 $requiredPublishedFiles = @($publishedExecutable)
 if (-not $SingleFile) {
-    $requiredPublishedFiles += @(
-        (Join-Path $publishDir "Avalonia.dll"),
-        (Join-Path $publishDir "Nte.App.dll"),
-        (Join-Path $publishDir "Nte.Core.dll"),
-        (Join-Path $publishDir "Nte.Storage.dll"),
-        (Join-Path $publishDir "hostfxr.dll")
-    )
+    if ($isWinFormsRollback) {
+        $requiredPublishedFiles += @(
+            (Join-Path $publishDir "LibVLCSharp.dll"),
+            (Join-Path $publishDir "Magick.NET.Core.dll"),
+            (Join-Path $publishDir "Nte.Core.dll"),
+            (Join-Path $publishDir "Nte.Storage.dll"),
+            (Join-Path $publishDir "hostfxr.dll")
+        )
+    }
+    else {
+        $requiredPublishedFiles += @(
+            (Join-Path $publishDir "Avalonia.dll"),
+            (Join-Path $publishDir "Nte.App.dll"),
+            (Join-Path $publishDir "Nte.Core.dll"),
+            (Join-Path $publishDir "Nte.Storage.dll"),
+            (Join-Path $publishDir "hostfxr.dll")
+        )
+    }
 }
 foreach ($requiredFile in $requiredPublishedFiles) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
         throw "The published application is incomplete. Missing: $requiredFile"
+    }
+}
+
+if ($isWinFormsRollback -and -not $SingleFile) {
+    $nativeVlc = Get-ChildItem -LiteralPath $publishDir -Filter "libvlc.dll" -File -Recurse |
+        Where-Object { $_.FullName -match 'win-x64' } |
+        Select-Object -First 1
+    if (-not $nativeVlc) {
+        throw "The WinForms rollback publish does not contain native x64 VLC files."
     }
 }
 
@@ -283,6 +334,7 @@ $innoArguments = @(
     "/DAppFileVersion=$fileVersion",
     "/DSourceDir=$publishDir",
     "/DOutputDir=$installerOutputDir",
+    "/DOutputBaseFilename=$outputBaseFilename",
     "/DIconPath=$iconPath"
 )
 
@@ -292,7 +344,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }
 
-$installerPath = Join-Path $installerOutputDir "NET-Thing-Encryptor-Setup-$version.exe"
+$installerPath = Join-Path $installerOutputDir "$outputBaseFilename.exe"
 if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
     throw "The expected installer was not created: $installerPath"
 }

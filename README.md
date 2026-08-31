@@ -45,7 +45,7 @@ dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
 dotnet test ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release
 ```
 
-Der WinForms-Rückfallpfad benötigt weiterhin .NET 11 Preview 7 und wird in einem eigenen CI-Job über `build/legacy-winforms.slnf` geprüft. CI testet den gemeinsamen Kern unter Linux, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64, baut Android-AAB und -APK und erzeugt den Avalonia-Windows-Installer. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md), [docs/m4-android-client.md](docs/m4-android-client.md), [docs/m5-feature-parity.md](docs/m5-feature-parity.md) und [docs/m6-cutover.md](docs/m6-cutover.md).
+Der WinForms-Rückfallpfad benötigt weiterhin .NET 11 Preview 7 und wird in einem eigenen CI-Job über `build/legacy-winforms.slnf` geprüft. CI testet den gemeinsamen Kern unter Linux, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64, baut Android-AAB und -APK und erzeugt den Avalonia-Windows-Installer. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md), [docs/m4-android-client.md](docs/m4-android-client.md), [docs/m5-feature-parity.md](docs/m5-feature-parity.md), [docs/m6-cutover.md](docs/m6-cutover.md) und [docs/m7-winforms-retirement.md](docs/m7-winforms-retirement.md).
 
 ## Installer bauen
 
@@ -80,6 +80,18 @@ Nützliche Optionen:
 ```
 
 Die Multi-File-Ausgabe bleibt der geprüfte Standard. Der Installer enthält seit M6 `Nte.Desktop`; beim Upgrade entfernt er eindeutig veraltete VLC- und ImageMagick-Bibliotheken der WinForms-Ausgabe, ohne den möglicherweise portablen `Data`-Ordner im Installationsverzeichnis zu verändern.
+
+### WinForms-Rückfallpaket
+
+M7 hält den eingefrorenen WinForms-Stand bis zum Erreichen der dokumentierten Löschkriterien reproduzierbar. Der Build benötigt zusätzlich .NET 11 Preview 7:
+
+```powershell
+.\build\build-installer.ps1 `
+  -ProductLine WinFormsRollback `
+  -Clean
+```
+
+Die Ausgabe `artifacts\legacy-winforms\installer\NET-Thing-Encryptor-WinForms-Rollback-Setup-<Version>.exe` dient ausschließlich CI und einem ausdrücklich beschlossenen Notfall-Rückfall. Der reguläre Release-Workflow durchsucht dieses Verzeichnis nicht. `build/test-winforms-upgrade.ps1` installiert das Rückfallpaket in einem isolierten Konto, aktualisiert es in-place auf Avalonia und vergleicht das M0-Kompatibilitätsfixture vor Upgrade und nach Deinstallation bytegenau.
 
 ## Code-Signierung
 
@@ -144,7 +156,7 @@ Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselb
 
 ## Automatisierte Releases
 
-- `.github/workflows/ci.yml` testet auf Pull Requests und auf `master` die gemeinsamen Komponenten, beide priorisierten Plattformen, die sekundären Desktop-Publishes und den WinForms-Rückfallpfad.
+- `.github/workflows/ci.yml` testet auf Pull Requests und auf `master` die gemeinsamen Komponenten, beide priorisierten Plattformen, die sekundären Desktop-Publishes sowie den WinForms-Rückfallbuild und das in-place Upgrade auf Avalonia.
 - `.github/workflows/release.yml` wird durch Tags wie `v3.7.0` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
 
 Für signierte Releases werden diese Repository-Secrets benötigt:

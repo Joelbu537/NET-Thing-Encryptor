@@ -18,6 +18,10 @@
 #define OutputDir "..\artifacts\installer"
 #endif
 
+#ifndef OutputBaseFilename
+#define OutputBaseFilename "NET-Thing-Encryptor-Setup-{#AppVersion}"
+#endif
+
 #ifndef IconPath
 #define IconPath "..\Nte.Desktop\image.ico"
 #endif
@@ -37,7 +41,7 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableWelcomePage=no
 OutputDir={#OutputDir}
-OutputBaseFilename=NET-Thing-Encryptor-Setup-{#AppVersion}
+OutputBaseFilename={#OutputBaseFilename}
 SetupIconFile={#IconPath}
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}

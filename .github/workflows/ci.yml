@@ -163,12 +163,13 @@ jobs:
             artifacts/installer/*.sha256
           if-no-files-found: error
 
-  legacy-winforms:
+  windows-upgrade-proof:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: true
+      AVALONIA_TELEMETRY_OPTOUT: 1
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -180,5 +181,31 @@ jobs:
             10.0.400
             11.0.100-preview.7.26381.103
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue) -and
+              -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress --yes
+          }
+
       - name: Test WinForms rollback source
         run: dotnet test ./build/legacy-winforms.slnf -c Release
+
+      - name: Build rollback and Avalonia installers
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          .\build\build-installer.ps1 -ProductLine WinFormsRollback -Clean -SkipTests -ExpectedVersion $version
+          .\build\build-installer.ps1 -Clean -SkipTests -ExpectedVersion $version
+
+      - name: Prove WinForms-to-Avalonia in-place upgrade
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          .\build\test-winforms-upgrade.ps1 `
+            -LegacyInstallerPath ".\artifacts\legacy-winforms\installer\NET-Thing-Encryptor-WinForms-Rollback-Setup-$version.exe" `
+            -AvaloniaInstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe" `
+            -ExpectedVersion $version
