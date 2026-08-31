@@ -215,6 +215,37 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task DesktopDocumentPresentation_KeepsVaultVisibleAndDisablesInlineViewer()
+    {
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [TextFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Inhalt"u8.ToArray());
+        var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+
+        Assert.NotNull(viewModel.ActiveDocument);
+        Assert.True(viewModel.UseDocumentWindows);
+        Assert.True(viewModel.ShowVaultContent);
+        Assert.False(viewModel.ShowInlineDocument);
+    }
+
+    [Fact]
     public async Task FolderCreationAndArchiveExportUseApplicationService()
     {
         var vault = new FakeVaultApplicationService();

@@ -10,6 +10,9 @@ public sealed partial class SettingsWindow : Window
     public SettingsWindow()
     {
         AvaloniaXamlLoader.Load(this);
+        (this.FindControl<WindowFrame>("Frame")
+            ?? throw new InvalidOperationException("The settings window frame is unavailable."))
+            .Configure(this);
         PointerPressed += OnPointerPressed;
         KeyDown += OnKeyDown;
         Closing += OnClosing;

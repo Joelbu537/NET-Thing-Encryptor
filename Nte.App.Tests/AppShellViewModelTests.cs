@@ -16,7 +16,7 @@ public sealed class AppShellViewModelTests
         await shell.InitializeAsync();
 
         Assert.IsType<UnlockViewModel>(shell.CurrentPage);
-        Assert.Equal("v4.0.0", shell.VersionText);
+        Assert.Equal("v4.1.1", shell.VersionText);
     }
 
     [Fact]
@@ -151,6 +151,24 @@ public sealed class AppShellViewModelTests
         Assert.False(vault.IsUnlocked);
         Assert.IsType<UnlockViewModel>(shell.CurrentPage);
         Assert.Contains("Verlassen", shell.StatusMessage);
+    }
+
+    [Fact]
+    public async Task InactivityLock_ClearsSessionWithoutStatusLabel()
+    {
+        var vault = new FakeVaultApplicationService();
+        using var shell = new AppShellViewModel(vault, new FakeFilePickerService());
+        await shell.InitializeAsync();
+        var unlock = Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        unlock.Password = "correct horse battery staple";
+        await unlock.UnlockCommand.ExecuteAsync();
+
+        bool handled = shell.LockForSecurity(SessionLockReason.Inactivity);
+
+        Assert.True(handled);
+        Assert.False(vault.IsUnlocked);
+        Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        Assert.Empty(shell.StatusMessage);
     }
 
     [Fact]

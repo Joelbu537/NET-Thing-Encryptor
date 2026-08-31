@@ -2,20 +2,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Nte.App.ViewModels"
         xmlns:views="using:Nte.App.Views"
-        x:Class="Nte.App.Views.SettingsWindow"
-        x:DataType="vm:VaultViewModel"
-        Title="Einstellungen"
-        Width="600"
-        Height="650"
-        MinWidth="480"
-        MinHeight="520"
+        x:Class="Nte.App.Views.VaultDocumentWindow"
+        x:DataType="vm:VaultDocumentViewModel"
+        Title="{Binding DisplayName}"
+        Width="960"
+        Height="720"
+        MinWidth="640"
+        MinHeight="480"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         Background="{DynamicResource AppSurfaceBrush}">
-  <views:WindowFrame x:Name="Frame" Title="Einstellungen"
-                     ShowMinimizeButton="False" ShowMaximizeButton="False">
+  <views:WindowFrame x:Name="Frame" Title="{Binding DisplayName}">
     <views:WindowFrame.WindowContent>
-      <views:SettingsView />
+      <views:VaultDocumentView />
     </views:WindowFrame.WindowContent>
   </views:WindowFrame>
 </Window>

@@ -2,7 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Nte.App.ViewModels"
              x:Class="Nte.App.Views.VaultDocumentView"
-             x:DataType="vm:VaultDocumentViewModel">
+             x:DataType="vm:VaultDocumentViewModel"
+             Focusable="True"
+             KeyDown="VaultDocumentView_KeyDown">
   <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="10">
     <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
       <StackPanel>
@@ -19,7 +21,7 @@
           <Button Content="Speichern" Classes="primary" Command="{Binding SaveCommand}" Margin="0,0,8,6" />
           <Button Content="Rückgängig" Click="Undo_Click" Margin="0,0,8,6" />
           <Button Content="Wiederholen" Click="Redo_Click" Margin="0,0,12,6" />
-          <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Im Text suchen"
+          <TextBox Classes="single-line" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Im Text suchen"
                    Width="220" Margin="0,0,8,6" />
           <TextBlock Text="{Binding SearchResultText}" VerticalAlignment="Center" Margin="0,0,8,6" />
         </WrapPanel>
@@ -32,16 +34,20 @@
 
       <Grid IsVisible="{Binding IsImageDocument}" RowDefinitions="Auto,*" RowSpacing="8">
         <WrapPanel IsVisible="{Binding IsImageSeries}">
-          <Button Content="Vorheriges" Command="{Binding PreviousImageCommand}" Margin="0,0,8,6" />
           <TextBlock Text="{Binding ImagePositionText}" VerticalAlignment="Center" Margin="0,0,12,6" />
-          <Button Content="Nächstes" Command="{Binding NextImageCommand}" Margin="0,0,8,6" />
           <Button Content="Reihenfolge mischen" Command="{Binding RandomiseImagesCommand}" Margin="0,0,8,6" />
           <Button Content="{Binding AutoplayButtonText}" Command="{Binding ToggleAutoplayCommand}" Margin="0,0,8,6" />
         </WrapPanel>
-        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#40607080" CornerRadius="8">
-          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-            <Image Source="{Binding Image}" Stretch="Uniform" />
-          </ScrollViewer>
+        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#40607080" CornerRadius="8"
+                ClipToBounds="True">
+          <Grid>
+            <Image Source="{Binding Image}" Stretch="Uniform"
+                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+            <Grid ColumnDefinitions="*,*" IsVisible="{Binding IsImageSeries}">
+              <Border Grid.Column="0" Background="Transparent" Tapped="PreviousImageArea_Tapped" />
+              <Border Grid.Column="1" Background="Transparent" Tapped="NextImageArea_Tapped" />
+            </Grid>
+          </Grid>
         </Border>
       </Grid>
 
@@ -63,8 +69,8 @@
         <StackPanel Spacing="8">
           <TextBlock Text="Ungespeicherte Textänderungen verwerfen?" FontWeight="SemiBold" />
           <WrapPanel>
-            <Button Content="Änderungen verwerfen" Command="{Binding DiscardAndCloseCommand}" Margin="0,0,8,0" />
-            <Button Content="Weiter bearbeiten" Command="{Binding CancelCloseCommand}" />
+            <Button Content="Weiter bearbeiten" Command="{Binding CancelCloseCommand}" Margin="0,0,8,0" />
+            <Button Content="Änderungen verwerfen" Command="{Binding DiscardAndCloseCommand}" />
           </WrapPanel>
         </StackPanel>
       </Border>

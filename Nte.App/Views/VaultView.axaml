@@ -38,6 +38,10 @@
                   ToolTip.Tip="Zurück" AutomationProperties.Name="Zurück">
             <Image Source="/Assets/Legacy/imageres_return.ico" Width="28" Height="28" />
           </Button>
+          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
+                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
+            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
+          </Button>
           <Button Classes="toolbar" Command="{Binding ImportDocumentsCommand}"
                   ToolTip.Tip="Neue Datei importieren" AutomationProperties.Name="Neue Datei importieren">
             <Image Source="/Assets/Legacy/imageres_new_file.ico" Width="28" Height="28" />
@@ -63,10 +67,6 @@
         </Border>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal">
-          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
-                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
-            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
-          </Button>
           <Button Classes="toolbar" Command="{Binding ToggleSettingsCommand}"
                   ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
             <Image Source="/Assets/Legacy/shell32_gear.ico" Width="28" Height="28" />
@@ -81,13 +81,17 @@
 
       <Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="5"
             IsVisible="{OnFormFactor Desktop=False, Mobile=True}">
-        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="5">
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="5">
           <Button Classes="toolbar" Command="{Binding BackCommand}"
                   ToolTip.Tip="Zurück" AutomationProperties.Name="Zurück">
             <Image Source="/Assets/Legacy/imageres_return.ico" Width="28" Height="28" />
           </Button>
+          <Button Grid.Column="1" Classes="toolbar" Command="{Binding GoRootCommand}"
+                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
+            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
+          </Button>
 
-          <Border Grid.Column="1" BorderThickness="1" BorderBrush="#50607080" CornerRadius="5"
+          <Border Grid.Column="2" BorderThickness="1" BorderBrush="#50607080" CornerRadius="5"
                   Padding="10,0" Background="{DynamicResource ControlLowBrush}"
                   MinHeight="44" VerticalAlignment="Stretch">
             <TextBlock Text="{Binding Breadcrumb}" VerticalAlignment="Center"
@@ -96,11 +100,11 @@
                        AutomationProperties.Name="Aktueller Pfad" />
           </Border>
 
-          <Button Grid.Column="2" Classes="toolbar" Command="{Binding ToggleSettingsCommand}"
+          <Button Grid.Column="3" Classes="toolbar" Command="{Binding ToggleSettingsCommand}"
                   ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
             <Image Source="/Assets/Legacy/shell32_gear.ico" Width="28" Height="28" />
           </Button>
-          <Button Grid.Column="3" Classes="toolbar" Command="{Binding LockCommand}"
+          <Button Grid.Column="4" Classes="toolbar" Command="{Binding LockCommand}"
                   ToolTip.Tip="Tresor sperren" AutomationProperties.Name="Tresor sperren" Margin="0">
             <PathIcon Width="22" Height="22"
                       Data="M7,10 L7,7 A5,5 0 0 1 17,7 L17,10 L19,10 L19,22 L5,22 L5,10 Z M9,10 L15,10 L15,7 A3,3 0 0 0 9,7 Z M12,14 A2,2 0 0 0 11,17.73 L11,19 L13,19 L13,17.73 A2,2 0 0 0 12,14 Z" />
@@ -108,10 +112,6 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal">
-          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
-                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
-            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
-          </Button>
           <Button Classes="toolbar" Command="{Binding ImportDocumentsCommand}"
                   ToolTip.Tip="Neue Datei importieren" AutomationProperties.Name="Neue Datei importieren">
             <Image Source="/Assets/Legacy/imageres_new_file.ico" Width="28" Height="28" />
@@ -132,7 +132,8 @@
         <StackPanel Spacing="7">
           <WrapPanel>
             <Grid Width="280" Margin="0,0,8,5">
-              <TextBox Text="{Binding SearchQuery, Mode=TwoWay}"
+              <TextBox Classes="single-line"
+                       Text="{Binding SearchQuery, Mode=TwoWay}"
                        PlaceholderText="Name, Erweiterung oder Typ"
                        Padding="8,0,34,0"
                        KeyDown="SearchTextBox_KeyDown" />
@@ -153,13 +154,13 @@
             </Button>
           </WrapPanel>
           <WrapPanel IsVisible="{Binding ShowAdvancedSearch}">
-            <TextBox Text="{Binding SearchExtension, Mode=TwoWay}" PlaceholderText="Erweiterung"
+            <TextBox Classes="single-line" Text="{Binding SearchExtension, Mode=TwoWay}" PlaceholderText="Erweiterung"
                      Width="115" Margin="0,0,8,5" />
             <ComboBox ItemsSource="{Binding SearchTypes}" SelectedItem="{Binding SelectedSearchType, Mode=TwoWay}"
                       Width="150" Margin="0,0,8,5" />
-            <TextBox Text="{Binding MinimumSizeText, Mode=TwoWay}" PlaceholderText="Min. Bytes"
+            <TextBox Classes="single-line" Text="{Binding MinimumSizeText, Mode=TwoWay}" PlaceholderText="Min. Bytes"
                      Width="115" Margin="0,0,8,5" />
-            <TextBox Text="{Binding MaximumSizeText, Mode=TwoWay}" PlaceholderText="Max. Bytes"
+            <TextBox Classes="single-line" Text="{Binding MaximumSizeText, Mode=TwoWay}" PlaceholderText="Max. Bytes"
                      Width="115" Margin="0,0,8,5" />
             <DatePicker SelectedDate="{Binding CreatedFrom, Mode=TwoWay}" Width="150" Margin="0,0,8,5" />
             <DatePicker SelectedDate="{Binding CreatedTo, Mode=TwoWay}" Width="150" Margin="0,0,8,5" />
@@ -261,7 +262,7 @@
       <TextBlock Grid.Row="3" Classes="error" Text="{Binding ErrorMessage}" />
     </Grid>
 
-    <ContentControl Content="{Binding ActiveDocument}" IsVisible="{Binding HasActiveDocument}" ZIndex="20" />
+    <ContentControl Content="{Binding ActiveDocument}" IsVisible="{Binding ShowInlineDocument}" ZIndex="20" />
 
     <Grid IsVisible="{Binding HasActionDialog}" ZIndex="30">
       <Border Background="{DynamicResource AppScrimBrush}" />
@@ -274,21 +275,21 @@
             <TextBlock Text="Neuer Ordner" FontSize="22" FontWeight="SemiBold" />
             <TextBlock Text="Dateien können aus Formatgründen nur innerhalb eines Ordners liegen."
                        TextWrapping="Wrap" Opacity="0.7" />
-            <TextBox Text="{Binding NewFolderName, Mode=TwoWay}" PlaceholderText="Ordnername" />
+            <TextBox Classes="single-line" Text="{Binding NewFolderName, Mode=TwoWay}" PlaceholderText="Ordnername" />
             <WrapPanel HorizontalAlignment="Right">
-              <Button Content="Anlegen" Classes="primary" Command="{Binding CreateFolderCommand}"
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}"
                       Margin="0,0,8,0" />
-              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+              <Button Content="Anlegen" Classes="primary" Command="{Binding CreateFolderCommand}" />
             </WrapPanel>
           </StackPanel>
 
           <StackPanel IsVisible="{Binding ShowRenameDialog}" Spacing="12">
             <TextBlock Text="Umbenennen" FontSize="22" FontWeight="SemiBold" />
-            <TextBox Text="{Binding RenameName, Mode=TwoWay}" PlaceholderText="Neuer Name" />
+            <TextBox Classes="single-line" Text="{Binding RenameName, Mode=TwoWay}" PlaceholderText="Neuer Name" />
             <WrapPanel HorizontalAlignment="Right">
-              <Button Content="Umbenennen" Classes="primary" Command="{Binding RenameCommand}"
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}"
                       Margin="0,0,8,0" />
-              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+              <Button Content="Umbenennen" Classes="primary" Command="{Binding RenameCommand}" />
             </WrapPanel>
           </StackPanel>
 
@@ -300,9 +301,9 @@
                       DisplayMemberBinding="{Binding Path}"
                       PlaceholderText="Zielordner" />
             <WrapPanel HorizontalAlignment="Right">
-              <Button Content="Verschieben" Classes="primary" Command="{Binding MoveCommand}"
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}"
                       Margin="0,0,8,0" />
-              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+              <Button Content="Verschieben" Classes="primary" Command="{Binding MoveCommand}" />
             </WrapPanel>
           </StackPanel>
 
@@ -310,9 +311,9 @@
             <TextBlock Text="Endgültig löschen?" FontSize="22" FontWeight="SemiBold" />
             <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" />
             <WrapPanel HorizontalAlignment="Right">
-              <Button Content="Endgültig löschen" Classes="danger" Command="{Binding ConfirmDeleteCommand}"
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}"
                       Margin="0,0,8,0" />
-              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+              <Button Content="Endgültig löschen" Classes="danger" Command="{Binding ConfirmDeleteCommand}" />
             </WrapPanel>
           </StackPanel>
 

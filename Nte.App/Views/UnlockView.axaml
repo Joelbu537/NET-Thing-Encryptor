@@ -8,16 +8,26 @@
     <Border Margin="16" MaxWidth="520" Padding="24" CornerRadius="12" BorderThickness="1"
             BorderBrush="#40607080" HorizontalAlignment="Center" VerticalAlignment="Center">
       <StackPanel Spacing="16">
-        <TextBlock Classes="page-title" Text="Tresor entsperren" />
-        <TextBlock Text="Gib dein Passwort ein. Beim ersten Start wird dieses Passwort für den neuen Tresor gesetzt."
+        <TextBlock Classes="page-title" Text="{Binding Heading}" />
+        <TextBlock Text="{Binding InstructionText}"
                    TextWrapping="Wrap" Opacity="0.75" />
         <TextBlock Text="Passwort" FontWeight="SemiBold" />
-        <TextBox Text="{Binding Password, Mode=TwoWay}"
+        <TextBox Classes="single-line"
+                 Text="{Binding Password, Mode=TwoWay}"
                  PasswordChar="●"
                  PlaceholderText="Passwort"
                  MinHeight="42" />
+        <StackPanel Spacing="8" IsVisible="{Binding IsPasswordConfirmationVisible}">
+          <TextBlock Text="Passwort bestätigen" FontWeight="SemiBold" />
+          <TextBox Classes="single-line"
+                   Text="{Binding PasswordConfirmation, Mode=TwoWay}"
+                   PasswordChar="●"
+                   PlaceholderText="Passwort bestätigen"
+                   MinHeight="42" />
+        </StackPanel>
         <Button Classes="primary" Content="Entsperren" Command="{Binding UnlockCommand}"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
                 MinHeight="42" IsDefault="True" />
         <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
         <Border Margin="0,8,0,0" Padding="14" CornerRadius="8" Background="#101769AA">

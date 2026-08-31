@@ -56,14 +56,16 @@ public sealed partial class App : Application
         var picker = new AvaloniaFilePickerService(
             GetActiveTopLevel,
             _lifecycleCoordinator);
-        _shell = new AppShellViewModel(vault, picker, applyPreferences: ApplyPreferences);
+        _shell = new AppShellViewModel(
+            vault,
+            picker,
+            applyPreferences: ApplyPreferences,
+            useDocumentWindows: ApplicationLifetime is IClassicDesktopStyleApplicationLifetime);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = new MainWindow
-            {
-                Content = CreateShellView()
-            };
+            var window = new MainWindow();
+            window.SetShellContent(CreateShellView());
             desktop.MainWindow = window;
             window.Opened += async (_, _) =>
             {

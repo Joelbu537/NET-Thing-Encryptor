@@ -13,6 +13,7 @@ public sealed partial class VaultView : UserControl
 {
     private VaultViewModel? _subscribedViewModel;
     private SettingsWindow? _settingsWindow;
+    private VaultDocumentWindow? _documentWindow;
     private bool _isUnloaded;
     private bool _isActivatingItem;
 
@@ -29,6 +30,7 @@ public sealed partial class VaultView : UserControl
         _isUnloaded = false;
         AttachViewModel();
         UpdateSettingsPresentation();
+        UpdateDocumentPresentation();
     }
 
     private void OnUnloaded(object? sender, RoutedEventArgs args)
@@ -39,6 +41,8 @@ public sealed partial class VaultView : UserControl
         _subscribedViewModel = null;
         _settingsWindow?.Close();
         _settingsWindow = null;
+        _documentWindow?.CloseFromViewModel();
+        _documentWindow = null;
     }
 
     private void AttachViewModel()
@@ -56,6 +60,8 @@ public sealed partial class VaultView : UserControl
     {
         if (args.PropertyName == nameof(VaultViewModel.ShowSettings))
             Dispatcher.UIThread.Post(UpdateSettingsPresentation);
+        else if (args.PropertyName == nameof(VaultViewModel.ActiveDocument))
+            Dispatcher.UIThread.Post(UpdateDocumentPresentation);
     }
 
     private void UpdateSettingsPresentation()
@@ -98,6 +104,51 @@ public sealed partial class VaultView : UserControl
                 _settingsWindow = null;
             if (!_isUnloaded && ReferenceEquals(DataContext, viewModel) && viewModel.ShowSettings)
                 viewModel.DismissSettings();
+        }
+    }
+
+    private void UpdateDocumentPresentation()
+    {
+        if (_isUnloaded || DataContext is not VaultViewModel { UseDocumentWindows: true } viewModel)
+            return;
+
+        VaultDocumentViewModel? document = viewModel.ActiveDocument;
+        if (document is null)
+        {
+            _documentWindow?.CloseFromViewModel();
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this) is not Window owner)
+            return;
+
+        if (_documentWindow is not null)
+        {
+            _documentWindow.Activate();
+            return;
+        }
+
+        var window = new VaultDocumentWindow { DataContext = document };
+        _documentWindow = window;
+        _ = ShowDocumentWindowAsync(window, owner, viewModel, document);
+    }
+
+    private async Task ShowDocumentWindowAsync(
+        VaultDocumentWindow window,
+        Window owner,
+        VaultViewModel viewModel,
+        VaultDocumentViewModel document)
+    {
+        try
+        {
+            await window.ShowDialog(owner);
+        }
+        finally
+        {
+            if (ReferenceEquals(_documentWindow, window))
+                _documentWindow = null;
+            if (ReferenceEquals(viewModel.ActiveDocument, document))
+                document.ForceClose();
         }
     }
 

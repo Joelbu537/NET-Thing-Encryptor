@@ -13,6 +13,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private readonly Action _onLocked;
     private readonly Action<string> _setStatus;
     private readonly Action<VaultPreferences> _applyPreferences;
+    private readonly bool _useDocumentWindows;
     private readonly List<(ulong Id, string Name)> _path = [(0, "Tresor")];
     private readonly List<VaultItemViewModel> _folderItems = [];
     private readonly List<VaultItemViewModel> _selectedItems = [];
@@ -54,13 +55,15 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         IFilePickerService filePicker,
         Action onLocked,
         Action<string> setStatus,
-        Action<VaultPreferences>? applyPreferences = null)
+        Action<VaultPreferences>? applyPreferences = null,
+        bool useDocumentWindows = false)
     {
         _vault = vault;
         _filePicker = filePicker;
         _onLocked = onLocked;
         _setStatus = setStatus;
         _applyPreferences = applyPreferences ?? (_ => { });
+        _useDocumentWindows = useDocumentWindows;
 
         BackCommand = new AsyncCommand(GoBackAsync, () => !IsBusy);
         GoRootCommand = new AsyncCommand(GoRootAsync, () => !IsBusy);
@@ -142,12 +145,15 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             if (!SetProperty(ref _activeDocument, value))
                 return;
             OnPropertyChanged(nameof(HasActiveDocument));
+            OnPropertyChanged(nameof(ShowInlineDocument));
             OnPropertyChanged(nameof(ShowVaultContent));
         }
     }
 
     public bool HasActiveDocument => ActiveDocument is not null;
-    public bool ShowVaultContent => ActiveDocument is null;
+    public bool UseDocumentWindows => _useDocumentWindows;
+    public bool ShowInlineDocument => ActiveDocument is not null && !UseDocumentWindows;
+    public bool ShowVaultContent => ActiveDocument is null || UseDocumentWindows;
 
     public string NewFolderName
     {

@@ -79,7 +79,7 @@ Nützliche Optionen:
 .\build\build-installer.ps1 -SkipTests
 
 # Sicherstellen, dass Projekt und Release-Tag dieselbe Version verwenden
-.\build\build-installer.ps1 -ExpectedVersion 4.0.0
+.\build\build-installer.ps1 -ExpectedVersion 4.1.1
 
 # Optionales Single-File-Paket; vor einer Veröffentlichung separat prüfen
 .\build\build-installer.ps1 -SingleFile
@@ -118,16 +118,16 @@ Die statische Prüfung validiert Version, SHA-256-Prüfsumme und optional die Si
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.0.0.exe" `
-  -ExpectedVersion 4.0.0
+  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.1.1.exe" `
+  -ExpectedVersion 4.1.1
 ```
 
 Der vollständige Smoke-Test installiert und deinstalliert die englische und deutsche Variante. Er darf nur in einem isolierten CI-Konto oder einer Test-VM ausgeführt werden:
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.0.0.exe" `
-  -ExpectedVersion 4.0.0 `
+  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.1.1.exe" `
+  -ExpectedVersion 4.1.1 `
   -RunInstallation `
   -AllowLocalMachineChanges
 ```
@@ -155,7 +155,7 @@ Ein alter `Data`-Ordner neben einer portablen EXE wird beim ersten Start atomisc
 ### Unbeaufsichtigte Installation
 
 ```powershell
-NET-Thing-Encryptor-Setup-4.0.0.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+NET-Thing-Encryptor-Setup-4.1.1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
 Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselben Silent-Schalter.
@@ -163,7 +163,7 @@ Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselb
 ## Automatisierte Releases
 
 - `.github/workflows/ci.yml` testet auf Pull Requests und auf `master` die gemeinsamen Komponenten, beide priorisierten Plattformen, die sekundären Desktop-Publishes sowie den WinForms-Rückfallbuild und das in-place Upgrade auf Avalonia.
-- `.github/workflows/release.yml` wird durch Tags wie `v4.0.0` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
+- `.github/workflows/release.yml` wird durch Tags wie `v4.1.1` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
 
 Für signierte Releases werden diese Repository-Secrets benötigt:
 

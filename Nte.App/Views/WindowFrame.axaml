@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:chrome="using:Avalonia.Controls.Chrome"
+             x:Class="Nte.App.Views.WindowFrame"
+             x:Name="FrameRoot">
+  <UserControl.Styles>
+    <Style Selector="Button.caption">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#28708090" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#FFC42B1C" />
+      <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border x:Name="FrameBorder" BorderBrush="#80607080">
+    <Grid>
+      <Grid RowDefinitions="Auto,*">
+        <Border x:Name="TitleBar" Grid.Row="0" Height="36"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="#50708090" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+            <Border Background="Transparent"
+                    PointerPressed="TitleBar_PointerPressed"
+                    DoubleTapped="TitleBar_DoubleTapped"
+                    chrome:WindowDecorationProperties.ElementRole="TitleBar">
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,8,0">
+                <Border Width="20" Height="20" CornerRadius="4" Background="#1769AA" Margin="0,0,8,0">
+                  <TextBlock Text="N" Foreground="White" FontSize="13" FontWeight="Bold"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="{Binding Title, ElementName=FrameRoot}"
+                           VerticalAlignment="Center" FontSize="13"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Border>
+
+            <Button Grid.Column="1" Classes="caption" Content="—"
+                    IsVisible="{Binding ShowMinimizeButton, ElementName=FrameRoot}"
+                    Click="Minimize_Click" ToolTip.Tip="Minimieren"
+                    AutomationProperties.Name="Minimieren"
+                    chrome:WindowDecorationProperties.ElementRole="MinimizeButton" />
+            <Button Grid.Column="2" x:Name="MaximizeButton" Classes="caption" Content="□"
+                    IsVisible="{Binding ShowMaximizeButton, ElementName=FrameRoot}"
+                    Click="Maximize_Click" ToolTip.Tip="Maximieren"
+                    AutomationProperties.Name="Maximieren"
+                    chrome:WindowDecorationProperties.ElementRole="MaximizeButton" />
+            <Button Grid.Column="3" Classes="caption close" Content="✕"
+                    Click="Close_Click" ToolTip.Tip="Schließen"
+                    AutomationProperties.Name="Schließen"
+                    chrome:WindowDecorationProperties.ElementRole="CloseButton" />
+          </Grid>
+        </Border>
+
+        <ContentPresenter Grid.Row="1"
+                          Content="{Binding WindowContent, ElementName=FrameRoot}" />
+      </Grid>
+
+      <Grid x:Name="ResizeLayer">
+        <Border Height="5" Margin="8,0" VerticalAlignment="Top" Background="Transparent"
+                Tag="North" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeN" />
+        <Border Height="5" Margin="8,0" VerticalAlignment="Bottom" Background="Transparent"
+                Tag="South" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeS" />
+        <Border Width="5" Margin="0,8" HorizontalAlignment="Left" Background="Transparent"
+                Tag="West" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeW" />
+        <Border Width="5" Margin="0,8" HorizontalAlignment="Right" Background="Transparent"
+                Tag="East" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeE" />
+        <Border Width="8" Height="8" HorizontalAlignment="Left" VerticalAlignment="Top"
+                Background="Transparent" Tag="NorthWest" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeNW" />
+        <Border Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="Transparent" Tag="NorthEast" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeNE" />
+        <Border Width="8" Height="8" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Background="Transparent" Tag="SouthWest" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeSW" />
+        <Border Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Background="Transparent" Tag="SouthEast" PointerPressed="ResizeBorder_PointerPressed"
+                chrome:WindowDecorationProperties.ElementRole="ResizeSE" />
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

@@ -7,7 +7,7 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
 {
     public event EventHandler<VaultNotificationEventArgs>? NotificationRaised;
 
-    public bool HasPersistedVault { get; set; }
+    public bool HasPersistedVault { get; set; } = true;
     public bool IsUnlocked { get; private set; }
     public bool InitializeResult { get; set; } = true;
     public bool UnlockResult { get; set; } = true;

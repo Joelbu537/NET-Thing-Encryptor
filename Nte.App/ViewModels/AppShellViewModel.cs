@@ -9,6 +9,7 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
     private readonly IVaultApplicationService _vault;
     private readonly IFilePickerService _filePicker;
     private readonly Action<VaultPreferences> _applyPreferences;
+    private readonly bool _useDocumentWindows;
     private readonly SynchronizationContext? _synchronizationContext;
     private object _currentPage = new LoadingViewModel();
     private string _statusMessage = string.Empty;
@@ -18,11 +19,13 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
         IVaultApplicationService vault,
         IFilePickerService filePicker,
         SynchronizationContext? synchronizationContext = null,
-        Action<VaultPreferences>? applyPreferences = null)
+        Action<VaultPreferences>? applyPreferences = null,
+        bool useDocumentWindows = false)
     {
         _vault = vault;
         _filePicker = filePicker;
         _applyPreferences = applyPreferences ?? (_ => { });
+        _useDocumentWindows = useDocumentWindows;
         _synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
         _vault.NotificationRaised += OnNotificationRaised;
     }
@@ -87,9 +90,9 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
         if (CurrentPage is not VaultViewModel vault)
             return false;
 
-        string message = reason == SessionLockReason.Inactivity
-            ? "Tresor nach der eingestellten Inaktivitätszeit automatisch gesperrt."
-            : "Tresor beim Verlassen der App automatisch gesperrt.";
+        string message = reason == SessionLockReason.Background
+            ? "Tresor beim Verlassen der App automatisch gesperrt."
+            : string.Empty;
         vault.LockImmediately(message);
         return true;
     }
@@ -125,7 +128,8 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
             _filePicker,
             () => ShowUnlock(),
             SetStatus,
-            _applyPreferences);
+            _applyPreferences,
+            _useDocumentWindows);
         CurrentPage = page;
         await page.InitializeAsync();
     }

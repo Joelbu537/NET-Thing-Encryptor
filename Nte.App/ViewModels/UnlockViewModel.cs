@@ -9,9 +9,11 @@ public sealed class UnlockViewModel : ObservableObject
     private readonly Func<Task> _onUnlocked;
     private readonly Action<string> _setStatus;
     private string _password = string.Empty;
+    private string _passwordConfirmation = string.Empty;
     private string _errorMessage = string.Empty;
     private bool _isBusy;
     private bool _canImportVault;
+    private bool _hasPersistedVault;
 
     public UnlockViewModel(
         IVaultApplicationService vault,
@@ -25,7 +27,8 @@ public sealed class UnlockViewModel : ObservableObject
         _onUnlocked = onUnlocked;
         _setStatus = setStatus;
         _errorMessage = initialError;
-        _canImportVault = !vault.HasPersistedVault;
+        _hasPersistedVault = vault.HasPersistedVault;
+        _canImportVault = !_hasPersistedVault;
         UnlockCommand = new AsyncCommand(UnlockAsync, () => !IsBusy);
         ImportVaultCommand = new AsyncCommand(
             ImportVaultAsync,
@@ -37,6 +40,36 @@ public sealed class UnlockViewModel : ObservableObject
         get => _password;
         set => SetProperty(ref _password, value);
     }
+
+    public string PasswordConfirmation
+    {
+        get => _passwordConfirmation;
+        set => SetProperty(ref _passwordConfirmation, value);
+    }
+
+    public bool HasPersistedVault
+    {
+        get => _hasPersistedVault;
+        private set
+        {
+            if (!SetProperty(ref _hasPersistedVault, value))
+                return;
+
+            OnPropertyChanged(nameof(IsPasswordConfirmationVisible));
+            OnPropertyChanged(nameof(Heading));
+            OnPropertyChanged(nameof(InstructionText));
+        }
+    }
+
+    public bool IsPasswordConfirmationVisible => !HasPersistedVault;
+
+    public string Heading => HasPersistedVault
+        ? "Tresor entsperren"
+        : "Passwort festlegen";
+
+    public string InstructionText => HasPersistedVault
+        ? "Gib das zum Entsperren des Tresors benötigte Passwort ein."
+        : "Gib ein Passwort zum Verschlüsseln deines Tresors ein.";
 
     public string ErrorMessage
     {
@@ -77,6 +110,18 @@ public sealed class UnlockViewModel : ObservableObject
             return;
         }
 
+        if (!HasPersistedVault && string.IsNullOrEmpty(PasswordConfirmation))
+        {
+            ErrorMessage = "Bitte das Passwort bestätigen.";
+            return;
+        }
+
+        if (!HasPersistedVault && Password != PasswordConfirmation)
+        {
+            ErrorMessage = "Die Passwörter stimmen nicht überein.";
+            return;
+        }
+
         IsBusy = true;
         ErrorMessage = string.Empty;
         try
@@ -88,6 +133,7 @@ public sealed class UnlockViewModel : ObservableObject
             }
 
             Password = string.Empty;
+            PasswordConfirmation = string.Empty;
             _setStatus(string.Empty);
             await _onUnlocked();
         }
@@ -113,6 +159,9 @@ public sealed class UnlockViewModel : ObservableObject
 
             await using Stream source = await file.OpenReadAsync();
             int count = await _vault.ImportVaultAsync(source);
+            HasPersistedVault = true;
+            Password = string.Empty;
+            PasswordConfirmation = string.Empty;
             CanImportVault = false;
             _setStatus($"Tresorarchiv importiert ({count} Objekte). Jetzt mit dessen Passwort entsperren.");
         }
