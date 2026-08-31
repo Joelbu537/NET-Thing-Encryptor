@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nte.App.ViewModels"
+             x:Class="Nte.App.Views.SettingsView"
+             x:DataType="vm:VaultViewModel">
+  <Border Background="{DynamicResource AppSurfaceBrush}"
+          Padding="24">
+    <Grid RowDefinitions="*,Auto" RowSpacing="20">
+      <ScrollViewer Grid.Row="0"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+        <StackPanel MaxWidth="720" Spacing="20">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="page-title" Text="Einstellungen" />
+            <TextBlock Text="Darstellung, Sicherheit und Bildwiedergabe des Tresors anpassen."
+                       Opacity="0.7"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+
+          <Border Padding="16"
+                  BorderBrush="#40607080"
+                  BorderThickness="1"
+                  CornerRadius="8">
+            <StackPanel Spacing="14">
+              <TextBlock Text="Darstellung und Sicherheit"
+                         FontSize="18"
+                         FontWeight="SemiBold" />
+
+              <CheckBox Content="Dunkles Erscheinungsbild"
+                        IsChecked="{Binding DarkMode, Mode=TwoWay}" />
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="Automatische Sperre" FontWeight="SemiBold" />
+                  <TextBlock Text="Minuten ohne Aktivität; 0 deaktiviert die automatische Sperre."
+                             Opacity="0.7"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <NumericUpDown Grid.Column="1"
+                               Width="120"
+                               Minimum="0"
+                               Maximum="1440"
+                               Increment="1"
+                               Value="{Binding AutoLockMinutes, Mode=TwoWay}" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Padding="16"
+                  BorderBrush="#40607080"
+                  BorderThickness="1"
+                  CornerRadius="8">
+            <StackPanel Spacing="14">
+              <TextBlock Text="Bildwiedergabe"
+                         FontSize="18"
+                         FontWeight="SemiBold" />
+
+              <CheckBox Content="Ausgewähltes Bild bei Zufallsreihenfolge einbeziehen"
+                        IsChecked="{Binding IncludeSelectedImageWhenRandomising, Mode=TwoWay}" />
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                  <TextBlock Text="Autoplay-Intervall" FontWeight="SemiBold" />
+                  <TextBlock Text="Anzeigedauer eines Bildes in Sekunden."
+                             Opacity="0.7"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <NumericUpDown Grid.Column="1"
+                               Width="120"
+                               Minimum="1"
+                               Maximum="3600"
+                               Increment="1"
+                               Value="{Binding ImageAutoplayIntervalSeconds, Mode=TwoWay}" />
+              </Grid>
+
+              <CheckBox Content="Bild-Autoplay wiederholen"
+                        IsChecked="{Binding LoopImageAutoplay, Mode=TwoWay}" />
+
+              <Border Padding="12"
+                      Background="#141769AA"
+                      CornerRadius="6">
+                <TextBlock Text="Die Bildserie hält nur das aktuell entschlüsselte Bild im Speicher. Bestehende Pufferwerte bleiben für den WinForms-Rückfall erhalten, werden im gemeinsamen Client aber bewusst nicht verwendet."
+                           Opacity="0.8"
+                           TextWrapping="Wrap" />
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <Border Padding="16"
+                  BorderBrush="#40607080"
+                  BorderThickness="1"
+                  CornerRadius="8">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Tresorsicherung"
+                         FontSize="18"
+                         FontWeight="SemiBold" />
+              <TextBlock Text="Ein vollständiges Tresorarchiv zur sicheren Aufbewahrung an einem anderen Ort erstellen. Behandle die Sicherung genauso vertraulich wie den Tresor selbst."
+                         Opacity="0.7"
+                         TextWrapping="Wrap" />
+              <Button Content="Tresorarchiv exportieren …"
+                      Command="{Binding ExportVaultCommand}"
+                      HorizontalAlignment="Left" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Border Grid.Row="1"
+              BorderBrush="#40607080"
+              BorderThickness="0,1,0,0"
+              Padding="0,16,0,0">
+        <WrapPanel HorizontalAlignment="Right">
+          <Button Content="Speichern und anwenden"
+                  Classes="primary"
+                  Command="{Binding SavePreferencesCommand}"
+                  Margin="0,0,8,0" />
+          <Button Content="Schließen"
+                  Command="{Binding ToggleSettingsCommand}" />
+        </WrapPanel>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

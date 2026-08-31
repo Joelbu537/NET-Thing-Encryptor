@@ -13,6 +13,12 @@ Der frühere WinForms-Client bleibt vorerst als eingefrorener, separat getestete
 
 Linux und macOS sind weiter technische Vorschauen: Die CI prüft die Publishes, aber es gibt noch keine distributionsspezifischen Linux-Pakete und kein signiertes beziehungsweise notarisiertes macOS-App-Bundle.
 
+## Plattformspezifische Bedienung
+
+Der Windows-Client verwendet eine kompakte Symbolleiste, eine Dateiliste in Detailansicht und eine feste Statuszeile mit Version, Meldung, Datei- und Ordnerzahl sowie sichtbarer Gesamtgröße. Ordner und Dokumente werden per Doppelklick geöffnet; Auswahlaktionen liegen im Rechtsklick-Kontextmenü. Die Einstellungen erscheinen als eigenes modales Fenster, der vollständige Tresorexport liegt dort im Bereich „Tresorsicherung“.
+
+Android verwendet dieselben Funktionen und Dateitypsymbole in einer kompakteren Zeilenansicht. Auswahlaktionen sind über den Drei-Punkte-Knopf einer Zeile erreichbar, die Desktop-Statuszeile entfällt und die Einstellungen belegen als deckende Seite die verfügbare App-Fläche. Der genaue UI-Vertrag und die Prüfschritte stehen in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md).
+
 ## Avalonia-Desktop-Client starten
 
 Mit .NET SDK 10.0.400:
@@ -45,7 +51,7 @@ dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
 dotnet test ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release
 ```
 
-Der WinForms-Rückfallpfad benötigt weiterhin .NET 11 Preview 7 und wird in einem eigenen CI-Job über `build/legacy-winforms.slnf` geprüft. CI testet den gemeinsamen Kern unter Linux, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64, baut Android-AAB und -APK und erzeugt den Avalonia-Windows-Installer. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md), [docs/m4-android-client.md](docs/m4-android-client.md), [docs/m5-feature-parity.md](docs/m5-feature-parity.md), [docs/m6-cutover.md](docs/m6-cutover.md), [docs/m7-winforms-retirement.md](docs/m7-winforms-retirement.md) und [docs/m8-post-cutover-hardening.md](docs/m8-post-cutover-hardening.md).
+Der WinForms-Rückfallpfad benötigt weiterhin .NET 11 Preview 7 und wird in einem eigenen CI-Job über `build/legacy-winforms.slnf` geprüft. CI testet den gemeinsamen Kern unter Linux, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64, baut Android-AAB und -APK und erzeugt den Avalonia-Windows-Installer. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md), [docs/m4-android-client.md](docs/m4-android-client.md), [docs/m5-feature-parity.md](docs/m5-feature-parity.md), [docs/m6-cutover.md](docs/m6-cutover.md), [docs/m7-winforms-retirement.md](docs/m7-winforms-retirement.md) und [docs/m8-post-cutover-hardening.md](docs/m8-post-cutover-hardening.md). Die nach M8 vorgezogene Oberflächenangleichung ist separat in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md) beschrieben; sie startet M9 ausdrücklich nicht.
 
 ## Installer bauen
 

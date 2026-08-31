@@ -41,6 +41,9 @@ public sealed partial class App : Application
     public static void NotifyForegrounded() =>
         (Current as App)?._lifecycleCoordinator?.NotifyForegrounded();
 
+    public static void NotifyUserInteraction() =>
+        (Current as App)?._lifecycleCoordinator?.NotifyUserInteraction();
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
@@ -51,7 +54,7 @@ public sealed partial class App : Application
             reason => Dispatcher.UIThread.Post(() => _shell?.LockForSecurity(reason)),
             InactivityTimeout);
         var picker = new AvaloniaFilePickerService(
-            () => _activeShellView is null ? null : TopLevel.GetTopLevel(_activeShellView),
+            GetActiveTopLevel,
             _lifecycleCoordinator);
         _shell = new AppShellViewModel(vault, picker, applyPreferences: ApplyPreferences);
 
@@ -119,6 +122,13 @@ public sealed partial class App : Application
     private Task EnsureInitializedAsync() =>
         _initializationTask ??= _shell?.InitializeAsync()
             ?? Task.FromException(new InvalidOperationException("The application shell is unavailable."));
+
+    private TopLevel? GetActiveTopLevel()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            return desktop.Windows.FirstOrDefault(window => window.IsActive) ?? desktop.MainWindow;
+        return _activeShellView is null ? null : TopLevel.GetTopLevel(_activeShellView);
+    }
 
     private void AttachTopLevel(TopLevel? topLevel)
     {

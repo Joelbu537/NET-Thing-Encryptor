@@ -3,28 +3,20 @@
              xmlns:vm="using:Nte.App.ViewModels"
              x:Class="Nte.App.Views.AppShellView"
              x:DataType="vm:AppShellViewModel">
-  <Grid RowDefinitions="Auto,*,Auto">
-    <Border Grid.Row="0" Background="#123A56" Padding="16,12">
-      <Grid ColumnDefinitions="Auto,*">
-        <Border Width="38" Height="38" CornerRadius="8" Background="#2B88D8">
-          <TextBlock Text="N" Foreground="White" FontSize="22" FontWeight="Bold"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
-        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-          <TextBlock Text="NET Thing Encryptor" Foreground="White"
-                     FontSize="18" FontWeight="SemiBold" />
-          <TextBlock Text="Windows- und Android-Client" Foreground="#C7E0F4" />
-        </StackPanel>
+  <Grid RowDefinitions="*,Auto">
+    <ContentControl Grid.Row="0" Content="{Binding CurrentPage}" />
+
+    <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="#50708090"
+            Background="{DynamicResource AppSurfaceBrush}" Padding="10,5"
+            IsVisible="{OnFormFactor Desktop=True, Mobile=False}">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+        <TextBlock Text="{Binding VersionText}" FontFamily="Consolas" Opacity="0.75"
+                   VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Text="{Binding FolderStatisticsText}"
+                   FontFamily="Consolas" Opacity="0.75" VerticalAlignment="Center" />
       </Grid>
-    </Border>
-
-    <ContentControl Grid.Row="1" Content="{Binding CurrentPage}" />
-
-    <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="#30708090" Padding="14,8">
-      <ScrollViewer MaxHeight="72" HorizontalScrollBarVisibility="Disabled"
-                    VerticalScrollBarVisibility="Auto">
-        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" />
-      </ScrollViewer>
     </Border>
   </Grid>
 </UserControl>

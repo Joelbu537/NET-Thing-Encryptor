@@ -34,8 +34,12 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private bool _isShowingGlobalResults;
     private bool _isBusy;
     private bool _isLocked;
+    private bool _showCreateFolderDialog;
+    private bool _showRenameDialog;
+    private bool _showMoveDialog;
     private bool _showDeleteConfirmation;
     private bool _showSettings;
+    private VaultPreferences? _settingsSnapshot;
     private bool _darkMode;
     private int _autoLockMinutes = 5;
     private int _previousImageBufferCount = 1;
@@ -59,6 +63,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         _applyPreferences = applyPreferences ?? (_ => { });
 
         BackCommand = new AsyncCommand(GoBackAsync, () => !IsBusy && _path.Count > 1);
+        GoRootCommand = new AsyncCommand(GoRootAsync, () => !IsBusy && _path.Count > 1);
         OpenSelectedCommand = new AsyncCommand(
             OpenSelectedAsync,
             () => !IsBusy && SelectedItem is not null && _selectedItems.Count == 1);
@@ -72,6 +77,9 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         CreateFolderCommand = new AsyncCommand(
             CreateFolderAsync,
             () => !IsBusy && !IsShowingGlobalResults && !string.IsNullOrWhiteSpace(NewFolderName));
+        RequestCreateFolderCommand = new AsyncCommand(
+            RequestCreateFolderAsync,
+            () => !IsBusy && !IsShowingGlobalResults);
         ExportVaultCommand = new AsyncCommand(ExportVaultAsync, () => !IsBusy);
         LockCommand = new AsyncCommand(LockAsync, () => !IsBusy);
         SearchCommand = new AsyncCommand(SearchAsync, () => !IsBusy);
@@ -80,10 +88,17 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             RenameAsync,
             () => !IsBusy && SelectedItem is not null && _selectedItems.Count == 1 &&
                   !string.IsNullOrWhiteSpace(RenameName));
+        RequestRenameCommand = new AsyncCommand(
+            RequestRenameAsync,
+            () => !IsBusy && SelectedItem is not null && _selectedItems.Count == 1);
         MoveCommand = new AsyncCommand(MoveAsync, CanMove);
+        RequestMoveCommand = new AsyncCommand(
+            RequestMoveAsync,
+            () => !IsBusy && _selectedItems.Count != 0);
         RequestDeleteCommand = new AsyncCommand(RequestDeleteAsync, () => !IsBusy && _selectedItems.Count != 0);
         ConfirmDeleteCommand = new AsyncCommand(DeleteAsync, () => !IsBusy && ShowDeleteConfirmation);
         CancelDeleteCommand = new AsyncCommand(CancelDeleteAsync, () => !IsBusy && ShowDeleteConfirmation);
+        CancelActionDialogCommand = new AsyncCommand(CancelActionDialogAsync, () => !IsBusy && HasActionDialog);
         ToggleSettingsCommand = new AsyncCommand(ToggleSettingsAsync, () => !IsBusy);
         SavePreferencesCommand = new AsyncCommand(SavePreferencesAsync, () => !IsBusy);
     }
@@ -103,7 +118,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             if (value is not null)
                 _selectedItems.Add(value);
             RenameName = value?.Name ?? string.Empty;
-            ShowDeleteConfirmation = false;
+            CloseActionDialogs();
             NotifySelectionCommands();
             OnPropertyChanged(nameof(SelectionCountText));
         }
@@ -222,8 +237,31 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                 return;
             ConfirmDeleteCommand.NotifyCanExecuteChanged();
             CancelDeleteCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(HasActionDialog));
+            CancelActionDialogCommand.NotifyCanExecuteChanged();
         }
     }
+
+    public bool ShowCreateFolderDialog
+    {
+        get => _showCreateFolderDialog;
+        private set => SetActionDialogProperty(ref _showCreateFolderDialog, value, nameof(ShowCreateFolderDialog));
+    }
+
+    public bool ShowRenameDialog
+    {
+        get => _showRenameDialog;
+        private set => SetActionDialogProperty(ref _showRenameDialog, value, nameof(ShowRenameDialog));
+    }
+
+    public bool ShowMoveDialog
+    {
+        get => _showMoveDialog;
+        private set => SetActionDialogProperty(ref _showMoveDialog, value, nameof(ShowMoveDialog));
+    }
+
+    public bool HasActionDialog =>
+        ShowCreateFolderDialog || ShowRenameDialog || ShowMoveDialog || ShowDeleteConfirmation;
 
     public string DeleteConfirmationText => _selectedItems.Count switch
     {
@@ -273,6 +311,18 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         1 => "1 Objekt ausgewählt",
         _ => $"{_selectedItems.Count} Objekte ausgewählt"
     };
+    public string FolderStatisticsText
+    {
+        get
+        {
+            int folders = Items.Count(item => item.IsFolder);
+            int files = Items.Count - folders;
+            long totalSize = Items.Where(item => !item.IsFolder).Sum(item => item.Size);
+            string fileText = files == 1 ? "1 Datei" : $"{files} Dateien";
+            string folderText = folders == 1 ? "1 Ordner" : $"{folders} Ordner";
+            return $"{fileText}   {folderText}   {totalSize.Sizeify()}";
+        }
+    }
     public string EmptyMessage => IsShowingGlobalResults
         ? "Die globale Suche hat keine Dokumente gefunden."
         : !string.IsNullOrWhiteSpace(SearchQuery)
@@ -282,20 +332,25 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                 : "Dieser Ordner ist leer.";
 
     public AsyncCommand BackCommand { get; }
+    public AsyncCommand GoRootCommand { get; }
     public AsyncCommand OpenSelectedCommand { get; }
     public AsyncCommand RefreshCommand { get; }
     public AsyncCommand ImportDocumentsCommand { get; }
     public AsyncCommand ExportSelectedCommand { get; }
+    public AsyncCommand RequestCreateFolderCommand { get; }
     public AsyncCommand CreateFolderCommand { get; }
     public AsyncCommand ExportVaultCommand { get; }
     public AsyncCommand LockCommand { get; }
     public AsyncCommand SearchCommand { get; }
     public AsyncCommand ClearSearchCommand { get; }
+    public AsyncCommand RequestRenameCommand { get; }
     public AsyncCommand RenameCommand { get; }
+    public AsyncCommand RequestMoveCommand { get; }
     public AsyncCommand MoveCommand { get; }
     public AsyncCommand RequestDeleteCommand { get; }
     public AsyncCommand ConfirmDeleteCommand { get; }
     public AsyncCommand CancelDeleteCommand { get; }
+    public AsyncCommand CancelActionDialogCommand { get; }
     public AsyncCommand ToggleSettingsCommand { get; }
     public AsyncCommand SavePreferencesCommand { get; }
 
@@ -314,9 +369,16 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         _selectedItem = _selectedItems.LastOrDefault();
         OnPropertyChanged(nameof(SelectedItem));
         RenameName = _selectedItems.Count == 1 ? _selectedItem!.Name : string.Empty;
-        ShowDeleteConfirmation = false;
+        CloseActionDialogs();
         OnPropertyChanged(nameof(SelectionCountText));
         NotifySelectionCommands();
+    }
+
+    public Task ActivateItemAsync(VaultItemViewModel item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        SetSelectedItems([item]);
+        return OpenSelectedAsync();
     }
 
     public bool HandleBackRequested()
@@ -325,9 +387,14 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             return false;
         if (ActiveDocument is not null)
             return ActiveDocument.HandleBackRequested();
+        if (HasActionDialog)
+        {
+            CloseActionDialogs();
+            return true;
+        }
         if (ShowSettings)
         {
-            ShowSettings = false;
+            CloseSettings(restoreSnapshot: true);
             return true;
         }
         if (IsBusy)
@@ -347,11 +414,15 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             return;
         _isLocked = true;
         _operationCancellation?.Cancel();
+        _settingsSnapshot = null;
+        ShowSettings = false;
+        CloseActionDialogs();
         CloseActiveDocument();
         _vault.Lock();
         _folderItems.Clear();
         Items.Clear();
         SelectedItem = null;
+        OnPropertyChanged(nameof(FolderStatisticsText));
         _setStatus(statusMessage);
         _onLocked();
     }
@@ -359,8 +430,13 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _operationCancellation?.Cancel();
+        _settingsSnapshot = null;
+        ShowSettings = false;
+        CloseActionDialogs();
         CloseActiveDocument();
     }
+
+    public void DismissSettings() => CloseSettings(restoreSnapshot: true);
 
     private Task RefreshAsync() => IsShowingGlobalResults ? SearchAsync() : RunBusyAsync(
         async cancellationToken =>
@@ -431,6 +507,17 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         await RefreshAsync();
     }
 
+    private async Task GoRootAsync()
+    {
+        if (_path.Count <= 1)
+            return;
+        _path.RemoveRange(1, _path.Count - 1);
+        SearchQuery = string.Empty;
+        IsShowingGlobalResults = false;
+        NotifyLocationChanged();
+        await RefreshAsync();
+    }
+
     private async Task CreateFolderAsync()
     {
         string name = NewFolderName.Trim();
@@ -442,6 +529,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         if (!succeeded)
             return;
         NewFolderName = string.Empty;
+        ShowCreateFolderDialog = false;
         _setStatus($"Ordner „{name}“ erstellt.");
         await RefreshAsync();
     }
@@ -656,6 +744,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             "Das Objekt konnte nicht umbenannt werden");
         if (!succeeded)
             return;
+        ShowRenameDialog = false;
         _setStatus($"„{item.Name}“ wurde in „{newName}“ umbenannt.");
         await RefreshAsync();
     }
@@ -675,6 +764,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             "Das Objekt konnte nicht verschoben werden");
         if (!succeeded)
             return;
+        ShowMoveDialog = false;
         _setStatus(items.Length == 1
             ? $"„{items[0].Name}“ wurde nach „{target.Path}“ verschoben."
             : $"{items.Length} Objekte wurden nach „{target.Path}“ verschoben.");
@@ -683,6 +773,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     private Task RequestDeleteAsync()
     {
+        CloseActionDialogs();
         ShowDeleteConfirmation = _selectedItems.Count != 0;
         OnPropertyChanged(nameof(DeleteConfirmationText));
         return Task.CompletedTask;
@@ -693,7 +784,6 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         VaultItemViewModel[] items = _selectedItems.ToArray();
         if (items.Length == 0 || !ShowDeleteConfirmation)
             return;
-        ShowDeleteConfirmation = false;
         bool succeeded = await RunBusyAsync(
             async cancellationToken =>
             {
@@ -703,6 +793,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             "Das Objekt konnte nicht gelöscht werden");
         if (!succeeded)
             return;
+        ShowDeleteConfirmation = false;
         _setStatus(items.Length == 1
             ? $"„{items[0].Name}“ wurde gelöscht."
             : $"{items.Length} Objekte wurden gelöscht.");
@@ -711,26 +802,58 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     private Task CancelDeleteAsync()
     {
-        ShowDeleteConfirmation = false;
+        CloseActionDialogs();
+        return Task.CompletedTask;
+    }
+
+    private Task RequestCreateFolderAsync()
+    {
+        CloseActionDialogs();
+        NewFolderName = string.Empty;
+        ShowCreateFolderDialog = true;
+        return Task.CompletedTask;
+    }
+
+    private Task RequestRenameAsync()
+    {
+        CloseActionDialogs();
+        RenameName = SelectedItem?.Name ?? string.Empty;
+        ShowRenameDialog = SelectedItem is not null && _selectedItems.Count == 1;
+        return Task.CompletedTask;
+    }
+
+    private Task RequestMoveAsync()
+    {
+        CloseActionDialogs();
+        SelectedMoveTarget = null;
+        ShowMoveDialog = _selectedItems.Count != 0;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelActionDialogAsync()
+    {
+        CloseActionDialogs();
         return Task.CompletedTask;
     }
 
     private Task ToggleSettingsAsync()
     {
-        ShowSettings = !ShowSettings;
+        if (ShowSettings)
+        {
+            CloseSettings(restoreSnapshot: true);
+        }
+        else
+        {
+            CloseActionDialogs();
+            _settingsSnapshot = CapturePreferences();
+            ShowSettings = true;
+        }
         return Task.CompletedTask;
     }
 
     private async Task SavePreferencesAsync()
     {
-        var preferences = new VaultPreferences(
-            DarkMode,
-            AutoLockMinutes,
-            PreviousImageBufferCount,
-            NextImageBufferCount,
-            IncludeSelectedImageWhenRandomising,
-            ImageAutoplayIntervalSeconds,
-            LoopImageAutoplay);
+        VaultPreferences preferences = CapturePreferences();
         bool succeeded = await RunBusyAsync(
             cancellationToken => _vault.SavePreferencesAsync(preferences, cancellationToken),
             "Die Einstellungen konnten nicht gespeichert werden");
@@ -738,6 +861,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             return;
         _applyPreferences(preferences);
         _setStatus("Einstellungen gespeichert und angewendet.");
+        _settingsSnapshot = null;
         ShowSettings = false;
     }
 
@@ -803,6 +927,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         SelectedItem = null;
         OnPropertyChanged(nameof(HasItems));
         OnPropertyChanged(nameof(EmptyMessage));
+        OnPropertyChanged(nameof(FolderStatisticsText));
     }
 
     private void ApplyPreferences(VaultPreferences preferences)
@@ -882,26 +1007,33 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         RenameCommand.NotifyCanExecuteChanged();
         MoveCommand.NotifyCanExecuteChanged();
         RequestDeleteCommand.NotifyCanExecuteChanged();
+        RequestRenameCommand.NotifyCanExecuteChanged();
+        RequestMoveCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(DeleteConfirmationText));
     }
 
     private void NotifyCommands()
     {
         BackCommand.NotifyCanExecuteChanged();
+        GoRootCommand.NotifyCanExecuteChanged();
         OpenSelectedCommand.NotifyCanExecuteChanged();
         RefreshCommand.NotifyCanExecuteChanged();
         ImportDocumentsCommand.NotifyCanExecuteChanged();
         ExportSelectedCommand.NotifyCanExecuteChanged();
+        RequestCreateFolderCommand.NotifyCanExecuteChanged();
         CreateFolderCommand.NotifyCanExecuteChanged();
         ExportVaultCommand.NotifyCanExecuteChanged();
         LockCommand.NotifyCanExecuteChanged();
         SearchCommand.NotifyCanExecuteChanged();
         ClearSearchCommand.NotifyCanExecuteChanged();
+        RequestRenameCommand.NotifyCanExecuteChanged();
         RenameCommand.NotifyCanExecuteChanged();
+        RequestMoveCommand.NotifyCanExecuteChanged();
         MoveCommand.NotifyCanExecuteChanged();
         RequestDeleteCommand.NotifyCanExecuteChanged();
         ConfirmDeleteCommand.NotifyCanExecuteChanged();
         CancelDeleteCommand.NotifyCanExecuteChanged();
+        CancelActionDialogCommand.NotifyCanExecuteChanged();
         ToggleSettingsCommand.NotifyCanExecuteChanged();
         SavePreferencesCommand.NotifyCanExecuteChanged();
     }
@@ -942,6 +1074,47 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         string.IsNullOrWhiteSpace(extension)
             ? name
             : $"{name}.{extension.TrimStart('.')}";
+
+    private void SetActionDialogProperty(ref bool field, bool value, string propertyName)
+    {
+        if (!SetProperty(ref field, value, propertyName))
+            return;
+        OnPropertyChanged(nameof(HasActionDialog));
+        CancelActionDialogCommand.NotifyCanExecuteChanged();
+    }
+
+    private void CloseActionDialogs()
+    {
+        ShowCreateFolderDialog = false;
+        ShowRenameDialog = false;
+        ShowMoveDialog = false;
+        ShowDeleteConfirmation = false;
+    }
+
+    private VaultPreferences CapturePreferences() => new(
+        DarkMode,
+        AutoLockMinutes,
+        PreviousImageBufferCount,
+        NextImageBufferCount,
+        IncludeSelectedImageWhenRandomising,
+        ImageAutoplayIntervalSeconds,
+        LoopImageAutoplay);
+
+    private void CloseSettings(bool restoreSnapshot)
+    {
+        if (restoreSnapshot && _settingsSnapshot is { } snapshot)
+        {
+            DarkMode = snapshot.DarkMode;
+            AutoLockMinutes = snapshot.AutoLockMinutes;
+            PreviousImageBufferCount = snapshot.PreviousImageBufferCount;
+            NextImageBufferCount = snapshot.NextImageBufferCount;
+            IncludeSelectedImageWhenRandomising = snapshot.IncludeSelectedImageWhenRandomising;
+            ImageAutoplayIntervalSeconds = snapshot.ImageAutoplayIntervalSeconds;
+            LoopImageAutoplay = snapshot.LoopImageAutoplay;
+        }
+        _settingsSnapshot = null;
+        ShowSettings = false;
+    }
 
     private readonly record struct ExportCount(int Files = 0, int Folders = 0);
 }

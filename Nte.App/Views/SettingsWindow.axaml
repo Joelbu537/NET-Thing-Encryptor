@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Nte.App.ViewModels"
+        xmlns:views="using:Nte.App.Views"
+        x:Class="Nte.App.Views.SettingsWindow"
+        x:DataType="vm:VaultViewModel"
+        Title="Einstellungen"
+        Width="600"
+        Height="650"
+        MinWidth="480"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource AppSurfaceBrush}">
+  <views:SettingsView />
+</Window>

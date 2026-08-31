@@ -16,6 +16,7 @@ public sealed class AppShellViewModelTests
         await shell.InitializeAsync();
 
         Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        Assert.Equal("v3.7.0", shell.VersionText);
     }
 
     [Fact]
@@ -32,6 +33,33 @@ public sealed class AppShellViewModelTests
         Assert.Equal(1, vault.UnlockCalls);
         Assert.IsType<VaultViewModel>(shell.CurrentPage);
         Assert.Equal("Tresor entsperrt.", shell.StatusMessage);
+    }
+
+    [Fact]
+    public async Task FolderStatisticsMirrorTheCurrentVaultPage()
+    {
+        var folder = new VaultItem(
+            10,
+            "Dokumente",
+            FileType.folder,
+            0,
+            string.Empty,
+            new DateOnly(2026, 8, 31));
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [folder];
+        using var shell = new AppShellViewModel(vault, new FakeFilePickerService());
+        await shell.InitializeAsync();
+        var unlock = Assert.IsType<UnlockViewModel>(shell.CurrentPage);
+        unlock.Password = "correct horse battery staple";
+
+        await unlock.UnlockCommand.ExecuteAsync();
+
+        var page = Assert.IsType<VaultViewModel>(shell.CurrentPage);
+        Assert.Contains("1 Ordner", shell.FolderStatisticsText);
+
+        page.SearchQuery = "nicht vorhanden";
+
+        Assert.Contains("0 Ordner", shell.FolderStatisticsText);
     }
 
     [Fact]

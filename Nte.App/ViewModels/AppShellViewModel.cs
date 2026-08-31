@@ -1,5 +1,6 @@
 using NET_Thing_Encryptor;
 using Nte.App.Services;
+using System.ComponentModel;
 
 namespace Nte.App.ViewModels;
 
@@ -29,7 +30,18 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
     public object CurrentPage
     {
         get => _currentPage;
-        private set => SetProperty(ref _currentPage, value);
+        private set
+        {
+            if (ReferenceEquals(_currentPage, value))
+                return;
+            if (_currentPage is VaultViewModel previousVault)
+                previousVault.PropertyChanged -= OnCurrentPagePropertyChanged;
+            if (!SetProperty(ref _currentPage, value))
+                return;
+            if (value is VaultViewModel currentVault)
+                currentVault.PropertyChanged += OnCurrentPagePropertyChanged;
+            OnPropertyChanged(nameof(FolderStatisticsText));
+        }
     }
 
     public string StatusMessage
@@ -37,6 +49,18 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
         get => _statusMessage;
         private set => SetProperty(ref _statusMessage, value);
     }
+
+    public string VersionText
+    {
+        get
+        {
+            Version? version = typeof(AppShellViewModel).Assembly.GetName().Version;
+            return version is null ? "v?" : $"v{version.Major}.{version.Minor}.{version.Build}";
+        }
+    }
+
+    public string FolderStatisticsText =>
+        CurrentPage is VaultViewModel vault ? vault.FolderStatisticsText : string.Empty;
 
     public async Task InitializeAsync()
     {
@@ -76,7 +100,10 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
             return;
         _vault.NotificationRaised -= OnNotificationRaised;
         if (CurrentPage is VaultViewModel vaultPage)
+        {
+            vaultPage.PropertyChanged -= OnCurrentPagePropertyChanged;
             vaultPage.Dispose();
+        }
         _vault.Dispose();
         _disposed = true;
     }
@@ -104,6 +131,12 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
     }
 
     private void SetStatus(string message) => StatusMessage = message;
+
+    private void OnCurrentPagePropertyChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(VaultViewModel.FolderStatisticsText))
+            OnPropertyChanged(nameof(FolderStatisticsText));
+    }
 
     private void OnNotificationRaised(object? sender, VaultNotificationEventArgs args)
     {

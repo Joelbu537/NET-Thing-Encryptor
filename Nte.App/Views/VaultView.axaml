@@ -1,158 +1,265 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Nte.App.ViewModels"
+             xmlns:views="using:Nte.App.Views"
+             xmlns:converters="using:Nte.App.Converters"
              x:Class="Nte.App.Views.VaultView"
+             x:Name="ViewRoot"
              x:DataType="vm:VaultViewModel">
+  <UserControl.Resources>
+    <converters:FileTypeIconConverter x:Key="FileTypeIconConverter" />
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <Style Selector="Button.toolbar">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Padding" Value="7" />
+      <Setter Property="Margin" Value="0,0,5,0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.row-menu">
+      <Setter Property="Width" Value="40" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="22" />
+    </Style>
+  </UserControl.Styles>
+
   <Grid>
-    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" RowSpacing="10"
+    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8"
           IsVisible="{Binding ShowVaultContent}">
       <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock Classes="page-title" Text="Tresor" />
-          <TextBlock Text="{Binding Breadcrumb}" FontSize="15" Opacity="0.75" TextWrapping="Wrap" />
+        <StackPanel Orientation="Horizontal">
+          <Button Classes="toolbar" Command="{Binding BackCommand}"
+                  ToolTip.Tip="Zurück" AutomationProperties.Name="Zurück">
+            <Image Source="/Assets/Legacy/imageres_return.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
+                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
+            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding ImportDocumentsCommand}"
+                  ToolTip.Tip="Dokumente importieren" AutomationProperties.Name="Dokumente importieren">
+            <Image Source="/Assets/Legacy/imageres_new_file.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding RequestCreateFolderCommand}"
+                  ToolTip.Tip="Neuer Ordner" AutomationProperties.Name="Neuer Ordner">
+            <Image Source="/Assets/Legacy/imageres_folder_empty.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding RefreshCommand}"
+                  ToolTip.Tip="Aktualisieren" AutomationProperties.Name="Aktualisieren">
+            <PathIcon Width="23" Height="23"
+                      Data="M12,4 A8,8 0 1 0 19.4,9 L17.2,9 A6,6 0 1 1 12,6 L12,9 L17,5 L12,1 Z" />
+          </Button>
         </StackPanel>
-        <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
-          <Button Content="Einstellungen" Command="{Binding ToggleSettingsCommand}" Margin="0,0,8,6" />
-          <Button Content="Tresor exportieren …" Command="{Binding ExportVaultCommand}" Margin="0,0,8,6" />
-          <Button Content="Sperren" Command="{Binding LockCommand}" Margin="0,0,0,6" />
-        </WrapPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button Classes="toolbar" Command="{Binding ToggleSettingsCommand}"
+                  ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
+            <Image Source="/Assets/Legacy/shell32_gear.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding LockCommand}"
+                  ToolTip.Tip="Tresor sperren" AutomationProperties.Name="Tresor sperren" Margin="0">
+            <PathIcon Width="22" Height="22"
+                      Data="M7,10 L7,7 A5,5 0 0 1 17,7 L17,10 L19,10 L19,22 L5,22 L5,10 Z M9,10 L15,10 L15,7 A3,3 0 0 0 9,7 Z M12,14 A2,2 0 0 0 11,17.73 L11,19 L13,19 L13,17.73 A2,2 0 0 0 12,14 Z" />
+          </Button>
+        </StackPanel>
       </Grid>
 
-      <Border Grid.Row="1" Padding="10" CornerRadius="8" Background="#101769AA">
+      <Border Grid.Row="1" BorderThickness="1" BorderBrush="#40607080" CornerRadius="6"
+              Padding="10,7" Background="{DynamicResource ControlLowBrush}">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+          <TextBlock Text="Pfad:" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{Binding Breadcrumb}" VerticalAlignment="Center"
+                     TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="2" Padding="9" CornerRadius="7" Background="#101769AA">
         <StackPanel Spacing="7">
           <WrapPanel>
             <TextBox Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Name, Erweiterung oder Typ"
-                     Width="260" Margin="0,0,8,6" />
+                     Width="280" Margin="0,0,8,5" />
             <CheckBox Content="Gesamten Tresor durchsuchen" IsChecked="{Binding SearchGlobally, Mode=TwoWay}"
-                      VerticalAlignment="Center" Margin="0,0,12,6" />
-            <Button Content="Suchen" Command="{Binding SearchCommand}" Margin="0,0,8,6" />
-            <Button Content="Zurücksetzen" Command="{Binding ClearSearchCommand}" Margin="0,0,8,6" />
+                      VerticalAlignment="Center" Margin="0,0,8,5" />
+            <Button Command="{Binding SearchCommand}" Width="38" Height="34" Padding="7"
+                    Margin="0,0,5,5" ToolTip.Tip="Suchen" AutomationProperties.Name="Suchen">
+              <TextBlock Text="🔍" FontSize="18" VerticalAlignment="Center" />
+            </Button>
+            <Button Command="{Binding ClearSearchCommand}" Width="38" Height="34" Padding="7"
+                    Margin="0,0,5,5" ToolTip.Tip="Suche zurücksetzen" AutomationProperties.Name="Suche zurücksetzen">
+              <TextBlock Text="✕" FontSize="18" VerticalAlignment="Center" />
+            </Button>
           </WrapPanel>
           <WrapPanel IsVisible="{Binding ShowAdvancedSearch}">
             <TextBox Text="{Binding SearchExtension, Mode=TwoWay}" PlaceholderText="Erweiterung"
-                     Width="120" Margin="0,0,8,6" />
+                     Width="115" Margin="0,0,8,5" />
             <ComboBox ItemsSource="{Binding SearchTypes}" SelectedItem="{Binding SelectedSearchType, Mode=TwoWay}"
-                      Width="150" Margin="0,0,8,6" />
+                      Width="150" Margin="0,0,8,5" />
             <TextBox Text="{Binding MinimumSizeText, Mode=TwoWay}" PlaceholderText="Min. Bytes"
-                     Width="120" Margin="0,0,8,6" />
+                     Width="115" Margin="0,0,8,5" />
             <TextBox Text="{Binding MaximumSizeText, Mode=TwoWay}" PlaceholderText="Max. Bytes"
-                     Width="120" Margin="0,0,8,6" />
-            <DatePicker SelectedDate="{Binding CreatedFrom, Mode=TwoWay}" Width="150" Margin="0,0,8,6" />
-            <DatePicker SelectedDate="{Binding CreatedTo, Mode=TwoWay}" Width="150" Margin="0,0,8,6" />
+                     Width="115" Margin="0,0,8,5" />
+            <DatePicker SelectedDate="{Binding CreatedFrom, Mode=TwoWay}" Width="150" Margin="0,0,8,5" />
+            <DatePicker SelectedDate="{Binding CreatedTo, Mode=TwoWay}" Width="150" Margin="0,0,8,5" />
           </WrapPanel>
-          <TextBlock Text="{Binding ResultSummary}" Opacity="0.7" />
+          <TextBlock Text="{Binding ResultSummary}" IsVisible="{Binding ShowAdvancedSearch}"
+                     Opacity="0.7" />
         </StackPanel>
       </Border>
 
-      <WrapPanel Grid.Row="2">
-        <Button Content="Zurück" Command="{Binding BackCommand}" Margin="0,0,8,6" />
-        <Button Content="Öffnen / Anzeigen" Command="{Binding OpenSelectedCommand}" Margin="0,0,8,6" />
-        <Button Content="Dokumente importieren …" Command="{Binding ImportDocumentsCommand}" Margin="0,0,8,6" />
-        <Button Content="Auswahl exportieren …" Command="{Binding ExportSelectedCommand}" Margin="0,0,8,6" />
-        <Button Content="Aktualisieren" Command="{Binding RefreshCommand}" Margin="0,0,8,6" />
-      </WrapPanel>
+      <Grid Grid.Row="3" RowDefinitions="Auto,*">
+        <Border Grid.Row="0" Padding="8,6" Background="#181769AA"
+                IsVisible="{OnFormFactor Desktop=True, Mobile=False}">
+          <Grid ColumnDefinitions="40,*,120,100,120">
+            <TextBlock Grid.Column="1" Text="Name" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="2" Text="Typ" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="3" Text="Größe" FontWeight="SemiBold" />
+            <TextBlock Grid.Column="4" Text="Erstellt" FontWeight="SemiBold" />
+          </Grid>
+        </Border>
 
-      <Grid Grid.Row="3">
-        <Border BorderThickness="1" BorderBrush="#40607080" CornerRadius="8">
-          <ListBox ItemsSource="{Binding Items}" SelectionMode="Multiple,Toggle"
-                   SelectionChanged="Items_SelectionChanged">
+        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#50607080" CornerRadius="0,0,7,7">
+          <ListBox x:Name="ItemsList" ItemsSource="{Binding Items}" SelectionMode="Multiple"
+                   SelectionChanged="Items_SelectionChanged"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:VaultItemViewModel">
-                <Grid ColumnDefinitions="36,*" Margin="6">
-                  <TextBlock Text="{Binding Symbol}" FontSize="20" VerticalAlignment="Center" />
-                  <StackPanel Grid.Column="1">
-                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <WrapPanel>
-                      <TextBlock Text="{Binding KindText}" FontSize="12" Opacity="0.65" Margin="0,0,12,0" />
-                      <TextBlock Text="{Binding CreatedAt}" FontSize="12" Opacity="0.65" Margin="0,0,12,0" />
-                      <TextBlock Text="{Binding SizeText}" FontSize="12" Opacity="0.65" />
-                    </WrapPanel>
-                    <TextBlock Text="{Binding Location}" IsVisible="{Binding HasLocation}"
-                               FontSize="12" Opacity="0.65" TextWrapping="Wrap" />
-                  </StackPanel>
+                <Grid Margin="4,2" MinHeight="44" ColumnDefinitions="40,*"
+                      PointerPressed="Item_PointerPressed" DoubleTapped="Item_DoubleTapped">
+                  <Grid.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="Öffnen / Anzeigen" Click="OpenMenuItem_Click" />
+                      <Separator />
+                      <MenuItem Header="Exportieren …" Click="ExportMenuItem_Click" />
+                      <MenuItem Header="Umbenennen …" Click="RenameMenuItem_Click" />
+                      <MenuItem Header="Verschieben …" Click="MoveMenuItem_Click" />
+                      <Separator />
+                      <MenuItem Header="Löschen …" Click="DeleteMenuItem_Click" />
+                    </ContextMenu>
+                  </Grid.ContextMenu>
+
+                  <Image Source="{Binding Type, Converter={StaticResource FileTypeIconConverter}}"
+                         Width="32" Height="32" VerticalAlignment="Center"
+                         AutomationProperties.Name="{Binding KindText}" />
+
+                  <Grid Grid.Column="1" ColumnDefinitions="*,120,100,120"
+                        IsVisible="{OnFormFactor Desktop=True, Mobile=False}">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Location}" IsVisible="{Binding HasLocation}"
+                                 FontSize="11" Opacity="0.65" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding KindText}" VerticalAlignment="Center" Opacity="0.75" />
+                    <TextBlock Grid.Column="2" Text="{Binding SizeText}" VerticalAlignment="Center" Opacity="0.75" />
+                    <TextBlock Grid.Column="3" Text="{Binding CreatedAt}" VerticalAlignment="Center" Opacity="0.75" />
+                  </Grid>
+
+                  <Grid Grid.Column="1" ColumnDefinitions="*,Auto"
+                        IsVisible="{OnFormFactor Desktop=False, Mobile=True}">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <WrapPanel>
+                        <TextBlock Text="{Binding KindText}" FontSize="12" Opacity="0.65" Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding SizeText}" FontSize="12" Opacity="0.65" />
+                      </WrapPanel>
+                      <TextBlock Text="{Binding Location}" IsVisible="{Binding HasLocation}"
+                                 FontSize="11" Opacity="0.65" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="row-menu" Content="⋮"
+                            Click="ItemActionsButton_Click"
+                            ToolTip.Tip="Aktionen" AutomationProperties.Name="Aktionen">
+                      <Button.Flyout>
+                        <MenuFlyout>
+                          <MenuItem Header="Öffnen / Anzeigen" Click="OpenMenuItem_Click" />
+                          <MenuItem Header="Exportieren …" Click="ExportMenuItem_Click" />
+                          <MenuItem Header="Umbenennen …" Click="RenameMenuItem_Click" />
+                          <MenuItem Header="Verschieben …" Click="MoveMenuItem_Click" />
+                          <MenuItem Header="Löschen …" Click="DeleteMenuItem_Click" />
+                        </MenuFlyout>
+                      </Button.Flyout>
+                    </Button>
+                  </Grid>
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
         </Border>
-        <TextBlock Text="{Binding EmptyMessage}" IsVisible="{Binding !HasItems}"
+
+        <TextBlock Grid.Row="1" Text="{Binding EmptyMessage}" IsVisible="{Binding !HasItems}"
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextWrapping="Wrap" Opacity="0.65" Margin="16" />
       </Grid>
 
-      <Border Grid.Row="4" Padding="10" CornerRadius="8" BorderThickness="1" BorderBrush="#40607080">
-        <StackPanel Spacing="8">
-          <WrapPanel>
-            <TextBlock Text="Auswahl" FontWeight="SemiBold" Margin="0,0,12,0" />
-            <TextBlock Text="{Binding SelectionCountText}" Opacity="0.65" />
-          </WrapPanel>
-          <WrapPanel>
-            <TextBox Text="{Binding RenameName, Mode=TwoWay}" PlaceholderText="Neuer Name"
-                     Width="220" Margin="0,0,8,6" />
-            <Button Content="Umbenennen" Command="{Binding RenameCommand}" Margin="0,0,12,6" />
-            <ComboBox ItemsSource="{Binding FolderTargets}" SelectedItem="{Binding SelectedMoveTarget, Mode=TwoWay}"
-                      DisplayMemberBinding="{Binding Path}" PlaceholderText="Zielordner"
-                      Width="280" Margin="0,0,8,6" />
-            <Button Content="Verschieben" Command="{Binding MoveCommand}" Margin="0,0,12,6" />
-            <Button Content="Löschen …" Command="{Binding RequestDeleteCommand}" Margin="0,0,8,6" />
-          </WrapPanel>
-          <Border Padding="10" CornerRadius="6" Background="#20D13438"
-                  IsVisible="{Binding ShowDeleteConfirmation}">
-            <StackPanel Spacing="8">
-              <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" FontWeight="SemiBold" />
-              <WrapPanel>
-                <Button Content="Endgültig löschen" Classes="danger" Command="{Binding ConfirmDeleteCommand}"
-                        Margin="0,0,8,0" />
-                <Button Content="Abbrechen" Command="{Binding CancelDeleteCommand}" />
-              </WrapPanel>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Border>
+      <TextBlock Grid.Row="4" Classes="error" Text="{Binding ErrorMessage}" />
+    </Grid>
 
-      <Border Grid.Row="5" Padding="10" CornerRadius="8" Background="#101769AA">
-        <StackPanel Spacing="8">
-          <TextBlock Text="Neuer Ordner" FontWeight="SemiBold" />
-          <WrapPanel>
-            <TextBox Text="{Binding NewFolderName, Mode=TwoWay}" PlaceholderText="Ordnername"
-                     Width="240" Margin="0,0,8,6" />
-            <Button Content="Anlegen" Command="{Binding CreateFolderCommand}" Margin="0,0,8,6" />
-          </WrapPanel>
-          <TextBlock Text="Dateien können aus Formatgründen nur innerhalb eines Ordners liegen."
-                     TextWrapping="Wrap" Opacity="0.65" />
-        </StackPanel>
-      </Border>
+    <ContentControl Content="{Binding ActiveDocument}" IsVisible="{Binding HasActiveDocument}" ZIndex="20" />
 
-      <TextBlock Grid.Row="6" Classes="error" Text="{Binding ErrorMessage}" />
-
-      <Border Grid.Row="1" Grid.RowSpan="5" Padding="16" CornerRadius="8"
-              Background="{DynamicResource SolidBackgroundFillColorBase}"
-              BorderBrush="#40607080" BorderThickness="1"
-              IsVisible="{Binding ShowSettings}" ZIndex="10">
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel Spacing="12" MaxWidth="640" HorizontalAlignment="Left">
-            <TextBlock Classes="page-title" Text="Einstellungen" />
-            <CheckBox Content="Dunkles Erscheinungsbild" IsChecked="{Binding DarkMode, Mode=TwoWay}" />
-            <TextBlock Text="Automatische Sperre in Minuten (0 deaktiviert)" />
-            <TextBox Text="{Binding AutoLockMinutes, Mode=TwoWay}" Width="140" HorizontalAlignment="Left" />
-            <TextBlock Text="Die Bildserie hält nur das aktuelle entschlüsselte Bild im Speicher. Bestehende Pufferwerte bleiben für den WinForms-Rückfall erhalten, werden im gemeinsamen Client aber bewusst nicht verwendet."
+    <Grid IsVisible="{Binding HasActionDialog}" ZIndex="30">
+      <Border Background="{DynamicResource AppScrimBrush}" />
+      <Border MaxWidth="480" Margin="16" Padding="22" CornerRadius="10"
+              Background="{DynamicResource AppElevatedSurfaceBrush}"
+              BorderBrush="#80607080" BorderThickness="1"
+              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+        <StackPanel Spacing="14">
+          <StackPanel IsVisible="{Binding ShowCreateFolderDialog}" Spacing="12">
+            <TextBlock Text="Neuer Ordner" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Dateien können aus Formatgründen nur innerhalb eines Ordners liegen."
                        TextWrapping="Wrap" Opacity="0.7" />
-            <CheckBox Content="Ausgewähltes Bild bei Zufallsreihenfolge einbeziehen"
-                      IsChecked="{Binding IncludeSelectedImageWhenRandomising, Mode=TwoWay}" />
-            <TextBlock Text="Bild-Autoplay-Intervall in Sekunden" />
-            <TextBox Text="{Binding ImageAutoplayIntervalSeconds, Mode=TwoWay}"
-                     Width="140" HorizontalAlignment="Left" />
-            <CheckBox Content="Bild-Autoplay wiederholen" IsChecked="{Binding LoopImageAutoplay, Mode=TwoWay}" />
-            <WrapPanel>
-              <Button Content="Speichern und anwenden" Classes="primary"
-                      Command="{Binding SavePreferencesCommand}" Margin="0,0,8,0" />
-              <Button Content="Schließen" Command="{Binding ToggleSettingsCommand}" />
+            <TextBox Text="{Binding NewFolderName, Mode=TwoWay}" PlaceholderText="Ordnername" />
+            <WrapPanel HorizontalAlignment="Right">
+              <Button Content="Anlegen" Classes="primary" Command="{Binding CreateFolderCommand}"
+                      Margin="0,0,8,0" />
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
             </WrapPanel>
           </StackPanel>
-        </ScrollViewer>
+
+          <StackPanel IsVisible="{Binding ShowRenameDialog}" Spacing="12">
+            <TextBlock Text="Umbenennen" FontSize="22" FontWeight="SemiBold" />
+            <TextBox Text="{Binding RenameName, Mode=TwoWay}" PlaceholderText="Neuer Name" />
+            <WrapPanel HorizontalAlignment="Right">
+              <Button Content="Umbenennen" Classes="primary" Command="{Binding RenameCommand}"
+                      Margin="0,0,8,0" />
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+            </WrapPanel>
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding ShowMoveDialog}" Spacing="12">
+            <TextBlock Text="Auswahl verschieben" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Zielordner auswählen:" />
+            <ComboBox ItemsSource="{Binding FolderTargets}"
+                      SelectedItem="{Binding SelectedMoveTarget, Mode=TwoWay}"
+                      DisplayMemberBinding="{Binding Path}"
+                      PlaceholderText="Zielordner" />
+            <WrapPanel HorizontalAlignment="Right">
+              <Button Content="Verschieben" Classes="primary" Command="{Binding MoveCommand}"
+                      Margin="0,0,8,0" />
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+            </WrapPanel>
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding ShowDeleteConfirmation}" Spacing="12">
+            <TextBlock Text="Endgültig löschen?" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" />
+            <WrapPanel HorizontalAlignment="Right">
+              <Button Content="Endgültig löschen" Classes="danger" Command="{Binding ConfirmDeleteCommand}"
+                      Margin="0,0,8,0" />
+              <Button Content="Abbrechen" Command="{Binding CancelActionDialogCommand}" />
+            </WrapPanel>
+          </StackPanel>
+
+          <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
+        </StackPanel>
       </Border>
     </Grid>
 
-    <ContentControl Content="{Binding ActiveDocument}" IsVisible="{Binding HasActiveDocument}" />
+    <Grid IsVisible="{OnFormFactor Desktop=False, Mobile=True}" ZIndex="40">
+      <views:SettingsView IsVisible="{Binding ShowSettings}" />
+    </Grid>
   </Grid>
 </UserControl>

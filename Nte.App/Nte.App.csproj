@@ -20,4 +20,8 @@
     <ProjectReference Include="..\Nte.Storage\Nte.Storage.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
 </Project>

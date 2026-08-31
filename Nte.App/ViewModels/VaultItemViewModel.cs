@@ -16,7 +16,6 @@ public sealed class VaultItemViewModel(VaultItem item)
     public bool IsFolder { get; } = item.IsFolder;
     public string KindText { get; } = GetKindText(item.Type);
     public string SizeText { get; } = item.IsFolder ? "Ordner" : item.Size.Sizeify();
-    public string Symbol { get; } = item.IsFolder ? "▰" : "▤";
 
     public string SuggestedFileName => string.IsNullOrWhiteSpace(Extension)
         ? Name

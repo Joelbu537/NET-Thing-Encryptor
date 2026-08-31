@@ -43,6 +43,27 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task ActivateItem_OpensTheClickedFolderAndGoRootReturnsDirectly()
+    {
+        var nestedFolder = Folder with { Id = 11, Name = "Unterordner" };
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [nestedFolder];
+        vault.Folders[11] = [];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+
+        await viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        await viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        Assert.Equal((ulong)11, viewModel.CurrentFolderId);
+
+        await viewModel.GoRootCommand.ExecuteAsync();
+
+        Assert.Equal((ulong)0, viewModel.CurrentFolderId);
+        Assert.Equal("Tresor", viewModel.Breadcrumb);
+    }
+
+    [Fact]
     public async Task SystemBack_LeavesNestedFolderBeforeLockingVault()
     {
         var vault = new FakeVaultApplicationService();
@@ -195,6 +216,26 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task VisibleFolderStatisticsFollowTheDisplayedItems()
+    {
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder, TextFile];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+
+        await viewModel.InitializeAsync();
+
+        Assert.Contains("1 Datei", viewModel.FolderStatisticsText);
+        Assert.Contains("1 Ordner", viewModel.FolderStatisticsText);
+        Assert.Contains("7 Bytes", viewModel.FolderStatisticsText);
+
+        viewModel.SearchQuery = "Doku";
+
+        Assert.Contains("0 Dateien", viewModel.FolderStatisticsText);
+        Assert.Contains("1 Ordner", viewModel.FolderStatisticsText);
+        Assert.Contains("0 Bytes", viewModel.FolderStatisticsText);
+    }
+
+    [Fact]
     public async Task LocalAndGlobalSearch_FilterAndExposeResultLocation()
     {
         var secondFolder = Folder with { Id = 11, Name = "Fotos" };
@@ -275,6 +316,44 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task ContextActionsOpenOneModalEditorAndBackClosesIt()
+    {
+        var vault = new FakeVaultApplicationService
+        {
+            FolderTargets = [new(0, "Tresor"), new(30, "Tresor › Archiv")]
+        };
+        vault.Folders[0] = [Folder];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        var changedProperties = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+
+        await viewModel.RequestRenameCommand.ExecuteAsync();
+        Assert.True(viewModel.ShowRenameDialog);
+        Assert.True(viewModel.HasActionDialog);
+        Assert.Contains(nameof(VaultViewModel.ShowRenameDialog), changedProperties);
+
+        Assert.True(viewModel.HandleBackRequested());
+        Assert.False(viewModel.HasActionDialog);
+
+        await viewModel.RequestMoveCommand.ExecuteAsync();
+        Assert.True(viewModel.ShowMoveDialog);
+        await viewModel.CancelActionDialogCommand.ExecuteAsync();
+        Assert.False(viewModel.HasActionDialog);
+
+        await viewModel.RequestDeleteCommand.ExecuteAsync();
+        Assert.True(viewModel.ShowDeleteConfirmation);
+        await viewModel.CancelDeleteCommand.ExecuteAsync();
+        Assert.False(viewModel.HasActionDialog);
+
+        viewModel.SelectedItem = null;
+        await viewModel.RequestCreateFolderCommand.ExecuteAsync();
+        Assert.True(viewModel.ShowCreateFolderDialog);
+        Assert.Contains(nameof(VaultViewModel.ShowCreateFolderDialog), changedProperties);
+    }
+
+    [Fact]
     public async Task TextContent_CanBeOpenedEditedAndSaved()
     {
         var vault = new FakeVaultApplicationService();
@@ -324,6 +403,37 @@ public sealed class VaultViewModelTests
         Assert.True(vault.Preferences.DarkMode);
         Assert.Equal(0, vault.Preferences.AutoLockMinutes);
         Assert.Equal(vault.Preferences, applied[^1]);
+    }
+
+    [Fact]
+    public async Task ClosingSettingsRestoresDraftAndLockClosesAllDialogs()
+    {
+        var initial = new VaultPreferences(false, 12, 3, 4, true, 9, true);
+        var vault = new FakeVaultApplicationService { Preferences = initial };
+        vault.Folders[0] = [Folder];
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+
+        await viewModel.ToggleSettingsCommand.ExecuteAsync();
+        viewModel.DarkMode = true;
+        viewModel.AutoLockMinutes = 1;
+        await viewModel.ToggleSettingsCommand.ExecuteAsync();
+
+        Assert.False(viewModel.ShowSettings);
+        Assert.Equal(initial.DarkMode, viewModel.DarkMode);
+        Assert.Equal(initial.AutoLockMinutes, viewModel.AutoLockMinutes);
+
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.RequestRenameCommand.ExecuteAsync();
+        await viewModel.ToggleSettingsCommand.ExecuteAsync();
+        Assert.True(viewModel.ShowSettings);
+        Assert.False(viewModel.HasActionDialog);
+
+        viewModel.LockImmediately("Gesperrt");
+
+        Assert.False(viewModel.ShowSettings);
+        Assert.False(viewModel.HasActionDialog);
+        Assert.Empty(viewModel.Items);
     }
 
     private static VaultViewModel CreateViewModel(

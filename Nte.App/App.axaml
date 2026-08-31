@@ -4,6 +4,22 @@
              xmlns:views="using:Nte.App.Views"
              x:Class="Nte.App.App"
              RequestedThemeVariant="Default">
+  <Application.Resources>
+    <ResourceDictionary>
+      <SolidColorBrush x:Key="AppScrimBrush" Color="#A0000000" />
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FFF7F7F7" />
+          <SolidColorBrush x:Key="AppElevatedSurfaceBrush" Color="#FFFFFFFF" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppSurfaceBrush" Color="#FF111111" />
+          <SolidColorBrush x:Key="AppElevatedSurfaceBrush" Color="#FF242424" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
   <Application.Styles>
     <FluentTheme />
     <Style Selector="Button.primary">
