@@ -135,11 +135,8 @@
             <CheckBox Content="Dunkles Erscheinungsbild" IsChecked="{Binding DarkMode, Mode=TwoWay}" />
             <TextBlock Text="Automatische Sperre in Minuten (0 deaktiviert)" />
             <TextBox Text="{Binding AutoLockMinutes, Mode=TwoWay}" Width="140" HorizontalAlignment="Left" />
-            <TextBlock Text="Bildpuffer vor / nach dem aktuellen Bild" />
-            <WrapPanel>
-              <TextBox Text="{Binding PreviousImageBufferCount, Mode=TwoWay}" Width="100" Margin="0,0,8,0" />
-              <TextBox Text="{Binding NextImageBufferCount, Mode=TwoWay}" Width="100" />
-            </WrapPanel>
+            <TextBlock Text="Die Bildserie hält nur das aktuelle entschlüsselte Bild im Speicher. Bestehende Pufferwerte bleiben für den WinForms-Rückfall erhalten, werden im gemeinsamen Client aber bewusst nicht verwendet."
+                       TextWrapping="Wrap" Opacity="0.7" />
             <CheckBox Content="Ausgewähltes Bild bei Zufallsreihenfolge einbeziehen"
                       IsChecked="{Binding IncludeSelectedImageWhenRandomising, Mode=TwoWay}" />
             <TextBlock Text="Bild-Autoplay-Intervall in Sekunden" />

@@ -108,6 +108,75 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task MultipleAndFolderExport_IsRecursiveAndNeverOverwritesExistingNames()
+    {
+        var nestedFolder = Folder with { Id = 11, Name = "Unterordner" };
+        var image = new VaultItem(
+            30,
+            "Bild",
+            FileType.image,
+            4,
+            "png",
+            new DateOnly(2026, 8, 29));
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [nestedFolder, TextFile];
+        vault.Folders[11] = [image];
+        vault.ExportedFileContents[20] = "text"u8.ToArray();
+        vault.ExportedFileContents[30] = "image"u8.ToArray();
+        var exportFolder = new MemoryExternalFolder("Ziel");
+        exportFolder.AddFolder("Unterordner");
+        MemoryExternalFile existingFile = exportFolder.AddFile("Notiz.txt", "existing"u8.ToArray());
+        var picker = new FakeFilePickerService { ExportFolder = exportFolder };
+        var statuses = new List<string>();
+        var viewModel = new VaultViewModel(vault, picker, () => { }, statuses.Add);
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+        viewModel.SetSelectedItems(viewModel.Items);
+
+        await viewModel.ExportSelectedCommand.ExecuteAsync();
+
+        Assert.Equal([(ulong)30, (ulong)20], vault.Exports);
+        Assert.Equal("existing"u8.ToArray(), existingFile.WrittenContent);
+        Assert.Equal("text"u8.ToArray(), exportFolder.Files["Notiz (2).txt"].WrittenContent);
+        MemoryExternalFolder nestedExport = exportFolder.Folders["Unterordner (2)"];
+        Assert.Equal("image"u8.ToArray(), nestedExport.Files["Bild.png"].WrittenContent);
+        Assert.Contains("2 Dateien, 1 Ordner", statuses[^1]);
+        Assert.Contains("nicht überschrieben", statuses[^1]);
+    }
+
+    [Fact]
+    public async Task OpeningImage_ProvidesCurrentFolderAsSeries()
+    {
+        var firstImage = new VaultItem(
+            30,
+            "Bild 1",
+            FileType.image,
+            4,
+            "png",
+            new DateOnly(2026, 8, 29));
+        var secondImage = firstImage with { Id = 31, Name = "Bild 2" };
+        byte[] png = OnePixelPng();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder];
+        vault.Folders[10] = [firstImage, secondImage];
+        vault.FileContents[30] = new VaultFileContent(30, "Bild 1", FileType.image, "png", png);
+        vault.FileContents[31] = new VaultFileContent(31, "Bild 2", FileType.image, "png", png);
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+        viewModel.SelectedItem = Assert.Single(viewModel.Items);
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+        viewModel.SelectedItem = viewModel.Items[0];
+
+        await viewModel.OpenSelectedCommand.ExecuteAsync();
+
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        Assert.True(document.IsImageSeries);
+        Assert.Equal("1 / 2", document.ImagePositionText);
+    }
+
+    [Fact]
     public async Task FolderCreationAndArchiveExportUseApplicationService()
     {
         var vault = new FakeVaultApplicationService();
@@ -260,4 +329,7 @@ public sealed class VaultViewModelTests
     private static VaultViewModel CreateViewModel(
         FakeVaultApplicationService vault,
         FakeFilePickerService picker) => new(vault, picker, () => { }, _ => { });
+
+    private static byte[] OnePixelPng() => Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAXSURBVBhXY/jPwPCfoYHhPwMDw38wAABD1Al4TlSdlQAAAABJRU5ErkJggg==");
 }

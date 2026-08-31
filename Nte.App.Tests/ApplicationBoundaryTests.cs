@@ -6,6 +6,26 @@ namespace Nte.App.Tests;
 
 public sealed class ApplicationBoundaryTests
 {
+    [Theory]
+    [InlineData("CON.txt", "_CON.txt")]
+    [InlineData("report?.txt", "report_.txt")]
+    [InlineData("../unsafe", ".._unsafe")]
+    public void ExportNames_ArePortableAcrossSupportedPlatforms(string input, string expected)
+    {
+        Assert.Equal(expected, ExternalExportNamePolicy.Normalize(input));
+    }
+
+    [Fact]
+    public void ExportNames_PreserveExtensionWhenResolvingCollisions()
+    {
+        string name = ExternalExportNamePolicy.CreateUnique(
+            "report.txt",
+            ["REPORT.TXT", "report (2).txt"],
+            preserveExtension: true);
+
+        Assert.Equal("report (3).txt", name);
+    }
+
     [Fact]
     public void SharedApplicationAssembly_HasNoDesktopBackendOrWindowsUiReference()
     {

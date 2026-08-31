@@ -14,6 +14,7 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
     public int ArchiveImportResult { get; set; } = 4;
     public int ArchiveExportResult { get; set; } = 5;
     public byte[] ExportedFileContent { get; set; } = "exported"u8.ToArray();
+    public Dictionary<ulong, byte[]> ExportedFileContents { get; } = [];
     public Dictionary<ulong, IReadOnlyList<VaultItem>> Folders { get; } = [];
     public IReadOnlyList<VaultItem> SearchResults { get; set; } = [];
     public VaultSearchCriteria? LastSearchCriteria { get; private set; }
@@ -97,9 +98,12 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
 
     public Task<VaultFileContent> ReadFileAsync(
         ulong id,
-        CancellationToken cancellationToken = default) => Task.FromResult(
-            FileContents.GetValueOrDefault(id)
-            ?? new VaultFileContent(id, "file", FileType.other, "bin", [1, 2, 3]));
+        CancellationToken cancellationToken = default)
+    {
+        VaultFileContent file = FileContents.GetValueOrDefault(id)
+            ?? new VaultFileContent(id, "file", FileType.other, "bin", [1, 2, 3]);
+        return Task.FromResult(file with { Content = file.Content.ToArray() });
+    }
 
     public Task SaveFileContentAsync(
         ulong id,
@@ -139,7 +143,8 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
         CancellationToken cancellationToken = default)
     {
         Exports.Add(fileId);
-        await destination.WriteAsync(ExportedFileContent, cancellationToken);
+        byte[] content = ExportedFileContents.GetValueOrDefault(fileId, ExportedFileContent);
+        await destination.WriteAsync(content, cancellationToken);
     }
 
     public async Task<int> ExportVaultAsync(

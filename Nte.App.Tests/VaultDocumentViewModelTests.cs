@@ -73,4 +73,110 @@ public sealed class VaultDocumentViewModelTests
 
         Assert.Equal("3 Treffer", viewModel.SearchResultText);
     }
+
+    [Fact]
+    public async Task ImageSeries_NavigatesRandomisesAndStopsAutoplayAtTheEnd()
+    {
+        byte[] firstBuffer = OnePixelPng();
+        byte[] png = OnePixelPng();
+        var files = new Dictionary<ulong, VaultFileContent>
+        {
+            [1] = new(1, "First", FileType.image, "png", png),
+            [2] = new(2, "Second", FileType.image, "png", png)
+        };
+        var series = new VaultImageSeriesOptions(
+            [new(1, "First", "png"), new(2, "Second", "png")],
+            IncludeSelectedImageWhenRandomising: false,
+            AutoplayIntervalSeconds: 1,
+            LoopAutoplay: false);
+        using var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(1, "First", FileType.image, "png", firstBuffer),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            series,
+            (id, _) => Task.FromResult(files[id] with { Content = files[id].Content.ToArray() }),
+            (_, _) => Task.CompletedTask,
+            _ => null);
+
+        Assert.True(viewModel.IsImageSeries);
+        Assert.Equal("1 / 2", viewModel.ImagePositionText);
+        Assert.All(firstBuffer, value => Assert.Equal((byte)0, value));
+
+        await viewModel.NextImageCommand.ExecuteAsync();
+        Assert.Equal((ulong)2, viewModel.Id);
+        Assert.Equal("Second.png", viewModel.DisplayName);
+        Assert.Equal("2 / 2", viewModel.ImagePositionText);
+
+        await viewModel.PreviousImageCommand.ExecuteAsync();
+        await viewModel.RandomiseImagesCommand.ExecuteAsync();
+        Assert.Equal((ulong)1, viewModel.Id);
+        Assert.Equal("1 / 2", viewModel.ImagePositionText);
+
+        await viewModel.ToggleAutoplayCommand.ExecuteAsync();
+        Assert.Equal((ulong)2, viewModel.Id);
+        Assert.False(viewModel.IsAutoplayRunning);
+        Assert.Equal("2 / 2", viewModel.ImagePositionText);
+    }
+
+    [Fact]
+    public async Task DisposingImageSeries_StopsAutoplayAndReleasesCurrentBitmap()
+    {
+        byte[] png = OnePixelPng();
+        var series = new VaultImageSeriesOptions(
+            [new(1, "First", "png"), new(2, "Second", "png")],
+            IncludeSelectedImageWhenRandomising: false,
+            AutoplayIntervalSeconds: 1,
+            LoopAutoplay: true);
+        var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(1, "First", FileType.image, "png", png),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            series,
+            (id, _) => Task.FromResult(new VaultFileContent(id, "Next", FileType.image, "png", OnePixelPng())),
+            (_, cancellationToken) => Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken),
+            _ => null);
+
+        await viewModel.ToggleAutoplayCommand.ExecuteAsync();
+        Assert.True(viewModel.IsAutoplayRunning);
+
+        viewModel.Dispose();
+
+        Assert.False(viewModel.IsAutoplayRunning);
+        Assert.Null(viewModel.Image);
+    }
+
+    [Fact]
+    public async Task ImageSeries_FailedNavigationKeepsCurrentDocumentAndAllowsRecovery()
+    {
+        int decodeCount = 0;
+        byte[] brokenBuffer = OnePixelPng();
+        var series = new VaultImageSeriesOptions(
+            [new(1, "First", "png"), new(2, "Broken", "png")],
+            IncludeSelectedImageWhenRandomising: false,
+            AutoplayIntervalSeconds: 1,
+            LoopAutoplay: false);
+        using var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(1, "First", FileType.image, "png", OnePixelPng()),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            series,
+            (id, _) => Task.FromResult(new VaultFileContent(id, "Broken", FileType.image, "png", brokenBuffer)),
+            (_, _) => Task.CompletedTask,
+            _ => ++decodeCount == 1 ? null : throw new InvalidDataException("defekt"));
+
+        await viewModel.NextImageCommand.ExecuteAsync();
+
+        Assert.Equal((ulong)1, viewModel.Id);
+        Assert.Equal("First.png", viewModel.DisplayName);
+        Assert.True(viewModel.IsImageDocument);
+        Assert.True(viewModel.IsImageSeries);
+        Assert.Contains("defekt", viewModel.ErrorMessage);
+        Assert.All(brokenBuffer, value => Assert.Equal((byte)0, value));
+    }
+
+    private static byte[] OnePixelPng() => Convert.FromBase64String(
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAXSURBVBhXY/jPwPCfoYHhPwMDw38wAABD1Al4TlSdlQAAAABJRU5ErkJggg==");
 }

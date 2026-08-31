@@ -20,6 +20,17 @@ public sealed record VaultFileContent(
     string Extension,
     byte[] Content);
 
+public sealed record VaultImageReference(
+    ulong Id,
+    string Name,
+    string Extension);
+
+public sealed record VaultImageSeriesOptions(
+    IReadOnlyList<VaultImageReference> Images,
+    bool IncludeSelectedImageWhenRandomising,
+    int AutoplayIntervalSeconds,
+    bool LoopAutoplay);
+
 public sealed record VaultPreferences(
     bool DarkMode,
     int AutoLockMinutes,

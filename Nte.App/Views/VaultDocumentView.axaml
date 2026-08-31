@@ -30,11 +30,20 @@
                  KeyDown="TextEditor_KeyDown" />
       </Grid>
 
-      <Border IsVisible="{Binding IsImage}" BorderThickness="1" BorderBrush="#40607080" CornerRadius="8">
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-          <Image Source="{Binding Image}" Stretch="Uniform" />
-        </ScrollViewer>
-      </Border>
+      <Grid IsVisible="{Binding IsImageDocument}" RowDefinitions="Auto,*" RowSpacing="8">
+        <WrapPanel IsVisible="{Binding IsImageSeries}">
+          <Button Content="Vorheriges" Command="{Binding PreviousImageCommand}" Margin="0,0,8,6" />
+          <TextBlock Text="{Binding ImagePositionText}" VerticalAlignment="Center" Margin="0,0,12,6" />
+          <Button Content="Nächstes" Command="{Binding NextImageCommand}" Margin="0,0,8,6" />
+          <Button Content="Reihenfolge mischen" Command="{Binding RandomiseImagesCommand}" Margin="0,0,8,6" />
+          <Button Content="{Binding AutoplayButtonText}" Command="{Binding ToggleAutoplayCommand}" Margin="0,0,8,6" />
+        </WrapPanel>
+        <Border Grid.Row="1" BorderThickness="1" BorderBrush="#40607080" CornerRadius="8">
+          <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Image Source="{Binding Image}" Stretch="Uniform" />
+          </ScrollViewer>
+        </Border>
+      </Grid>
 
       <Border IsVisible="{Binding IsGeneric}" Padding="24" BorderThickness="1"
               BorderBrush="#40607080" CornerRadius="8">

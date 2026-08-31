@@ -11,30 +11,92 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private readonly Action _close;
     private readonly Action<string> _setStatus;
     private readonly DecodedTextDocument? _textDocument;
+    private readonly List<VaultImageReference> _images = [];
+    private readonly Func<ulong, CancellationToken, Task<VaultFileContent>>? _loadImage;
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay;
+    private readonly Func<byte[], Bitmap?> _decodeImage;
+    private readonly bool _includeSelectedImageWhenRandomising;
+    private readonly bool _loopAutoplay;
+    private readonly TimeSpan _autoplayInterval;
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
+    private ulong _id;
+    private string _name;
+    private string _extension;
     private string _text = string.Empty;
     private string _savedText = string.Empty;
     private string _searchText = string.Empty;
     private string _errorMessage = string.Empty;
+    private Bitmap? _image;
+    private int _imageIndex = -1;
     private bool _isEditing;
+    private bool _hasDecodedImage;
     private bool _isBusy;
+    private bool _isAutoplayRunning;
     private bool _showDiscardConfirmation;
     private bool _disposed;
     private CancellationTokenSource? _saveCancellation;
+    private CancellationTokenSource? _autoplayCancellation;
 
     public VaultDocumentViewModel(
         VaultFileContent file,
         Func<ReadOnlyMemory<byte>, CancellationToken, Task> save,
         Action close,
-        Action<string> setStatus)
+        Action<string> setStatus,
+        VaultImageSeriesOptions? imageSeries = null,
+        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage = null)
+        : this(
+            file,
+            save,
+            close,
+            setStatus,
+            imageSeries,
+            loadImage,
+            static (delay, cancellationToken) => Task.Delay(delay, cancellationToken),
+            DecodeImage)
+    {
+    }
+
+    internal VaultDocumentViewModel(
+        VaultFileContent file,
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task> save,
+        Action close,
+        Action<string> setStatus,
+        VaultImageSeriesOptions? imageSeries,
+        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage,
+        Func<TimeSpan, CancellationToken, Task> delay,
+        Func<byte[], Bitmap?>? decodeImage = null)
     {
         ArgumentNullException.ThrowIfNull(file);
         _save = save ?? throw new ArgumentNullException(nameof(save));
         _close = close ?? throw new ArgumentNullException(nameof(close));
         _setStatus = setStatus ?? throw new ArgumentNullException(nameof(setStatus));
-        Id = file.Id;
-        Name = file.Name;
-        Extension = file.Extension;
+        _delay = delay ?? throw new ArgumentNullException(nameof(delay));
+        _decodeImage = decodeImage ?? DecodeImage;
+        _id = file.Id;
+        _name = file.Name;
+        _extension = file.Extension;
         Type = file.Type;
+
+        if (file.Type == FileType.image && imageSeries is not null && loadImage is not null)
+        {
+            _images.AddRange(imageSeries.Images
+                .Where(image => image.Id != 0)
+                .DistinctBy(image => image.Id));
+            if (_images.All(image => image.Id != file.Id))
+                _images.Insert(0, new VaultImageReference(file.Id, file.Name, file.Extension));
+            _imageIndex = _images.FindIndex(image => image.Id == file.Id);
+            _loadImage = loadImage;
+            _includeSelectedImageWhenRandomising = imageSeries.IncludeSelectedImageWhenRandomising;
+            _autoplayInterval = TimeSpan.FromSeconds(Math.Clamp(
+                imageSeries.AutoplayIntervalSeconds,
+                1,
+                ThingRoot.MaximumAutoplayIntervalSeconds));
+            _loopAutoplay = imageSeries.LoopAutoplay;
+        }
+        else
+        {
+            _autoplayInterval = TimeSpan.FromSeconds(5);
+        }
 
         try
         {
@@ -46,8 +108,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             }
             else if (file.Type == FileType.image)
             {
-                using var stream = new MemoryStream(file.Content, writable: false);
-                Image = new Bitmap(stream);
+                _image = _decodeImage(file.Content);
+                _hasDecodedImage = true;
             }
         }
         catch (Exception ex)
@@ -64,23 +126,44 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         CloseCommand = new AsyncCommand(RequestCloseAsync, () => !IsBusy);
         DiscardAndCloseCommand = new AsyncCommand(DiscardAndCloseAsync, () => !IsBusy);
         CancelCloseCommand = new AsyncCommand(CancelCloseAsync, () => !IsBusy);
+        PreviousImageCommand = new AsyncCommand(
+            () => NavigateImageAsync(-1),
+            () => IsImageSeries && !IsBusy && _imageIndex > 0);
+        NextImageCommand = new AsyncCommand(
+            () => NavigateImageAsync(1),
+            () => IsImageSeries && !IsBusy && _imageIndex < _images.Count - 1);
+        RandomiseImagesCommand = new AsyncCommand(
+            RandomiseImagesAsync,
+            () => IsImageSeries && !IsBusy);
+        ToggleAutoplayCommand = new AsyncCommand(
+            ToggleAutoplayAsync,
+            CanToggleAutoplay);
     }
 
-    public ulong Id { get; }
-    public string Name { get; }
-    public string Extension { get; }
+    public ulong Id => _id;
+    public string Name => _name;
+    public string Extension => _extension;
     public FileType Type { get; }
     public string DisplayName => string.IsNullOrWhiteSpace(Extension)
         ? Name
         : $"{Name}.{Extension.TrimStart('.')}";
     public bool IsText => Type == FileType.text;
-    public bool IsImage => Type == FileType.image && Image is not null;
+    public bool IsImageDocument => Type == FileType.image;
+    public bool IsImage => IsImageDocument && _hasDecodedImage;
+    public bool IsImageSeries => Type == FileType.image && _loadImage is not null && _images.Count > 1;
     public bool IsMedia => Type is FileType.audio or FileType.video;
-    public bool IsGeneric => !IsText && !IsImage;
+    public bool IsGeneric => !IsText && !IsImageDocument;
     public string GenericMessage => IsMedia
         ? "Audio- und Videowiedergabe benötigt noch ein gemeinsam geprüftes Medien-Backend. Der verschlüsselte Inhalt kann sicher exportiert werden."
         : "Für diesen Dateityp ist keine interne Vorschau verfügbar. Der Inhalt kann sicher exportiert werden.";
-    public Bitmap? Image { get; private set; }
+    public string ImagePositionText => _images.Count == 0
+        ? string.Empty
+        : _imageIndex < 0
+            ? $"Zufallsfolge bereit · {_images.Count} Bilder"
+            : $"{_imageIndex + 1} / {_images.Count}";
+    public string AutoplayButtonText => IsAutoplayRunning ? "Autoplay stoppen" : "Autoplay starten";
+
+    public Bitmap? Image => _image;
 
     public string Text
     {
@@ -139,6 +222,19 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(IsReadOnly));
             SaveCommand.NotifyCanExecuteChanged();
             ToggleEditingCommand.NotifyCanExecuteChanged();
+            NotifyImageCommands();
+        }
+    }
+
+    public bool IsAutoplayRunning
+    {
+        get => _isAutoplayRunning;
+        private set
+        {
+            if (!SetProperty(ref _isAutoplayRunning, value))
+                return;
+            OnPropertyChanged(nameof(AutoplayButtonText));
+            ToggleAutoplayCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -153,6 +249,10 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public AsyncCommand CloseCommand { get; }
     public AsyncCommand DiscardAndCloseCommand { get; }
     public AsyncCommand CancelCloseCommand { get; }
+    public AsyncCommand PreviousImageCommand { get; }
+    public AsyncCommand NextImageCommand { get; }
+    public AsyncCommand RandomiseImagesCommand { get; }
+    public AsyncCommand ToggleAutoplayCommand { get; }
 
     public bool HandleBackRequested()
     {
@@ -170,12 +270,15 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     {
         if (_disposed)
             return;
+        _disposed = true;
         _saveCancellation?.Cancel();
-        Image?.Dispose();
-        Image = null;
+        _lifetimeCancellation.Cancel();
+        StopAutoplay();
+        Bitmap? image = Image;
+        SetImage(null, decoded: false);
+        image?.Dispose();
         _text = string.Empty;
         _savedText = string.Empty;
-        _disposed = true;
     }
 
     private async Task SaveAsync()
@@ -208,6 +311,199 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
                 _saveCancellation = null;
             CryptographicOperations.ZeroMemory(content);
             IsBusy = false;
+        }
+    }
+
+    private async Task NavigateImageAsync(int offset)
+    {
+        StopAutoplay();
+        int targetIndex = _imageIndex < 0 && offset > 0
+            ? 0
+            : _imageIndex + offset;
+        await SwitchImageAsync(targetIndex, _lifetimeCancellation.Token);
+    }
+
+    private async Task<bool> SwitchImageAsync(int targetIndex, CancellationToken cancellationToken)
+    {
+        if (_loadImage is null || targetIndex < 0 || targetIndex >= _images.Count)
+            return false;
+
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        VaultImageReference target = _images[targetIndex];
+        Bitmap? replacement = null;
+        try
+        {
+            VaultFileContent file = await _loadImage(target.Id, cancellationToken);
+            try
+            {
+                if (file.Id != target.Id || file.Type != FileType.image)
+                    throw new InvalidDataException("Der geladene Eintrag ist nicht das erwartete Bild.");
+                replacement = _decodeImage(file.Content);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(file.Content);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            Bitmap? previous = Image;
+            _id = file.Id;
+            _name = file.Name;
+            _extension = file.Extension;
+            SetImage(replacement, decoded: true);
+            replacement = null;
+            previous?.Dispose();
+            _imageIndex = targetIndex;
+            OnPropertyChanged(nameof(Id));
+            OnPropertyChanged(nameof(Name));
+            OnPropertyChanged(nameof(Extension));
+            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(ImagePositionText));
+            NotifyImageCommands();
+            _setStatus($"Bild {_imageIndex + 1} von {_images.Count} angezeigt.");
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Das Bild konnte nicht geladen werden: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            replacement?.Dispose();
+            IsBusy = false;
+        }
+    }
+
+    private Task RandomiseImagesAsync()
+    {
+        StopAutoplay();
+        int selectedIndex = _images.FindIndex(image => image.Id == Id);
+        if (selectedIndex < 0 || _images.Count <= 1)
+            return Task.CompletedTask;
+
+        VaultImageReference selected = _images[selectedIndex];
+        if (_includeSelectedImageWhenRandomising)
+        {
+            Shuffle(_images);
+            _imageIndex = -1;
+        }
+        else
+        {
+            List<VaultImageReference> remaining = _images
+                .Where((_, index) => index != selectedIndex)
+                .ToList();
+            Shuffle(remaining);
+            _images.Clear();
+            _images.Add(selected);
+            _images.AddRange(remaining);
+            _imageIndex = 0;
+        }
+
+        OnPropertyChanged(nameof(ImagePositionText));
+        NotifyImageCommands();
+        _setStatus("Zufällige Bildreihenfolge erstellt.");
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleAutoplayAsync()
+    {
+        if (IsAutoplayRunning)
+        {
+            StopAutoplay();
+            return Task.CompletedTask;
+        }
+
+        var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        _autoplayCancellation = cancellation;
+        IsAutoplayRunning = true;
+        _ = RunAutoplayAsync(cancellation);
+        return Task.CompletedTask;
+    }
+
+    private async Task RunAutoplayAsync(CancellationTokenSource cancellation)
+    {
+        try
+        {
+            while (!cancellation.IsCancellationRequested)
+            {
+                await _delay(_autoplayInterval, cancellation.Token);
+                int targetIndex = _imageIndex + 1;
+                if (targetIndex >= _images.Count)
+                {
+                    if (!_loopAutoplay)
+                        break;
+                    targetIndex = 0;
+                }
+                if (!await SwitchImageAsync(targetIndex, cancellation.Token))
+                    break;
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Autoplay wurde beendet: {ex.Message}";
+        }
+        finally
+        {
+            if (ReferenceEquals(_autoplayCancellation, cancellation))
+            {
+                _autoplayCancellation = null;
+                IsAutoplayRunning = false;
+            }
+            cancellation.Dispose();
+        }
+    }
+
+    private void StopAutoplay()
+    {
+        CancellationTokenSource? cancellation = _autoplayCancellation;
+        _autoplayCancellation = null;
+        cancellation?.Cancel();
+        IsAutoplayRunning = false;
+    }
+
+    private bool CanToggleAutoplay() =>
+        IsImageSeries &&
+        (IsAutoplayRunning || (!IsBusy && (_loopAutoplay || _imageIndex < _images.Count - 1)));
+
+    private void NotifyImageCommands()
+    {
+        PreviousImageCommand.NotifyCanExecuteChanged();
+        NextImageCommand.NotifyCanExecuteChanged();
+        RandomiseImagesCommand.NotifyCanExecuteChanged();
+        ToggleAutoplayCommand.NotifyCanExecuteChanged();
+    }
+
+    private static Bitmap DecodeImage(byte[] content)
+    {
+        using var stream = new MemoryStream(content, writable: false);
+        return new Bitmap(stream);
+    }
+
+    private void SetImage(Bitmap? image, bool decoded)
+    {
+        _image = image;
+        _hasDecodedImage = decoded;
+        OnPropertyChanged(nameof(Image));
+        OnPropertyChanged(nameof(IsImage));
+        OnPropertyChanged(nameof(IsImageSeries));
+        OnPropertyChanged(nameof(IsGeneric));
+    }
+
+    private static void Shuffle<T>(IList<T> items)
+    {
+        for (int index = items.Count - 1; index > 0; index--)
+        {
+            int swapIndex = Random.Shared.Next(index + 1);
+            (items[index], items[swapIndex]) = (items[swapIndex], items[index]);
         }
     }
 

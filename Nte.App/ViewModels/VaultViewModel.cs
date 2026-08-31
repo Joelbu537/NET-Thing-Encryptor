@@ -68,7 +68,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             () => !IsBusy && CurrentFolderId != 0 && !IsShowingGlobalResults);
         ExportSelectedCommand = new AsyncCommand(
             ExportSelectedAsync,
-            () => !IsBusy && SelectedItem is { IsFolder: false } && _selectedItems.Count == 1);
+            () => !IsBusy && _selectedItems.Count != 0);
         CreateFolderCommand = new AsyncCommand(
             CreateFolderAsync,
             () => !IsBusy && !IsShowingGlobalResults && !string.IsNullOrWhiteSpace(NewFolderName));
@@ -388,12 +388,36 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         await RunBusyAsync(async cancellationToken =>
         {
             VaultFileContent content = await _vault.ReadFileAsync(item.Id, cancellationToken);
+            VaultImageSeriesOptions? imageSeries = item.Type == FileType.image
+                ? CreateImageSeriesOptions()
+                : null;
             ActiveDocument = new VaultDocumentViewModel(
                 content,
                 (data, token) => _vault.SaveFileContentAsync(item.Id, data, token),
                 CloseActiveDocumentAndRefresh,
-                _setStatus);
+                _setStatus,
+                imageSeries,
+                imageSeries is null ? null : _vault.ReadFileAsync);
         }, "Der Inhalt konnte nicht geöffnet werden");
+    }
+
+    private VaultImageSeriesOptions CreateImageSeriesOptions()
+    {
+        IEnumerable<VaultItemViewModel> candidates = IsShowingGlobalResults
+            ? Items
+            : _folderItems;
+        VaultImageReference[] images = candidates
+            .Where(candidate => candidate.Type == FileType.image)
+            .Select(candidate => new VaultImageReference(
+                candidate.Id,
+                candidate.Name,
+                candidate.Extension))
+            .ToArray();
+        return new VaultImageSeriesOptions(
+            images,
+            IncludeSelectedImageWhenRandomising,
+            ImageAutoplayIntervalSeconds,
+            LoopImageAutoplay);
     }
 
     private async Task GoBackAsync()
@@ -448,18 +472,127 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     private async Task ExportSelectedAsync()
     {
-        VaultItemViewModel? item = SelectedItem;
-        if (item is null || item.IsFolder)
+        VaultItemViewModel[] items = _selectedItems.ToArray();
+        if (items.Length == 0)
             return;
+
+        if (items.Length == 1 && !items[0].IsFolder)
+        {
+            VaultItemViewModel item = items[0];
+            await RunBusyAsync(async cancellationToken =>
+            {
+                IWritableExternalFile? file = await _filePicker.PickDocumentExportAsync(
+                    item.SuggestedFileName,
+                    cancellationToken);
+                if (file is null)
+                    return;
+                await using Stream destination = await file.OpenWriteAsync(cancellationToken);
+                await _vault.ExportFileAsync(item.Id, destination, cancellationToken);
+                _setStatus($"„{item.SuggestedFileName}“ exportiert.");
+            }, "Das Dokument konnte nicht exportiert werden");
+            return;
+        }
+
         await RunBusyAsync(async cancellationToken =>
         {
-            IWritableExternalFile? file = await _filePicker.PickDocumentExportAsync(item.SuggestedFileName, cancellationToken);
-            if (file is null)
+            IWritableExternalFolder? exportFolder = await _filePicker.PickExportFolderAsync(cancellationToken);
+            if (exportFolder is null)
                 return;
-            await using Stream destination = await file.OpenWriteAsync(cancellationToken);
-            await _vault.ExportFileAsync(item.Id, destination, cancellationToken);
-            _setStatus($"„{item.SuggestedFileName}“ exportiert.");
-        }, "Das Dokument konnte nicht exportiert werden");
+
+            var activeFolderPath = new HashSet<ulong>();
+            var count = new ExportCount();
+            foreach (VaultItemViewModel item in items)
+            {
+                if (item.IsFolder)
+                {
+                    IWritableExternalFolder destination = await exportFolder.CreateUniqueFolderAsync(
+                        item.Name,
+                        cancellationToken);
+                    ExportCount childCount = await ExportFolderAsync(
+                        item.Id,
+                        destination,
+                        activeFolderPath,
+                        cancellationToken);
+                    count = new ExportCount(
+                        count.Files + childCount.Files,
+                        count.Folders + childCount.Folders + 1);
+                }
+                else
+                {
+                    await ExportFileToFolderAsync(
+                        item.Id,
+                        item.SuggestedFileName,
+                        exportFolder,
+                        cancellationToken);
+                    count = count with { Files = count.Files + 1 };
+                }
+            }
+
+            string fileText = count.Files == 1 ? "1 Datei" : $"{count.Files} Dateien";
+            string folderText = count.Folders == 1 ? "1 Ordner" : $"{count.Folders} Ordner";
+            _setStatus($"Auswahl exportiert: {fileText}, {folderText}. Vorhandene Namen wurden nicht überschrieben.");
+        }, "Die Auswahl konnte nicht vollständig exportiert werden");
+    }
+
+    private async Task<ExportCount> ExportFolderAsync(
+        ulong folderId,
+        IWritableExternalFolder destination,
+        ISet<ulong> activeFolderPath,
+        CancellationToken cancellationToken)
+    {
+        if (!activeFolderPath.Add(folderId))
+            throw new InvalidDataException("Der Tresor enthält einen Ordnerzyklus; der Export wurde abgebrochen.");
+
+        try
+        {
+            int fileCount = 0;
+            int folderCount = 0;
+            IReadOnlyList<VaultItem> children = await _vault.GetFolderItemsAsync(folderId, cancellationToken);
+            foreach (VaultItem child in children)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (child.IsFolder)
+                {
+                    IWritableExternalFolder childDestination = await destination.CreateUniqueFolderAsync(
+                        child.Name,
+                        cancellationToken);
+                    ExportCount childCount = await ExportFolderAsync(
+                        child.Id,
+                        childDestination,
+                        activeFolderPath,
+                        cancellationToken);
+                    fileCount += childCount.Files;
+                    folderCount += childCount.Folders + 1;
+                }
+                else
+                {
+                    await ExportFileToFolderAsync(
+                        child.Id,
+                        CreateSuggestedFileName(child.Name, child.Extension),
+                        destination,
+                        cancellationToken);
+                    fileCount++;
+                }
+            }
+            return new ExportCount(fileCount, folderCount);
+        }
+        finally
+        {
+            activeFolderPath.Remove(folderId);
+        }
+    }
+
+    private async Task ExportFileToFolderAsync(
+        ulong fileId,
+        string suggestedFileName,
+        IWritableExternalFolder destination,
+        CancellationToken cancellationToken)
+    {
+        IWritableExternalFile file = await destination.CreateUniqueFileAsync(
+            suggestedFileName,
+            cancellationToken);
+        await using Stream output = await file.OpenWriteAsync(cancellationToken);
+        await _vault.ExportFileAsync(fileId, output, cancellationToken);
     }
 
     private Task SearchAsync()
@@ -804,4 +937,11 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             suffix++;
         return $"{baseName} ({suffix})";
     }
+
+    private static string CreateSuggestedFileName(string name, string extension) =>
+        string.IsNullOrWhiteSpace(extension)
+            ? name
+            : $"{name}.{extension.TrimStart('.')}";
+
+    private readonly record struct ExportCount(int Files = 0, int Folders = 0);
 }

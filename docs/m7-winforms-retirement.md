@@ -17,6 +17,8 @@ Die M7-Entscheidung lautet daher **behalten unter Feature-Freeze**. WinForms ble
 | getaggter, reproduzierbarer letzter WinForms-Stand | Buildweg vorhanden; Freigabe-Tag offen | blockiert Löschung |
 | offene M5-Funktionen umgesetzt oder bewusst akzeptiert | nicht abschließend entschieden | blockiert Löschung |
 
+**M8-Nachtrag:** Die offenen M5-Funktionen sind in `docs/m8-post-cutover-hardening.md` entweder umgesetzt oder als ausdrückliche Produktgrenze entschieden. Dieses einzelne Kriterium ist damit erfüllt; alle übrigen in der Tabelle als offen markierten Produktions-, Zeit- und Hardware-Gates blockieren die WinForms-Löschung weiterhin.
+
 Diese Bewertung ist kein Aufschub durch technische Unsicherheit. Sie verhindert, dass der einzige Windows-Rückfallpfad vor realen Rollouterfahrungen entfernt wird.
 
 ## Reproduzierbares Rückfallpaket
