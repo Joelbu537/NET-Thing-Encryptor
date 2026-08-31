@@ -11,7 +11,7 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
     private readonly Action<VaultPreferences> _applyPreferences;
     private readonly SynchronizationContext? _synchronizationContext;
     private object _currentPage = new LoadingViewModel();
-    private string _statusMessage = "Bereit";
+    private string _statusMessage = string.Empty;
     private bool _disposed;
 
     public AppShellViewModel(

@@ -35,7 +35,7 @@ public sealed class VaultViewModelTests
         await viewModel.OpenSelectedCommand.ExecuteAsync();
 
         Assert.Equal((ulong)10, viewModel.CurrentFolderId);
-        Assert.Equal("Tresor  ›  Dokumente", viewModel.Breadcrumb);
+        Assert.Equal("/Dokumente", viewModel.Breadcrumb);
         Assert.Equal("Notiz", Assert.Single(viewModel.Items).Name);
 
         await viewModel.BackCommand.ExecuteAsync();
@@ -60,7 +60,7 @@ public sealed class VaultViewModelTests
         await viewModel.GoRootCommand.ExecuteAsync();
 
         Assert.Equal((ulong)0, viewModel.CurrentFolderId);
-        Assert.Equal("Tresor", viewModel.Breadcrumb);
+        Assert.Equal("/", viewModel.Breadcrumb);
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
-    public async Task DocumentImport_IsDisabledAtRootAndUsesUniqueNamesInsideFolder()
+    public async Task RootToolbarCommandsStayInteractiveAndImportExplainsFolderRequirement()
     {
         var vault = new FakeVaultApplicationService();
         vault.Folders[0] = [Folder];
@@ -96,7 +96,14 @@ public sealed class VaultViewModelTests
         };
         var viewModel = CreateViewModel(vault, picker);
         await viewModel.InitializeAsync();
-        Assert.False(viewModel.ImportDocumentsCommand.CanExecute(null));
+        Assert.True(viewModel.BackCommand.CanExecute(null));
+        Assert.True(viewModel.GoRootCommand.CanExecute(null));
+        Assert.True(viewModel.ImportDocumentsCommand.CanExecute(null));
+
+        await viewModel.ImportDocumentsCommand.ExecuteAsync();
+
+        Assert.Empty(vault.Imports);
+        Assert.Contains("innerhalb eines Ordners", viewModel.ErrorMessage);
 
         viewModel.SelectedItem = Assert.Single(viewModel.Items);
         await viewModel.OpenSelectedCommand.ExecuteAsync();
@@ -106,6 +113,16 @@ public sealed class VaultViewModelTests
         Assert.Equal("Notiz (2)", vault.Imports[0].ObjectName);
         Assert.Equal("Notiz (3)", vault.Imports[1].ObjectName);
         Assert.All(vault.Imports, item => Assert.Equal((ulong)10, item.ParentId));
+    }
+
+    [Fact]
+    public void FolderSizeText_UsesTheActualSizeInsteadOfRepeatingTheType()
+    {
+        var folder = new VaultItemViewModel(Folder with { Size = 1536 });
+
+        Assert.Equal("Ordner", folder.KindText);
+        Assert.Equal(1536L.Sizeify(), folder.SizeText);
+        Assert.NotEqual(folder.KindText, folder.SizeText);
     }
 
     [Fact]

@@ -62,15 +62,15 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         _setStatus = setStatus;
         _applyPreferences = applyPreferences ?? (_ => { });
 
-        BackCommand = new AsyncCommand(GoBackAsync, () => !IsBusy && _path.Count > 1);
-        GoRootCommand = new AsyncCommand(GoRootAsync, () => !IsBusy && _path.Count > 1);
+        BackCommand = new AsyncCommand(GoBackAsync, () => !IsBusy);
+        GoRootCommand = new AsyncCommand(GoRootAsync, () => !IsBusy);
         OpenSelectedCommand = new AsyncCommand(
             OpenSelectedAsync,
             () => !IsBusy && SelectedItem is not null && _selectedItems.Count == 1);
         RefreshCommand = new AsyncCommand(RefreshAsync, () => !IsBusy);
         ImportDocumentsCommand = new AsyncCommand(
             ImportDocumentsAsync,
-            () => !IsBusy && CurrentFolderId != 0 && !IsShowingGlobalResults);
+            () => !IsBusy && !IsShowingGlobalResults);
         ExportSelectedCommand = new AsyncCommand(
             ExportSelectedAsync,
             () => !IsBusy && _selectedItems.Count != 0);
@@ -302,7 +302,9 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     public bool LoopImageAutoplay { get => _loopImageAutoplay; set => SetProperty(ref _loopImageAutoplay, value); }
 
     public ulong CurrentFolderId => _path[^1].Id;
-    public string Breadcrumb => string.Join("  ›  ", _path.Select(part => part.Name));
+    public string Breadcrumb => _path.Count == 1
+        ? "/"
+        : $"/{string.Join('/', _path.Skip(1).Select(part => part.Name))}";
     public bool IsRoot => CurrentFolderId == 0;
     public bool HasItems => Items.Count != 0;
     public string SelectionCountText => _selectedItems.Count switch
@@ -537,7 +539,10 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private async Task ImportDocumentsAsync()
     {
         if (CurrentFolderId == 0)
+        {
+            ErrorMessage = "Dateien können nur innerhalb eines Ordners importiert werden.";
             return;
+        }
         await RunBusyAsync(async cancellationToken =>
         {
             IReadOnlyList<IReadableExternalFile> files = await _filePicker.PickDocumentsAsync(cancellationToken);

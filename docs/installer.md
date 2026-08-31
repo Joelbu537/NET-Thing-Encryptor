@@ -22,7 +22,9 @@ Der Installer verteilt den Avalonia-Desktop-Client von NET Thing Encryptor als p
 
 ## Versionierung
 
-Die kanonische Windows-Produktversion steht in `Nte.Desktop/Nte.Desktop.csproj` unter `Version`. `AssemblyVersion` und `FileVersion` enthalten vier numerische Komponenten. Das Buildskript übernimmt Installer- und Dateiversion direkt aus dieser Projektdatei. `Nte.Android/Nte.Android.csproj` muss dieselbe sichtbare `Version` und zusätzlich einen mit jedem Android-Release steigenden ganzzahligen `ApplicationVersion`-Wert enthalten.
+Die kanonische Windows-Produktversion steht in `Nte.Desktop/Nte.Desktop.csproj` unter `Version`. `AssemblyVersion` und `FileVersion` enthalten vier numerische Komponenten. Das Buildskript übernimmt Installer- und Dateiversion direkt aus dieser Projektdatei. `Nte.App`, `Nte.Core` und `Nte.Storage` tragen dieselbe Produktversion, damit die sichtbare Versionsanzeige und die ausgelieferten Assemblymetadaten übereinstimmen. `Nte.Android/Nte.Android.csproj` muss dieselbe sichtbare `Version` und zusätzlich einen mit jedem Android-Release steigenden ganzzahligen `ApplicationVersion`-Wert enthalten. Der eingefrorene WinForms-Rückfallpfad behält seine eigene Legacy-Version; der Upgrade-Test prüft Legacy- und Avalonia-Version getrennt.
+
+Jede neue Änderung am aktiven Produkt erhöht die Produktversion. Eine neue Major-Version wird ausschließlich auf ausdrückliche Anweisung des Produkteigentümers vergeben. Ohne solche Anweisung wählt der ausführende Agent abhängig von Umfang und Kompatibilität eine Minor- oder Patch-Erhöhung und hält alle oben genannten aktiven Projekte synchron. Der Android-`ApplicationVersion`-Wert muss dabei unabhängig von der sichtbaren Version stets monoton steigen.
 
 Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektversion passt, wird von der Release-Pipeline abgewiesen.
 
@@ -41,11 +43,11 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 ## Release-Ablauf
 
 1. Alle Änderungen einchecken und CI erfolgreich abschließen.
-2. `Version`, `AssemblyVersion` und `FileVersion` in `Nte.Desktop` setzen.
+2. `Version`, `AssemblyVersion` und `FileVersion` in `Nte.Desktop` sowie dieselbe `Version` in `Nte.App`, `Nte.Core` und `Nte.Storage` setzen.
 3. Dieselbe `Version` und einen höheren `ApplicationVersion`-Wert in `Nte.Android` setzen.
 4. Änderungen auf `master` zusammenführen.
 5. Windows- und Android-Signierungs-Secrets im Repository prüfen.
-6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v3.7.0`.
+6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.0.0`.
 7. Den Workflow „Signed release“ abwarten.
 8. Signaturen und SHA-256-Prüfsummen der veröffentlichten Dateien stichprobenartig prüfen.
 9. Upgrade von der zuletzt veröffentlichten WinForms- beziehungsweise Avalonia-Version in einer Windows-Test-VM durchführen.

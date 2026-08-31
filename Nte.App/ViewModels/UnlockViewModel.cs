@@ -88,7 +88,7 @@ public sealed class UnlockViewModel : ObservableObject
             }
 
             Password = string.Empty;
-            _setStatus("Tresor entsperrt.");
+            _setStatus(string.Empty);
             await _onUnlocked();
         }
         catch (Exception ex)

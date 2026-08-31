@@ -121,6 +121,8 @@ public sealed partial class VaultView : UserControl
         ListBox? list = control.FindAncestorOfType<ListBox>();
         bool keepSelection = list?.SelectedItems?.Contains(item) == true;
         SelectItem(control, item, keepSelection);
+        args.Handled = true;
+        control.ContextMenu?.Open(control);
     }
 
     private async void Item_DoubleTapped(object? sender, TappedEventArgs args)
@@ -146,6 +148,14 @@ public sealed partial class VaultView : UserControl
             SelectItem(button, item, preserveExisting: false);
     }
 
+    private async void SearchTextBox_KeyDown(object? sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Enter || DataContext is not VaultViewModel viewModel)
+            return;
+        args.Handled = true;
+        await viewModel.SearchCommand.ExecuteAsync();
+    }
+
     private void SelectItem(Control origin, VaultItemViewModel item, bool preserveExisting)
     {
         ListBox? list = origin.FindAncestorOfType<ListBox>();
@@ -158,9 +168,6 @@ public sealed partial class VaultView : UserControl
         if (DataContext is VaultViewModel viewModel)
             viewModel.SetSelectedItems(list.SelectedItems?.OfType<VaultItemViewModel>() ?? [item]);
     }
-
-    private async void OpenMenuItem_Click(object? sender, RoutedEventArgs args) =>
-        await ExecuteAsync(viewModel => viewModel.OpenSelectedCommand);
 
     private async void ExportMenuItem_Click(object? sender, RoutedEventArgs args) =>
         await ExecuteAsync(viewModel => viewModel.ExportSelectedCommand);

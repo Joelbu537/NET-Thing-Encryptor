@@ -16,7 +16,7 @@ public sealed class AppShellViewModelTests
         await shell.InitializeAsync();
 
         Assert.IsType<UnlockViewModel>(shell.CurrentPage);
-        Assert.Equal("v3.7.0", shell.VersionText);
+        Assert.Equal("v4.0.0", shell.VersionText);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class AppShellViewModelTests
 
         Assert.Equal(1, vault.UnlockCalls);
         Assert.IsType<VaultViewModel>(shell.CurrentPage);
-        Assert.Equal("Tresor entsperrt.", shell.StatusMessage);
+        Assert.Empty(shell.StatusMessage);
     }
 
     [Fact]

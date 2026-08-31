@@ -18,30 +18,28 @@
       <Setter Property="Margin" Value="0,0,5,0" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="ToolTip.ShowOnDisabled" Value="True" />
     </Style>
     <Style Selector="Button.row-menu">
-      <Setter Property="Width" Value="40" />
-      <Setter Property="Height" Value="40" />
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="FontSize" Value="22" />
     </Style>
   </UserControl.Styles>
 
   <Grid>
-    <Grid Margin="12" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8"
+    <Grid Margin="12" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8"
           IsVisible="{Binding ShowVaultContent}">
-      <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7"
+            IsVisible="{OnFormFactor Desktop=True, Mobile=False}">
         <StackPanel Orientation="Horizontal">
           <Button Classes="toolbar" Command="{Binding BackCommand}"
                   ToolTip.Tip="Zurück" AutomationProperties.Name="Zurück">
             <Image Source="/Assets/Legacy/imageres_return.ico" Width="28" Height="28" />
           </Button>
-          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
-                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
-            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
-          </Button>
           <Button Classes="toolbar" Command="{Binding ImportDocumentsCommand}"
-                  ToolTip.Tip="Dokumente importieren" AutomationProperties.Name="Dokumente importieren">
+                  ToolTip.Tip="Neue Datei importieren" AutomationProperties.Name="Neue Datei importieren">
             <Image Source="/Assets/Legacy/imageres_new_file.ico" Width="28" Height="28" />
           </Button>
           <Button Classes="toolbar" Command="{Binding RequestCreateFolderCommand}"
@@ -55,7 +53,20 @@
           </Button>
         </StackPanel>
 
-        <StackPanel Grid.Column="1" Orientation="Horizontal">
+        <Border Grid.Column="1" BorderThickness="1" BorderBrush="#50607080" CornerRadius="5"
+                Padding="10,0" Background="{DynamicResource ControlLowBrush}"
+                MinHeight="44" VerticalAlignment="Stretch">
+          <TextBlock Text="{Binding Breadcrumb}" VerticalAlignment="Center"
+                     FontFamily="Consolas" TextWrapping="NoWrap"
+                     TextTrimming="CharacterEllipsis"
+                     AutomationProperties.Name="Aktueller Pfad" />
+        </Border>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal">
+          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
+                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
+            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
+          </Button>
           <Button Classes="toolbar" Command="{Binding ToggleSettingsCommand}"
                   ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
             <Image Source="/Assets/Legacy/shell32_gear.ico" Width="28" Height="28" />
@@ -68,29 +79,77 @@
         </StackPanel>
       </Grid>
 
-      <Border Grid.Row="1" BorderThickness="1" BorderBrush="#40607080" CornerRadius="6"
-              Padding="10,7" Background="{DynamicResource ControlLowBrush}">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-          <TextBlock Text="Pfad:" FontWeight="SemiBold" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="1" Text="{Binding Breadcrumb}" VerticalAlignment="Center"
-                     TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-        </Grid>
-      </Border>
+      <Grid Grid.Row="0" RowDefinitions="Auto,Auto" RowSpacing="5"
+            IsVisible="{OnFormFactor Desktop=False, Mobile=True}">
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="5">
+          <Button Classes="toolbar" Command="{Binding BackCommand}"
+                  ToolTip.Tip="Zurück" AutomationProperties.Name="Zurück">
+            <Image Source="/Assets/Legacy/imageres_return.ico" Width="28" Height="28" />
+          </Button>
 
-      <Border Grid.Row="2" Padding="9" CornerRadius="7" Background="#101769AA">
+          <Border Grid.Column="1" BorderThickness="1" BorderBrush="#50607080" CornerRadius="5"
+                  Padding="10,0" Background="{DynamicResource ControlLowBrush}"
+                  MinHeight="44" VerticalAlignment="Stretch">
+            <TextBlock Text="{Binding Breadcrumb}" VerticalAlignment="Center"
+                       FontFamily="Consolas" TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis"
+                       AutomationProperties.Name="Aktueller Pfad" />
+          </Border>
+
+          <Button Grid.Column="2" Classes="toolbar" Command="{Binding ToggleSettingsCommand}"
+                  ToolTip.Tip="Einstellungen" AutomationProperties.Name="Einstellungen">
+            <Image Source="/Assets/Legacy/shell32_gear.ico" Width="28" Height="28" />
+          </Button>
+          <Button Grid.Column="3" Classes="toolbar" Command="{Binding LockCommand}"
+                  ToolTip.Tip="Tresor sperren" AutomationProperties.Name="Tresor sperren" Margin="0">
+            <PathIcon Width="22" Height="22"
+                      Data="M7,10 L7,7 A5,5 0 0 1 17,7 L17,10 L19,10 L19,22 L5,22 L5,10 Z M9,10 L15,10 L15,7 A3,3 0 0 0 9,7 Z M12,14 A2,2 0 0 0 11,17.73 L11,19 L13,19 L13,17.73 A2,2 0 0 0 12,14 Z" />
+          </Button>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+          <Button Classes="toolbar" Command="{Binding GoRootCommand}"
+                  ToolTip.Tip="Zum Stammverzeichnis" AutomationProperties.Name="Zum Stammverzeichnis">
+            <Image Source="/Assets/Legacy/imageres_explorer.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding ImportDocumentsCommand}"
+                  ToolTip.Tip="Neue Datei importieren" AutomationProperties.Name="Neue Datei importieren">
+            <Image Source="/Assets/Legacy/imageres_new_file.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding RequestCreateFolderCommand}"
+                  ToolTip.Tip="Neuer Ordner" AutomationProperties.Name="Neuer Ordner">
+            <Image Source="/Assets/Legacy/imageres_folder_empty.ico" Width="28" Height="28" />
+          </Button>
+          <Button Classes="toolbar" Command="{Binding RefreshCommand}"
+                  ToolTip.Tip="Aktualisieren" AutomationProperties.Name="Aktualisieren" Margin="0">
+            <PathIcon Width="23" Height="23"
+                      Data="M12,4 A8,8 0 1 0 19.4,9 L17.2,9 A6,6 0 1 1 12,6 L12,9 L17,5 L12,1 Z" />
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <Border Grid.Row="1" Padding="9" CornerRadius="7" Background="#101769AA">
         <StackPanel Spacing="7">
           <WrapPanel>
-            <TextBox Text="{Binding SearchQuery, Mode=TwoWay}" PlaceholderText="Name, Erweiterung oder Typ"
-                     Width="280" Margin="0,0,8,5" />
+            <Grid Width="280" Margin="0,0,8,5">
+              <TextBox Text="{Binding SearchQuery, Mode=TwoWay}"
+                       PlaceholderText="Name, Erweiterung oder Typ"
+                       Padding="8,0,34,0"
+                       KeyDown="SearchTextBox_KeyDown" />
+              <Button Command="{Binding ClearSearchCommand}"
+                      Width="30" Height="30" Padding="4" Margin="0,2,2,2"
+                      HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                      Background="Transparent" BorderThickness="0"
+                      ToolTip.Tip="Suche zurücksetzen"
+                      AutomationProperties.Name="Suche zurücksetzen">
+                <TextBlock Text="✕" FontSize="16" VerticalAlignment="Center" />
+              </Button>
+            </Grid>
             <CheckBox Content="Gesamten Tresor durchsuchen" IsChecked="{Binding SearchGlobally, Mode=TwoWay}"
                       VerticalAlignment="Center" Margin="0,0,8,5" />
             <Button Command="{Binding SearchCommand}" Width="38" Height="34" Padding="7"
                     Margin="0,0,5,5" ToolTip.Tip="Suchen" AutomationProperties.Name="Suchen">
               <TextBlock Text="🔍" FontSize="18" VerticalAlignment="Center" />
-            </Button>
-            <Button Command="{Binding ClearSearchCommand}" Width="38" Height="34" Padding="7"
-                    Margin="0,0,5,5" ToolTip.Tip="Suche zurücksetzen" AutomationProperties.Name="Suche zurücksetzen">
-              <TextBlock Text="✕" FontSize="18" VerticalAlignment="Center" />
             </Button>
           </WrapPanel>
           <WrapPanel IsVisible="{Binding ShowAdvancedSearch}">
@@ -110,7 +169,7 @@
         </StackPanel>
       </Border>
 
-      <Grid Grid.Row="3" RowDefinitions="Auto,*">
+      <Grid Grid.Row="2" RowDefinitions="Auto,*">
         <Border Grid.Row="0" Padding="8,6" Background="#181769AA"
                 IsVisible="{OnFormFactor Desktop=True, Mobile=False}">
           <Grid ColumnDefinitions="40,*,120,100,120">
@@ -125,14 +184,19 @@
           <ListBox x:Name="ItemsList" ItemsSource="{Binding Items}" SelectionMode="Multiple"
                    SelectionChanged="Items_SelectionChanged"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.Styles>
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding" Value="2,0" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              </Style>
+            </ListBox.Styles>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:VaultItemViewModel">
-                <Grid Margin="4,2" MinHeight="44" ColumnDefinitions="40,*"
+                <Grid Margin="2,0" MinHeight="34" ColumnDefinitions="40,*"
+                      Background="Transparent"
                       PointerPressed="Item_PointerPressed" DoubleTapped="Item_DoubleTapped">
                   <Grid.ContextMenu>
                     <ContextMenu>
-                      <MenuItem Header="Öffnen / Anzeigen" Click="OpenMenuItem_Click" />
-                      <Separator />
                       <MenuItem Header="Exportieren …" Click="ExportMenuItem_Click" />
                       <MenuItem Header="Umbenennen …" Click="RenameMenuItem_Click" />
                       <MenuItem Header="Verschieben …" Click="MoveMenuItem_Click" />
@@ -175,7 +239,6 @@
                             ToolTip.Tip="Aktionen" AutomationProperties.Name="Aktionen">
                       <Button.Flyout>
                         <MenuFlyout>
-                          <MenuItem Header="Öffnen / Anzeigen" Click="OpenMenuItem_Click" />
                           <MenuItem Header="Exportieren …" Click="ExportMenuItem_Click" />
                           <MenuItem Header="Umbenennen …" Click="RenameMenuItem_Click" />
                           <MenuItem Header="Verschieben …" Click="MoveMenuItem_Click" />
@@ -195,7 +258,7 @@
                    TextWrapping="Wrap" Opacity="0.65" Margin="16" />
       </Grid>
 
-      <TextBlock Grid.Row="4" Classes="error" Text="{Binding ErrorMessage}" />
+      <TextBlock Grid.Row="3" Classes="error" Text="{Binding ErrorMessage}" />
     </Grid>
 
     <ContentControl Content="{Binding ActiveDocument}" IsVisible="{Binding HasActiveDocument}" ZIndex="20" />
@@ -258,7 +321,8 @@
       </Border>
     </Grid>
 
-    <Grid IsVisible="{OnFormFactor Desktop=False, Mobile=True}" ZIndex="40">
+    <Grid IsVisible="{OnFormFactor Desktop=False, Mobile=True}"
+          IsHitTestVisible="{Binding ShowSettings}" ZIndex="40">
       <views:SettingsView IsVisible="{Binding ShowSettings}" />
     </Grid>
   </Grid>

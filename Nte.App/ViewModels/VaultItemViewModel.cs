@@ -15,7 +15,7 @@ public sealed class VaultItemViewModel(VaultItem item)
     public bool HasLocation { get; } = !string.IsNullOrWhiteSpace(item.Location);
     public bool IsFolder { get; } = item.IsFolder;
     public string KindText { get; } = GetKindText(item.Type);
-    public string SizeText { get; } = item.IsFolder ? "Ordner" : item.Size.Sizeify();
+    public string SizeText { get; } = item.Size.Sizeify();
 
     public string SuggestedFileName => string.IsNullOrWhiteSpace(Extension)
         ? Name

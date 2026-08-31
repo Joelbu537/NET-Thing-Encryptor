@@ -5,7 +5,9 @@ param(
     [Parameter(Mandatory)]
     [string]$AvaloniaInstallerPath,
     [Parameter(Mandatory)]
-    [string]$ExpectedVersion,
+    [string]$LegacyExpectedVersion,
+    [Parameter(Mandatory)]
+    [string]$AvaloniaExpectedVersion,
     [switch]$AllowLocalMachineChanges
 )
 
@@ -15,7 +17,8 @@ Set-StrictMode -Version Latest
 function Resolve-TestInstaller {
     param(
         [string]$Path,
-        [string]$Label
+        [string]$Label,
+        [string]$ExpectedVersion
     )
 
     $resolved = (Resolve-Path -LiteralPath $Path).Path
@@ -62,8 +65,14 @@ function Get-DirectoryFingerprint {
     )
 }
 
-$legacyInstaller = Resolve-TestInstaller -Path $LegacyInstallerPath -Label "WinForms rollback"
-$avaloniaInstaller = Resolve-TestInstaller -Path $AvaloniaInstallerPath -Label "Avalonia"
+$legacyInstaller = Resolve-TestInstaller `
+    -Path $LegacyInstallerPath `
+    -Label "WinForms rollback" `
+    -ExpectedVersion $LegacyExpectedVersion
+$avaloniaInstaller = Resolve-TestInstaller `
+    -Path $AvaloniaInstallerPath `
+    -Label "Avalonia" `
+    -ExpectedVersion $AvaloniaExpectedVersion
 
 $isCi = [string]::Equals($env:CI, "true", [StringComparison]::OrdinalIgnoreCase)
 if (-not $isCi -and -not $AllowLocalMachineChanges) {
@@ -116,6 +125,10 @@ try {
     if (-not (Test-Path -LiteralPath $installedExecutable -PathType Leaf)) {
         throw "The WinForms executable is missing after the legacy installation."
     }
+    $legacyInstalledVersion = (Get-Item -LiteralPath $installedExecutable).VersionInfo.ProductVersion
+    if (-not $legacyInstalledVersion.StartsWith($LegacyExpectedVersion, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "The installed WinForms version '$legacyInstalledVersion' does not match '$LegacyExpectedVersion'."
+    }
     if (-not (Get-ChildItem -LiteralPath $installDirectory -Filter "libvlc.dll" -File -Recurse | Select-Object -First 1)) {
         throw "The WinForms rollback installation is missing native VLC files."
     }
@@ -158,8 +171,8 @@ try {
     }
 
     $upgradedVersion = (Get-Item -LiteralPath $installedExecutable).VersionInfo.ProductVersion
-    if (-not $upgradedVersion.StartsWith($ExpectedVersion, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "The upgraded executable version '$upgradedVersion' does not match '$ExpectedVersion'."
+    if (-not $upgradedVersion.StartsWith($AvaloniaExpectedVersion, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "The upgraded executable version '$upgradedVersion' does not match '$AvaloniaExpectedVersion'."
     }
     if (Compare-Object $fixtureFingerprint (Get-DirectoryFingerprint -Path $dataDirectory)) {
         throw "The in-place upgrade changed the M0 compatibility fixture."

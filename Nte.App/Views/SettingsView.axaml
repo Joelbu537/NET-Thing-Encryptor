@@ -7,6 +7,7 @@
           Padding="24">
     <Grid RowDefinitions="*,Auto" RowSpacing="20">
       <ScrollViewer Grid.Row="0"
+                    Padding="0,0,16,8"
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled">
         <StackPanel MaxWidth="720" Spacing="20">
@@ -105,19 +106,14 @@
         </StackPanel>
       </ScrollViewer>
 
-      <Border Grid.Row="1"
-              BorderBrush="#40607080"
-              BorderThickness="0,1,0,0"
-              Padding="0,16,0,0">
-        <WrapPanel HorizontalAlignment="Right">
-          <Button Content="Speichern und anwenden"
-                  Classes="primary"
-                  Command="{Binding SavePreferencesCommand}"
-                  Margin="0,0,8,0" />
-          <Button Content="Schließen"
-                  Command="{Binding ToggleSettingsCommand}" />
-        </WrapPanel>
-      </Border>
+      <WrapPanel Grid.Row="1" HorizontalAlignment="Right">
+        <Button Content="Speichern und anwenden"
+                Classes="primary"
+                Command="{Binding SavePreferencesCommand}"
+                Margin="0,0,8,0" />
+        <Button Content="Schließen"
+                Command="{Binding ToggleSettingsCommand}" />
+      </WrapPanel>
     </Grid>
   </Border>
 </UserControl>

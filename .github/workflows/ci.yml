@@ -195,17 +195,22 @@ jobs:
       - name: Build rollback and Avalonia installers
         shell: pwsh
         run: |
-          [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
-          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          .\build\build-installer.ps1 -ProductLine WinFormsRollback -Clean -SkipTests -ExpectedVersion $version
-          .\build\build-installer.ps1 -Clean -SkipTests -ExpectedVersion $version
+          [xml]$legacyProject = Get-Content '.\NET Thing Encryptor\NET Thing Encryptor.csproj'
+          [xml]$avaloniaProject = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
+          $legacyVersion = $legacyProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $avaloniaVersion = $avaloniaProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          .\build\build-installer.ps1 -ProductLine WinFormsRollback -Clean -SkipTests -ExpectedVersion $legacyVersion
+          .\build\build-installer.ps1 -Clean -SkipTests -ExpectedVersion $avaloniaVersion
 
       - name: Prove WinForms-to-Avalonia in-place upgrade
         shell: pwsh
         run: |
-          [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
-          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          [xml]$legacyProject = Get-Content '.\NET Thing Encryptor\NET Thing Encryptor.csproj'
+          [xml]$avaloniaProject = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
+          $legacyVersion = $legacyProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $avaloniaVersion = $avaloniaProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           .\build\test-winforms-upgrade.ps1 `
-            -LegacyInstallerPath ".\artifacts\legacy-winforms\installer\NET-Thing-Encryptor-WinForms-Rollback-Setup-$version.exe" `
-            -AvaloniaInstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe" `
-            -ExpectedVersion $version
+            -LegacyInstallerPath ".\artifacts\legacy-winforms\installer\NET-Thing-Encryptor-WinForms-Rollback-Setup-$legacyVersion.exe" `
+            -AvaloniaInstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-$avaloniaVersion.exe" `
+            -LegacyExpectedVersion $legacyVersion `
+            -AvaloniaExpectedVersion $avaloniaVersion
