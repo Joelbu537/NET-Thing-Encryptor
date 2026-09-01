@@ -29,6 +29,7 @@ public sealed class UnlockViewModelTests
         Assert.False(viewModel.CanImportVault);
         Assert.True(viewModel.HasPersistedVault);
         Assert.False(viewModel.IsPasswordConfirmationVisible);
+        Assert.False(viewModel.IsVaultSourceSelectionVisible);
         Assert.Empty(viewModel.Password);
         Assert.Empty(viewModel.PasswordConfirmation);
         Assert.Equal("Tresor entsperren", viewModel.Heading);
@@ -48,6 +49,8 @@ public sealed class UnlockViewModelTests
             _ => { });
 
         Assert.False(viewModel.ImportVaultCommand.CanExecute(null));
+        Assert.False(viewModel.IsVaultSourceSelectionVisible);
+        Assert.False(viewModel.CanConnectRemoteVault);
     }
 
     [Fact]
@@ -61,6 +64,10 @@ public sealed class UnlockViewModelTests
 
         Assert.False(viewModel.HasPersistedVault);
         Assert.True(viewModel.IsPasswordConfirmationVisible);
+        Assert.True(viewModel.IsVaultSourceSelectionVisible);
+        Assert.True(viewModel.ImportVaultCommand.CanExecute(null));
+        Assert.False(viewModel.CanConnectRemoteVault);
+        Assert.Contains("zukünftigen Version", viewModel.RemoteVaultConnectionHint);
         Assert.Equal("Passwort festlegen", viewModel.Heading);
         Assert.Equal(
             "Gib ein Passwort zum Verschlüsseln deines Tresors ein.",

@@ -30,17 +30,39 @@
                 VerticalContentAlignment="Center"
                 MinHeight="42" IsDefault="True" />
         <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
-        <Border Margin="0,8,0,0" Padding="14" CornerRadius="8" Background="#101769AA">
-          <StackPanel Spacing="8">
-            <TextBlock Text="Vorhandenen Tresor übernehmen" FontWeight="SemiBold" />
-            <TextBlock Text="Ein .ntevault-Archiv kann nur importiert werden, solange hier noch kein Tresor gespeichert ist."
-                       TextWrapping="Wrap" Opacity="0.75" />
-            <Button Content="Tresorarchiv importieren …"
-                    Command="{Binding ImportVaultCommand}"
-                    IsEnabled="{Binding CanImportVault}"
-                    HorizontalAlignment="Left" />
-          </StackPanel>
-        </Border>
+        <StackPanel x:Name="VaultSourceSelection"
+                    Margin="0,8,0,0"
+                    Spacing="12"
+                    IsVisible="{Binding IsVaultSourceSelectionVisible}">
+          <Border x:Name="VaultImportArea"
+                  Padding="14" CornerRadius="8" Background="#101769AA">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Vorhandenen Tresor übernehmen" FontWeight="SemiBold" />
+              <TextBlock Text="Importiere ein vorhandenes .ntevault-Archiv von diesem Gerät."
+                         TextWrapping="Wrap" Opacity="0.75" />
+              <Button Content="Tresorarchiv importieren …"
+                      Command="{Binding ImportVaultCommand}"
+                      IsEnabled="{Binding CanImportVault}"
+                      HorizontalAlignment="Left" />
+            </StackPanel>
+          </Border>
+          <Border x:Name="RemoteVaultArea"
+                  Padding="14"
+                  CornerRadius="8"
+                  Background="#101769AA"
+                  ToolTip.Tip="{Binding RemoteVaultConnectionHint}">
+            <StackPanel Spacing="8">
+              <TextBlock Text="Remote-Tresor" FontWeight="SemiBold" />
+              <TextBlock Text="Verbinde dich künftig mit einem Tresor auf einem anderen Server. Diese Funktion ist noch nicht verfügbar."
+                         TextWrapping="Wrap" Opacity="0.75" />
+              <Button x:Name="ConnectRemoteVaultButton"
+                      Content="Mit Remote-Tresor verbinden"
+                      IsEnabled="{Binding CanConnectRemoteVault}"
+                      ToolTip.Tip="{Binding RemoteVaultConnectionHint}"
+                      HorizontalAlignment="Left" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
       </StackPanel>
     </Border>
   </ScrollViewer>

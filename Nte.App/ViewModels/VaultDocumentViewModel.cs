@@ -19,7 +19,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private readonly bool _includeSelectedImageWhenRandomising;
     private readonly bool _loopAutoplay;
     private readonly TimeSpan _autoplayInterval;
-    private IVideoPlaybackSession? _videoSession;
+    private IMediaPlaybackSession? _mediaSession;
     private Control? _videoSurface;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private ulong _id;
@@ -36,14 +36,15 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private bool _isBusy;
     private bool _isAutoplayRunning;
     private bool _showDiscardConfirmation;
-    private bool _isVideoPlaying;
-    private bool _canSeekVideo;
-    private bool _isVideoSeeking;
-    private bool _isUpdatingVideoState;
-    private bool _resumeVideoAfterSeek;
-    private bool _videoStartRequested;
-    private double _videoPositionMilliseconds;
-    private double _videoDurationMilliseconds;
+    private bool _isMediaPlaying;
+    private bool _canSeekMedia;
+    private bool _isMediaSeeking;
+    private bool _isUpdatingMediaState;
+    private bool _resumeMediaAfterSeek;
+    private bool _mediaStartRequested;
+    private double _mediaPositionMilliseconds;
+    private double _mediaDurationMilliseconds;
+    private readonly bool _showBackButton;
     private bool _disposed;
     private CancellationTokenSource? _saveCancellation;
     private CancellationTokenSource? _autoplayCancellation;
@@ -55,7 +56,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         Action<string> setStatus,
         VaultImageSeriesOptions? imageSeries = null,
         Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage = null,
-        IVideoPlaybackService? videoPlaybackService = null)
+        IMediaPlaybackService? mediaPlaybackService = null,
+        bool showBackButton = true)
         : this(
             file,
             save,
@@ -65,7 +67,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             loadImage,
             static (delay, cancellationToken) => Task.Delay(delay, cancellationToken),
             DecodeImage,
-            videoPlaybackService)
+            mediaPlaybackService,
+            showBackButton)
     {
     }
 
@@ -78,7 +81,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage,
         Func<TimeSpan, CancellationToken, Task> delay,
         Func<byte[], Bitmap?>? decodeImage = null,
-        IVideoPlaybackService? videoPlaybackService = null)
+        IMediaPlaybackService? mediaPlaybackService = null,
+        bool showBackButton = true)
     {
         ArgumentNullException.ThrowIfNull(file);
         _save = save ?? throw new ArgumentNullException(nameof(save));
@@ -90,6 +94,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         _name = file.Name;
         _extension = file.Extension;
         Type = file.Type;
+        _showBackButton = showBackButton;
 
         if (file.Type == FileType.image && imageSeries is not null && loadImage is not null)
         {
@@ -112,7 +117,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             _autoplayInterval = TimeSpan.FromSeconds(5);
         }
 
-        bool videoSessionOwnsContent = false;
+        bool mediaSessionOwnsContent = false;
         try
         {
             if (file.Type == FileType.text)
@@ -126,16 +131,20 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
                 _image = _decodeImage(file.Content);
                 _hasDecodedImage = true;
             }
-            else if (file.Type == FileType.video && videoPlaybackService is not null)
+            else if (file.Type is FileType.audio or FileType.video && mediaPlaybackService is not null)
             {
-                IVideoPlaybackSession? session = videoPlaybackService.CreateSession(file.Content);
+                IMediaPlaybackSession? session = mediaPlaybackService.CreateSession(
+                    file.Content,
+                    file.Type == FileType.video
+                        ? MediaPlaybackKind.Video
+                        : MediaPlaybackKind.Audio);
                 try
                 {
                     _videoSurface = session.Surface;
-                    session.StateChanged += VideoSession_StateChanged;
-                    session.Failed += VideoSession_Failed;
-                    _videoSession = session;
-                    videoSessionOwnsContent = true;
+                    session.StateChanged += MediaSession_StateChanged;
+                    session.Failed += MediaSession_Failed;
+                    _mediaSession = session;
+                    mediaSessionOwnsContent = true;
                     session = null;
                 }
                 finally
@@ -143,9 +152,11 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
                     session?.Dispose();
                 }
             }
-            else if (file.Type == FileType.video)
+            else if (file.Type is FileType.audio or FileType.video)
             {
-                ErrorMessage = "Der Videoplayer ist auf dieser Plattform nicht verfügbar.";
+                ErrorMessage = IsAudio
+                    ? "Der Audioplayer ist auf dieser Plattform nicht verfügbar."
+                    : "Der Videoplayer ist auf dieser Plattform nicht verfügbar.";
             }
         }
         catch (Exception ex)
@@ -154,7 +165,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (!videoSessionOwnsContent)
+            if (!mediaSessionOwnsContent)
                 CryptographicOperations.ZeroMemory(file.Content);
         }
 
@@ -175,16 +186,16 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         ToggleAutoplayCommand = new AsyncCommand(
             ToggleAutoplayAsync,
             CanToggleAutoplay);
-        StartVideoCommand = new AsyncCommand(StartVideoAsync, CanStartVideo);
-        ToggleVideoPlaybackCommand = new AsyncCommand(
-            ToggleVideoPlaybackAsync,
-            () => IsVideo && _videoSession is not null);
-        SeekVideoBackwardCommand = new AsyncCommand(
-            () => SeekVideoByAsync(TimeSpan.FromSeconds(-10)),
-            () => IsVideo && _videoSession is not null && CanSeekVideo);
-        SeekVideoForwardCommand = new AsyncCommand(
-            () => SeekVideoByAsync(TimeSpan.FromSeconds(10)),
-            () => IsVideo && _videoSession is not null && CanSeekVideo);
+        StartMediaCommand = new AsyncCommand(StartMediaAsync, CanStartMedia);
+        ToggleMediaPlaybackCommand = new AsyncCommand(
+            ToggleMediaPlaybackAsync,
+            () => IsMedia && _mediaSession is not null);
+        SeekMediaBackwardCommand = new AsyncCommand(
+            () => SeekMediaByAsync(TimeSpan.FromSeconds(-10)),
+            () => IsMedia && _mediaSession is not null && CanSeekMedia);
+        SeekMediaForwardCommand = new AsyncCommand(
+            () => SeekMediaByAsync(TimeSpan.FromSeconds(10)),
+            () => IsMedia && _mediaSession is not null && CanSeekMedia);
     }
 
     public ulong Id => _id;
@@ -201,79 +212,84 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public bool IsVideo => Type == FileType.video;
     public bool IsAudio => Type == FileType.audio;
     public bool IsMedia => Type is FileType.audio or FileType.video;
-    public bool IsGeneric => !IsText && !IsImageDocument && !IsVideo;
-    public string GenericMessage => IsAudio
-        ? "Für Audiodateien ist noch keine interne Wiedergabe verfügbar. Der Inhalt kann sicher exportiert werden."
-        : "Für diesen Dateityp ist keine interne Vorschau verfügbar. Der Inhalt kann sicher exportiert werden.";
+    public bool IsGeneric => !IsText && !IsImageDocument && !IsMedia;
+    public bool ShowBackButton => _showBackButton;
+    public string GenericMessage =>
+        "Für diesen Dateityp ist keine interne Vorschau verfügbar. Der Inhalt kann sicher exportiert werden.";
     public string ImagePositionText => _images.Count == 0
         ? string.Empty
         : _imageIndex < 0
             ? $"Zufallsfolge bereit · {_images.Count} Bilder"
             : $"{_imageIndex + 1} / {_images.Count}";
     public string AutoplayButtonText => IsAutoplayRunning ? "Autoplay stoppen" : "Autoplay starten";
-    public bool HasVideoPlayback => _videoSession is not null;
-    public bool ShowVideoPlaceholder => IsVideo && !HasVideoPlayback;
+    public bool HasMediaPlayback => _mediaSession is not null;
+    public bool HasVideoSurface => IsVideo && _videoSurface is not null;
+    public bool ShowAudioPresentation => IsAudio && HasMediaPlayback;
+    public bool ShowMediaPlaceholder => IsMedia && !HasMediaPlayback;
+    public string MediaUnavailableMessage => IsAudio
+        ? "Der Audioplayer ist auf dieser Plattform nicht verfügbar."
+        : "Der Videoplayer ist auf dieser Plattform nicht verfügbar.";
     public Control? VideoSurface => _videoSurface;
-    public string VideoPlayPauseSymbol => IsVideoPlaying ? "⏸" : "▶";
-    public string VideoPlayPauseToolTip => IsVideoPlaying ? "Pause (Leertaste)" : "Wiedergabe (Leertaste)";
-    public double VideoTimelineMaximum => Math.Max(1, VideoDurationMilliseconds);
-    public string VideoTimeText =>
-        $"{FormatMediaTime(VideoPositionMilliseconds, VideoDurationMilliseconds)} / " +
-        FormatMediaTime(VideoDurationMilliseconds, VideoDurationMilliseconds);
+    public string MediaPlayPauseSymbol => IsMediaPlaying ? "⏸" : "▶";
+    public string MediaPlayPauseToolTip => IsMediaPlaying ? "Pause (Leertaste)" : "Wiedergabe (Leertaste)";
+    public double MediaTimelineMaximum => Math.Max(1, MediaDurationMilliseconds);
+    public string MediaTimeText =>
+        $"{FormatMediaTime(MediaPositionMilliseconds, MediaDurationMilliseconds)} / " +
+        FormatMediaTime(MediaDurationMilliseconds, MediaDurationMilliseconds);
 
     public Bitmap? Image => _image;
 
-    public bool IsVideoPlaying
+    public bool IsMediaPlaying
     {
-        get => _isVideoPlaying;
+        get => _isMediaPlaying;
         private set
         {
-            if (!SetProperty(ref _isVideoPlaying, value))
+            if (!SetProperty(ref _isMediaPlaying, value))
                 return;
-            OnPropertyChanged(nameof(VideoPlayPauseSymbol));
-            OnPropertyChanged(nameof(VideoPlayPauseToolTip));
+            OnPropertyChanged(nameof(MediaPlayPauseSymbol));
+            OnPropertyChanged(nameof(MediaPlayPauseToolTip));
         }
     }
 
-    public bool CanSeekVideo
+    public bool CanSeekMedia
     {
-        get => _canSeekVideo;
+        get => _canSeekMedia;
         private set
         {
-            if (!SetProperty(ref _canSeekVideo, value))
+            if (!SetProperty(ref _canSeekMedia, value))
                 return;
-            SeekVideoBackwardCommand.NotifyCanExecuteChanged();
-            SeekVideoForwardCommand.NotifyCanExecuteChanged();
+            SeekMediaBackwardCommand.NotifyCanExecuteChanged();
+            SeekMediaForwardCommand.NotifyCanExecuteChanged();
         }
     }
 
-    public double VideoPositionMilliseconds
+    public double MediaPositionMilliseconds
     {
-        get => _videoPositionMilliseconds;
+        get => _mediaPositionMilliseconds;
         set
         {
-            double maximum = Math.Max(0, VideoDurationMilliseconds);
+            double maximum = Math.Max(0, MediaDurationMilliseconds);
             double position = Math.Clamp(value, 0, maximum);
-            if (!SetProperty(ref _videoPositionMilliseconds, position))
+            if (!SetProperty(ref _mediaPositionMilliseconds, position))
                 return;
-            OnPropertyChanged(nameof(VideoTimeText));
-            if (!_isUpdatingVideoState && !_isVideoSeeking &&
-                _videoSession is not null && CanSeekVideo)
+            OnPropertyChanged(nameof(MediaTimeText));
+            if (!_isUpdatingMediaState && !_isMediaSeeking &&
+                _mediaSession is not null && CanSeekMedia)
             {
-                _videoSession.Seek((long)position);
+                _mediaSession.Seek((long)position);
             }
         }
     }
 
-    public double VideoDurationMilliseconds
+    public double MediaDurationMilliseconds
     {
-        get => _videoDurationMilliseconds;
+        get => _mediaDurationMilliseconds;
         private set
         {
-            if (!SetProperty(ref _videoDurationMilliseconds, Math.Max(0, value)))
+            if (!SetProperty(ref _mediaDurationMilliseconds, Math.Max(0, value)))
                 return;
-            OnPropertyChanged(nameof(VideoTimelineMaximum));
-            OnPropertyChanged(nameof(VideoTimeText));
+            OnPropertyChanged(nameof(MediaTimelineMaximum));
+            OnPropertyChanged(nameof(MediaTimeText));
         }
     }
 
@@ -365,10 +381,10 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public AsyncCommand NextImageCommand { get; }
     public AsyncCommand RandomiseImagesCommand { get; }
     public AsyncCommand ToggleAutoplayCommand { get; }
-    public AsyncCommand StartVideoCommand { get; }
-    public AsyncCommand ToggleVideoPlaybackCommand { get; }
-    public AsyncCommand SeekVideoBackwardCommand { get; }
-    public AsyncCommand SeekVideoForwardCommand { get; }
+    public AsyncCommand StartMediaCommand { get; }
+    public AsyncCommand ToggleMediaPlaybackCommand { get; }
+    public AsyncCommand SeekMediaBackwardCommand { get; }
+    public AsyncCommand SeekMediaForwardCommand { get; }
 
     public bool HandleBackRequested()
     {
@@ -393,103 +409,103 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         Bitmap? image = Image;
         SetImage(null, decoded: false);
         image?.Dispose();
-        IVideoPlaybackSession? videoSession = _videoSession;
-        _videoSession = null;
-        if (videoSession is not null)
+        IMediaPlaybackSession? mediaSession = _mediaSession;
+        _mediaSession = null;
+        if (mediaSession is not null)
         {
-            videoSession.StateChanged -= VideoSession_StateChanged;
-            videoSession.Failed -= VideoSession_Failed;
-            videoSession.Dispose();
+            mediaSession.StateChanged -= MediaSession_StateChanged;
+            mediaSession.Failed -= MediaSession_Failed;
+            mediaSession.Dispose();
         }
         _videoSurface = null;
         _text = string.Empty;
         _savedText = string.Empty;
     }
 
-    public void BeginVideoSeek()
+    public void BeginMediaSeek()
     {
-        if (_videoSession is null || !CanSeekVideo || _isVideoSeeking)
+        if (_mediaSession is null || !CanSeekMedia || _isMediaSeeking)
             return;
-        _isVideoSeeking = true;
-        _resumeVideoAfterSeek = IsVideoPlaying;
-        if (_resumeVideoAfterSeek)
-            _videoSession.Pause();
+        _isMediaSeeking = true;
+        _resumeMediaAfterSeek = IsMediaPlaying;
+        if (_resumeMediaAfterSeek)
+            _mediaSession.Pause();
     }
 
-    public void CompleteVideoSeek()
+    public void CompleteMediaSeek()
     {
-        if (_videoSession is null || !_isVideoSeeking)
+        if (_mediaSession is null || !_isMediaSeeking)
             return;
-        _isVideoSeeking = false;
-        _videoSession.Seek((long)VideoPositionMilliseconds);
-        if (_resumeVideoAfterSeek)
-            _videoSession.Play();
-        _resumeVideoAfterSeek = false;
+        _isMediaSeeking = false;
+        _mediaSession.Seek((long)MediaPositionMilliseconds);
+        if (_resumeMediaAfterSeek)
+            _mediaSession.Play();
+        _resumeMediaAfterSeek = false;
     }
 
-    private Task StartVideoAsync()
+    private Task StartMediaAsync()
     {
-        if (_videoSession is null || _videoStartRequested)
+        if (_mediaSession is null || _mediaStartRequested)
             return Task.CompletedTask;
-        _videoStartRequested = true;
-        StartVideoCommand.NotifyCanExecuteChanged();
-        _videoSession.Play();
+        _mediaStartRequested = true;
+        StartMediaCommand.NotifyCanExecuteChanged();
+        _mediaSession.Play();
         return Task.CompletedTask;
     }
 
-    private Task ToggleVideoPlaybackAsync()
+    private Task ToggleMediaPlaybackAsync()
     {
-        if (_videoSession is null)
+        if (_mediaSession is null)
             return Task.CompletedTask;
-        _videoStartRequested = true;
-        StartVideoCommand.NotifyCanExecuteChanged();
-        if (IsVideoPlaying)
-            _videoSession.Pause();
+        _mediaStartRequested = true;
+        StartMediaCommand.NotifyCanExecuteChanged();
+        if (IsMediaPlaying)
+            _mediaSession.Pause();
         else
-            _videoSession.Play();
+            _mediaSession.Play();
         return Task.CompletedTask;
     }
 
-    private Task SeekVideoByAsync(TimeSpan offset)
+    private Task SeekMediaByAsync(TimeSpan offset)
     {
-        if (_videoSession is null || !CanSeekVideo)
+        if (_mediaSession is null || !CanSeekMedia)
             return Task.CompletedTask;
         long target = (long)Math.Clamp(
-            VideoPositionMilliseconds + offset.TotalMilliseconds,
+            MediaPositionMilliseconds + offset.TotalMilliseconds,
             0,
-            VideoDurationMilliseconds);
-        _videoSession.Seek(target);
+            MediaDurationMilliseconds);
+        _mediaSession.Seek(target);
         return Task.CompletedTask;
     }
 
-    private bool CanStartVideo() =>
-        IsVideo && _videoSession is not null && !_videoStartRequested;
+    private bool CanStartMedia() =>
+        IsMedia && _mediaSession is not null && !_mediaStartRequested;
 
-    private void VideoSession_StateChanged(
+    private void MediaSession_StateChanged(
         object? sender,
-        VideoPlaybackStateChangedEventArgs args)
+        MediaPlaybackStateChangedEventArgs args)
     {
         if (_disposed)
             return;
-        IsVideoPlaying = args.IsPlaying;
-        CanSeekVideo = args.CanSeek;
-        VideoDurationMilliseconds = args.DurationMilliseconds;
-        if (!_isVideoSeeking)
+        IsMediaPlaying = args.IsPlaying;
+        CanSeekMedia = args.CanSeek;
+        MediaDurationMilliseconds = args.DurationMilliseconds;
+        if (!_isMediaSeeking)
         {
-            _isUpdatingVideoState = true;
+            _isUpdatingMediaState = true;
             try
             {
-                VideoPositionMilliseconds = args.PositionMilliseconds;
+                MediaPositionMilliseconds = args.PositionMilliseconds;
             }
             finally
             {
-                _isUpdatingVideoState = false;
+                _isUpdatingMediaState = false;
             }
         }
-        ToggleVideoPlaybackCommand.NotifyCanExecuteChanged();
+        ToggleMediaPlaybackCommand.NotifyCanExecuteChanged();
     }
 
-    private void VideoSession_Failed(object? sender, VideoPlaybackFailedEventArgs args)
+    private void MediaSession_Failed(object? sender, MediaPlaybackFailedEventArgs args)
     {
         if (!_disposed)
             ErrorMessage = args.Message;

@@ -484,31 +484,36 @@ public sealed class VaultViewModelTests
         Assert.Empty(viewModel.Items);
     }
 
-    [Fact]
-    public async Task LockImmediately_ClosesVideoAndClearsItsOwnedContent()
+    [Theory]
+    [InlineData(FileType.video, "Clip", "mp4")]
+    [InlineData(FileType.audio, "Song", "mp3")]
+    public async Task LockImmediately_ClosesMediaAndClearsItsOwnedContent(
+        FileType type,
+        string name,
+        string extension)
     {
-        var video = new VaultItem(
+        var media = new VaultItem(
             90,
-            "Clip",
-            FileType.video,
+            name,
+            type,
             5,
-            "mp4",
+            extension,
             new DateOnly(2026, 9, 1));
         var vault = new FakeVaultApplicationService();
-        vault.Folders[0] = [video];
+        vault.Folders[0] = [media];
         vault.FileContents[90] = new VaultFileContent(
             90,
-            "Clip",
-            FileType.video,
-            "mp4",
+            name,
+            type,
+            extension,
             [1, 2, 3, 4, 5]);
-        var playback = new FakeVideoPlaybackService();
+        var playback = new FakeMediaPlaybackService();
         var viewModel = new VaultViewModel(
             vault,
             new FakeFilePickerService(),
             () => { },
             _ => { },
-            videoPlaybackService: playback);
+            mediaPlaybackService: playback);
         await viewModel.InitializeAsync();
         viewModel.SelectedItem = Assert.Single(viewModel.Items);
 

@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationId>com.joelbu.netthingencryptor</ApplicationId>
-    <Version>4.2.0</Version>
-    <ApplicationVersion>40200</ApplicationVersion>
+    <Version>4.3.0</Version>
+    <ApplicationVersion>40300</ApplicationVersion>
     <ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
     <AndroidPackageFormats Condition="'$(Configuration)' == 'Debug'">apk</AndroidPackageFormats>
     <AndroidPackageFormats Condition="'$(Configuration)' == 'Release'">aab;apk</AndroidPackageFormats>

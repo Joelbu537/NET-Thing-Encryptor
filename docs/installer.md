@@ -9,9 +9,9 @@ Der Installer verteilt den Avalonia-Desktop-Client von NET Thing Encryptor als p
 | Szenario | Erwartetes Verhalten |
 |---|---|
 | Neuinstallation | Installation ohne UAC nach `%LOCALAPPDATA%\Programs\NET Thing Encryptor` |
-| Gleiches Setup erneut | Reparatur beziehungsweise Ersetzen der Programmdateien; Daten bleiben unverändert |
-| Upgrade | Programmdateien werden aktualisiert, Sprache/Verzeichnis/Aufgaben werden übernommen |
-| Downgrade | Setup bricht mit einer verständlichen Meldung ab |
+| Gleiches Setup erneut | Assistent nennt die vorhandene Version und kündigt die Reparatur an; Daten bleiben unverändert |
+| Upgrade | Assistent nennt Quell- und Zielversion; Programmdateien werden aktualisiert, Sprache/Verzeichnis/Aufgaben übernommen |
+| Downgrade | Setup nennt installierte und angebotene Version und bricht mit einer verständlichen Meldung ab |
 | Laufende Anwendung | Setup erkennt den Anwendungs-Mutex und fordert zum Schließen auf |
 | Deinstallation | Programmdateien, Uninstaller und Verknüpfungen werden entfernt |
 | Benutzerdaten | Werden weder vom Installer noch vom Uninstaller gelöscht |
@@ -47,7 +47,7 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 3. Dieselbe `Version` und einen höheren `ApplicationVersion`-Wert in `Nte.Android` setzen.
 4. Änderungen auf `master` zusammenführen.
 5. Windows- und Android-Signierungs-Secrets im Repository prüfen.
-6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.2.0`.
+6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.3.0`.
 7. Den Workflow „Signed release“ abwarten.
 8. Signaturen und SHA-256-Prüfsummen der veröffentlichten Dateien stichprobenartig prüfen.
 9. Upgrade von der zuletzt veröffentlichten WinForms- beziehungsweise Avalonia-Version in einer Windows-Test-VM durchführen.
@@ -60,9 +60,12 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 - [ ] Automatische Startprobe der installierten Avalonia-Anwendung
 - [ ] Bildanzeige für die in M5 unterstützten Formate
 - [ ] Videowiedergabe aus dem verschlüsselten Tresor einschließlich Play/Pause, Zeitleiste und Zehn-Sekunden-Sprüngen
+- [ ] Audiowiedergabe aus dem verschlüsselten Tresor einschließlich Play/Pause, Zeitleiste und Zehn-Sekunden-Sprüngen
 - [ ] Videofenster schließen und automatische Sperre während laufender sowie pausierter Wiedergabe
 - [ ] Upgrade von der zuletzt veröffentlichten WinForms-Version
 - [ ] Upgrade von der zuletzt veröffentlichten Avalonia-Version
+- [ ] Assistent zeigt beim Upgrade die erkannte Quell- und die neue Zielversion an
+- [ ] Assistent kennzeichnet dieselbe Version als Reparatur
 - [ ] Upgrade bei zunächst laufender Anwendung
 - [ ] Erneutes Ausführen desselben Installers
 - [ ] Downgrade wird blockiert
@@ -75,8 +78,8 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 - [ ] Veröffentlichte SHA-256-Prüfsumme stimmt überein
 - [ ] Signiertes AAB lässt sich in einen internen Android-Testkanal laden
 - [ ] Signierte APK lässt sich auf einem realen Android-12+-Gerät installieren und starten
-- [ ] Videowiedergabe und native Videoansicht auf einem realen Android-12+-Gerät geprüft
-- [ ] Sperren im Hintergrund, dabei laufenden Videoplayer schließen, und Dokumentanbieter-Import/-Export auf einem realen Gerät geprüft
+- [ ] Audio- und Videowiedergabe sowie native Videoansicht auf einem realen Android-12+-Gerät geprüft
+- [ ] Sperren im Hintergrund, dabei laufenden Medienplayer schließen, und Dokumentanbieter-Import/-Export auf einem realen Gerät geprüft
 
 ## Automatisierter WinForms-Upgrade-Nachweis
 

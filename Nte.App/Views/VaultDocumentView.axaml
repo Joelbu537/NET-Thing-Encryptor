@@ -11,7 +11,8 @@
         <TextBlock Classes="page-title" Text="{Binding DisplayName}" TextWrapping="Wrap" />
         <TextBlock Text="Geschützte Inhaltsansicht" Opacity="0.65" />
       </StackPanel>
-      <Button Grid.Column="1" Content="Zurück" Command="{Binding CloseCommand}" />
+      <Button Grid.Column="1" Content="Zurück" Command="{Binding CloseCommand}"
+              IsVisible="{Binding ShowBackButton}" />
     </Grid>
 
     <Grid Grid.Row="1">
@@ -51,16 +52,25 @@
         </Border>
       </Grid>
 
-      <Grid IsVisible="{Binding IsVideo}" RowDefinitions="*,Auto" RowSpacing="10">
+      <Grid IsVisible="{Binding IsMedia}" RowDefinitions="*,Auto" RowSpacing="10">
         <Border BorderThickness="1" BorderBrush="#40607080" CornerRadius="8"
-                Background="Black" ClipToBounds="True" MinHeight="120">
+                Background="#101418" ClipToBounds="True" MinHeight="120">
           <Grid>
             <ContentControl Content="{Binding VideoSurface}"
-                            IsVisible="{Binding HasVideoPlayback}"
+                            IsVisible="{Binding HasVideoSurface}"
                             HorizontalContentAlignment="Stretch"
                             VerticalContentAlignment="Stretch" />
-            <TextBlock Text="Der Videoplayer ist auf dieser Plattform nicht verfügbar."
-                       IsVisible="{Binding ShowVideoPlaceholder}"
+            <StackPanel IsVisible="{Binding ShowAudioPresentation}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="12">
+              <TextBlock Text="♪" Foreground="White" FontSize="72"
+                         HorizontalAlignment="Center" />
+              <TextBlock Text="{Binding DisplayName}" Foreground="White"
+                         FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                         HorizontalAlignment="Center" MaxWidth="560" />
+            </StackPanel>
+            <TextBlock Text="{Binding MediaUnavailableMessage}"
+                       IsVisible="{Binding ShowMediaPlaceholder}"
                        Foreground="White" TextWrapping="Wrap"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        Margin="24" />
@@ -69,25 +79,25 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
           <Button Grid.Column="0" Classes="media-icon"
-                  Content="{Binding VideoPlayPauseSymbol}"
-                  Command="{Binding ToggleVideoPlaybackCommand}"
-                  ToolTip.Tip="{Binding VideoPlayPauseToolTip}" />
+                  Content="{Binding MediaPlayPauseSymbol}"
+                  Command="{Binding ToggleMediaPlaybackCommand}"
+                  ToolTip.Tip="{Binding MediaPlayPauseToolTip}" />
           <Button Grid.Column="1" Classes="media-icon" Content="−10"
-                  Command="{Binding SeekVideoBackwardCommand}"
+                  Command="{Binding SeekMediaBackwardCommand}"
                   ToolTip.Tip="10 Sekunden zurück (Pfeil links oder J)" />
           <Button Grid.Column="2" Classes="media-icon" Content="+10"
-                  Command="{Binding SeekVideoForwardCommand}"
+                  Command="{Binding SeekMediaForwardCommand}"
                   ToolTip.Tip="10 Sekunden vor (Pfeil rechts oder L)" />
-          <Slider x:Name="VideoTimeline" Grid.Column="3"
-                  Minimum="0" Maximum="{Binding VideoTimelineMaximum}"
-                  Value="{Binding VideoPositionMilliseconds, Mode=TwoWay}"
-                  IsEnabled="{Binding CanSeekVideo}"
+          <Slider x:Name="MediaTimeline" Grid.Column="3"
+                  Minimum="0" Maximum="{Binding MediaTimelineMaximum}"
+                  Value="{Binding MediaPositionMilliseconds, Mode=TwoWay}"
+                  IsEnabled="{Binding CanSeekMedia}"
                   VerticalAlignment="Center"
-                  PointerPressed="VideoTimeline_PointerPressed"
-                  PointerReleased="VideoTimeline_PointerReleased"
-                  PointerCaptureLost="VideoTimeline_PointerCaptureLost"
+                  PointerPressed="MediaTimeline_PointerPressed"
+                  PointerReleased="MediaTimeline_PointerReleased"
+                  PointerCaptureLost="MediaTimeline_PointerCaptureLost"
                   ToolTip.Tip="Klicken oder ziehen, um die Wiedergabeposition zu ändern" />
-          <TextBlock Grid.Column="4" Text="{Binding VideoTimeText}"
+          <TextBlock Grid.Column="4" Text="{Binding MediaTimeText}"
                      FontFamily="Cascadia Mono,Consolas,monospace"
                      VerticalAlignment="Center" />
         </Grid>

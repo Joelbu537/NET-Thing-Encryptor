@@ -7,7 +7,13 @@ namespace Nte.App.Services;
 
 public sealed record VideoSurfaceRegistration(Control Control, Action Detach);
 
-public sealed class VideoPlaybackStateChangedEventArgs(
+public enum MediaPlaybackKind
+{
+    Audio,
+    Video
+}
+
+public sealed class MediaPlaybackStateChangedEventArgs(
     bool isPlaying,
     bool canSeek,
     long positionMilliseconds,
@@ -19,49 +25,53 @@ public sealed class VideoPlaybackStateChangedEventArgs(
     public long DurationMilliseconds { get; } = Math.Max(0, durationMilliseconds);
 }
 
-public sealed class VideoPlaybackFailedEventArgs(string message) : EventArgs
+public sealed class MediaPlaybackFailedEventArgs(string message) : EventArgs
 {
     public string Message { get; } = message;
 }
 
-public interface IVideoPlaybackSession : IDisposable
+public interface IMediaPlaybackSession : IDisposable
 {
-    Control Surface { get; }
-    event EventHandler<VideoPlaybackStateChangedEventArgs>? StateChanged;
-    event EventHandler<VideoPlaybackFailedEventArgs>? Failed;
+    Control? Surface { get; }
+    event EventHandler<MediaPlaybackStateChangedEventArgs>? StateChanged;
+    event EventHandler<MediaPlaybackFailedEventArgs>? Failed;
     bool Play();
     void Pause();
     void Seek(long positionMilliseconds);
 }
 
-public interface IVideoPlaybackService : IDisposable
+public interface IMediaPlaybackService : IDisposable
 {
-    IVideoPlaybackSession CreateSession(byte[] decryptedContent);
+    IMediaPlaybackSession CreateSession(byte[] decryptedContent, MediaPlaybackKind kind);
 }
 
-public sealed class LibVlcVideoPlaybackService : IVideoPlaybackService
+public sealed class LibVlcMediaPlaybackService : IMediaPlaybackService
 {
     private readonly Func<MediaPlayer, VideoSurfaceRegistration> _surfaceFactory;
     private readonly object _sync = new();
-    private readonly HashSet<LibVlcVideoPlaybackSession> _sessions = [];
+    private readonly HashSet<LibVlcMediaPlaybackSession> _sessions = [];
     private LibVLC? _libVlc;
     private bool _disposed;
 
-    public LibVlcVideoPlaybackService(
+    public LibVlcMediaPlaybackService(
         Func<MediaPlayer, VideoSurfaceRegistration> surfaceFactory)
     {
         _surfaceFactory = surfaceFactory
             ?? throw new ArgumentNullException(nameof(surfaceFactory));
     }
 
-    public IVideoPlaybackSession CreateSession(byte[] decryptedContent)
+    public IMediaPlaybackSession CreateSession(
+        byte[] decryptedContent,
+        MediaPlaybackKind kind)
     {
         ArgumentNullException.ThrowIfNull(decryptedContent);
 
         try
         {
             if (decryptedContent.Length == 0)
-                throw new ArgumentException("The video content must not be empty.", nameof(decryptedContent));
+                throw new ArgumentException("The media content must not be empty.", nameof(decryptedContent));
+            if (!Enum.IsDefined(kind))
+                throw new ArgumentOutOfRangeException(nameof(kind));
 
             lock (_sync)
             {
@@ -72,10 +82,11 @@ public sealed class LibVlcVideoPlaybackService : IVideoPlaybackService
                     _libVlc = new LibVLC("--no-video-title-show", "--quiet");
                 }
 
-                var session = new LibVlcVideoPlaybackSession(
+                var session = new LibVlcMediaPlaybackSession(
                     _libVlc,
                     _surfaceFactory,
                     decryptedContent,
+                    kind,
                     RemoveSession);
                 try
                 {
@@ -98,7 +109,7 @@ public sealed class LibVlcVideoPlaybackService : IVideoPlaybackService
 
     public void Dispose()
     {
-        LibVlcVideoPlaybackSession[] sessions;
+        LibVlcMediaPlaybackSession[] sessions;
         LibVLC? libVlc;
         lock (_sync)
         {
@@ -111,22 +122,22 @@ public sealed class LibVlcVideoPlaybackService : IVideoPlaybackService
             _libVlc = null;
         }
 
-        foreach (LibVlcVideoPlaybackSession session in sessions)
+        foreach (LibVlcMediaPlaybackSession session in sessions)
             session.Dispose();
         libVlc?.Dispose();
     }
 
-    private void RemoveSession(LibVlcVideoPlaybackSession session)
+    private void RemoveSession(LibVlcMediaPlaybackSession session)
     {
         lock (_sync)
             _sessions.Remove(session);
     }
 }
 
-internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
+internal sealed class LibVlcMediaPlaybackSession : IMediaPlaybackSession
 {
     private readonly byte[] _decryptedContent;
-    private readonly Action<LibVlcVideoPlaybackSession> _onDisposed;
+    private readonly Action<LibVlcMediaPlaybackSession> _onDisposed;
     private readonly object _stateSync = new();
     private MemoryStream? _stream;
     private StreamMediaInput? _input;
@@ -142,11 +153,12 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
     private long _lastDeliveredStateRevision;
     private int _disposed;
 
-    public LibVlcVideoPlaybackSession(
+    public LibVlcMediaPlaybackSession(
         LibVLC libVlc,
         Func<MediaPlayer, VideoSurfaceRegistration> surfaceFactory,
         byte[] decryptedContent,
-        Action<LibVlcVideoPlaybackSession> onDisposed)
+        MediaPlaybackKind kind,
+        Action<LibVlcMediaPlaybackSession> onDisposed)
     {
         _decryptedContent = decryptedContent;
         _onDisposed = onDisposed;
@@ -156,15 +168,20 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
             _stream = new MemoryStream(decryptedContent, writable: false);
             _input = new StreamMediaInput(_stream);
             _media = new Media(libVlc, _input);
+            if (kind == MediaPlaybackKind.Audio)
+                _media.AddOption(":no-video");
             _player = new MediaPlayer(libVlc)
             {
-                EnableHardwareDecoding = true,
+                EnableHardwareDecoding = kind == MediaPlaybackKind.Video,
                 Media = _media
             };
-            _surface = surfaceFactory(_player)
-                ?? throw new InvalidOperationException("The platform did not create a video surface.");
-            ArgumentNullException.ThrowIfNull(_surface.Control);
-            ArgumentNullException.ThrowIfNull(_surface.Detach);
+            if (kind == MediaPlaybackKind.Video)
+            {
+                _surface = surfaceFactory(_player)
+                    ?? throw new InvalidOperationException("The platform did not create a video surface.");
+                ArgumentNullException.ThrowIfNull(_surface.Control);
+                ArgumentNullException.ThrowIfNull(_surface.Detach);
+            }
             Subscribe(_player);
         }
         catch
@@ -174,11 +191,10 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
         }
     }
 
-    public Control Surface => _surface?.Control
-        ?? throw new ObjectDisposedException(nameof(LibVlcVideoPlaybackSession));
+    public Control? Surface => _surface?.Control;
 
-    public event EventHandler<VideoPlaybackStateChangedEventArgs>? StateChanged;
-    public event EventHandler<VideoPlaybackFailedEventArgs>? Failed;
+    public event EventHandler<MediaPlaybackStateChangedEventArgs>? StateChanged;
+    public event EventHandler<MediaPlaybackFailedEventArgs>? Failed;
 
     public bool Play()
     {
@@ -199,12 +215,12 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
 
             bool started = player.Play();
             if (!started)
-                PublishFailure("Die Videowiedergabe konnte nicht gestartet werden.");
+                PublishFailure("Die Medienwiedergabe konnte nicht gestartet werden.");
             return started;
         }
         catch (Exception ex)
         {
-            PublishFailure($"Die Videowiedergabe konnte nicht gestartet werden: {ex.Message}");
+            PublishFailure($"Die Medienwiedergabe konnte nicht gestartet werden: {ex.Message}");
             return false;
         }
     }
@@ -221,7 +237,7 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
         }
         catch (Exception ex)
         {
-            PublishFailure($"Die Videowiedergabe konnte nicht pausiert werden: {ex.Message}");
+            PublishFailure($"Die Medienwiedergabe konnte nicht pausiert werden: {ex.Message}");
         }
     }
 
@@ -341,7 +357,7 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
         lock (_stateSync)
             _isPlaying = false;
         PublishState();
-        PublishFailure("Das Video konnte nicht dekodiert oder wiedergegeben werden.");
+        PublishFailure("Die Mediendatei konnte nicht dekodiert oder wiedergegeben werden.");
     }
 
     private void Player_TimeChanged(object? sender, MediaPlayerTimeChangedEventArgs args)
@@ -367,11 +383,11 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
 
     private void PublishState()
     {
-        VideoPlaybackStateChangedEventArgs args;
+        MediaPlaybackStateChangedEventArgs args;
         long revision;
         lock (_stateSync)
         {
-            args = new VideoPlaybackStateChangedEventArgs(
+            args = new MediaPlaybackStateChangedEventArgs(
                 _isPlaying,
                 _canSeek,
                 _positionMilliseconds,
@@ -389,7 +405,7 @@ internal sealed class LibVlcVideoPlaybackSession : IVideoPlaybackSession
 
     private void PublishFailure(string message)
     {
-        var args = new VideoPlaybackFailedEventArgs(message);
+        var args = new MediaPlaybackFailedEventArgs(message);
         PostToUi(() => Failed?.Invoke(this, args));
     }
 

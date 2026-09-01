@@ -182,20 +182,22 @@ public sealed class VaultDocumentViewModelTests
     public async Task VideoSession_RetainsContentUntilDisposeAndMapsPlaybackControls()
     {
         byte[] content = [1, 2, 3, 4, 5];
-        var service = new FakeVideoPlaybackService();
+        var service = new FakeMediaPlaybackService();
         var viewModel = new VaultDocumentViewModel(
             new VaultFileContent(7, "clip", FileType.video, "mp4", content),
             (_, _) => Task.CompletedTask,
             () => { },
             _ => { },
-            videoPlaybackService: service);
+            mediaPlaybackService: service);
 
         Assert.True(viewModel.IsVideo);
-        Assert.True(viewModel.HasVideoPlayback);
+        Assert.True(viewModel.HasMediaPlayback);
+        Assert.True(viewModel.HasVideoSurface);
+        Assert.Equal(MediaPlaybackKind.Video, service.LastKind);
         Assert.False(viewModel.IsGeneric);
         Assert.Equal(new byte[] { 1, 2, 3, 4, 5 }, content);
 
-        await viewModel.StartVideoCommand.ExecuteAsync();
+        await viewModel.StartMediaCommand.ExecuteAsync();
         Assert.Equal(1, service.Session.PlayCount);
 
         service.Session.Publish(
@@ -203,16 +205,16 @@ public sealed class VaultDocumentViewModelTests
             canSeek: true,
             positionMilliseconds: 1_500,
             durationMilliseconds: 10_000);
-        Assert.True(viewModel.IsVideoPlaying);
-        Assert.True(viewModel.CanSeekVideo);
-        Assert.Equal("0:01 / 0:10", viewModel.VideoTimeText);
+        Assert.True(viewModel.IsMediaPlaying);
+        Assert.True(viewModel.CanSeekMedia);
+        Assert.Equal("0:01 / 0:10", viewModel.MediaTimeText);
 
-        await viewModel.SeekVideoForwardCommand.ExecuteAsync();
+        await viewModel.SeekMediaForwardCommand.ExecuteAsync();
         Assert.Equal(10_000, service.Session.LastSeekMilliseconds);
 
-        viewModel.BeginVideoSeek();
-        viewModel.VideoPositionMilliseconds = 4_000;
-        viewModel.CompleteVideoSeek();
+        viewModel.BeginMediaSeek();
+        viewModel.MediaPositionMilliseconds = 4_000;
+        viewModel.CompleteMediaSeek();
         Assert.Equal(4_000, service.Session.LastSeekMilliseconds);
         Assert.Equal(2, service.Session.PlayCount);
         Assert.Equal(1, service.Session.PauseCount);
@@ -222,8 +224,8 @@ public sealed class VaultDocumentViewModelTests
             canSeek: true,
             positionMilliseconds: 10_000,
             durationMilliseconds: 10_000);
-        Assert.False(viewModel.IsVideoPlaying);
-        Assert.Equal("0:10 / 0:10", viewModel.VideoTimeText);
+        Assert.False(viewModel.IsMediaPlaying);
+        Assert.Equal("0:10 / 0:10", viewModel.MediaTimeText);
 
         viewModel.Dispose();
         viewModel.Dispose();
@@ -231,6 +233,91 @@ public sealed class VaultDocumentViewModelTests
         Assert.True(service.Session.IsDisposed);
         Assert.Equal(1, service.Session.DisposeCount);
         Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
+    [Fact]
+    public async Task AudioSession_UsesSharedPlaybackControlsWithoutVideoSurface()
+    {
+        byte[] content = [9, 8, 7, 6];
+        var service = new FakeMediaPlaybackService();
+        var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(8, "song", FileType.audio, "flac", content),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            mediaPlaybackService: service);
+
+        Assert.True(viewModel.IsAudio);
+        Assert.True(viewModel.IsMedia);
+        Assert.False(viewModel.IsGeneric);
+        Assert.True(viewModel.HasMediaPlayback);
+        Assert.True(viewModel.ShowAudioPresentation);
+        Assert.False(viewModel.HasVideoSurface);
+        Assert.Null(viewModel.VideoSurface);
+        Assert.Equal(MediaPlaybackKind.Audio, service.LastKind);
+        Assert.Equal(new byte[] { 9, 8, 7, 6 }, content);
+
+        await viewModel.StartMediaCommand.ExecuteAsync();
+        Assert.Equal(1, service.Session.PlayCount);
+
+        service.Session.Publish(
+            isPlaying: true,
+            canSeek: true,
+            positionMilliseconds: 15_000,
+            durationMilliseconds: 30_000);
+        Assert.True(viewModel.IsMediaPlaying);
+        Assert.True(viewModel.CanSeekMedia);
+        Assert.Equal("0:15 / 0:30", viewModel.MediaTimeText);
+
+        await viewModel.SeekMediaBackwardCommand.ExecuteAsync();
+        Assert.Equal(5_000, service.Session.LastSeekMilliseconds);
+        await viewModel.SeekMediaForwardCommand.ExecuteAsync();
+        Assert.Equal(25_000, service.Session.LastSeekMilliseconds);
+
+        viewModel.BeginMediaSeek();
+        viewModel.MediaPositionMilliseconds = 12_000;
+        viewModel.CompleteMediaSeek();
+        Assert.Equal(12_000, service.Session.LastSeekMilliseconds);
+        Assert.Equal(2, service.Session.PlayCount);
+        Assert.Equal(1, service.Session.PauseCount);
+
+        await viewModel.ToggleMediaPlaybackCommand.ExecuteAsync();
+        Assert.Equal(2, service.Session.PauseCount);
+
+        viewModel.Dispose();
+        viewModel.Dispose();
+
+        Assert.Equal(1, service.Session.DisposeCount);
+        Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
+    [Theory]
+    [InlineData(FileType.image, "png")]
+    [InlineData(FileType.audio, "flac")]
+    [InlineData(FileType.video, "mp4")]
+    public void SeparateMediaWindow_HidesBackButtonWhileInlineMediaKeepsIt(
+        FileType type,
+        string extension)
+    {
+        var service = new FakeMediaPlaybackService();
+        using var windowDocument = new VaultDocumentViewModel(
+            new VaultFileContent(8, "media", type, extension, [1]),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            mediaPlaybackService: service,
+            showBackButton: false);
+
+        Assert.False(windowDocument.ShowBackButton);
+
+        using var inlineDocument = new VaultDocumentViewModel(
+            new VaultFileContent(9, "media", type, extension, [2]),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            mediaPlaybackService: new FakeMediaPlaybackService());
+
+        Assert.True(inlineDocument.ShowBackButton);
     }
 
     [Fact]
@@ -242,9 +329,26 @@ public sealed class VaultDocumentViewModelTests
             (_, _) => Task.CompletedTask,
             () => { },
             _ => { },
-            videoPlaybackService: new ThrowingVideoPlaybackService());
+            mediaPlaybackService: new ThrowingMediaPlaybackService());
 
-        Assert.True(viewModel.ShowVideoPlaceholder);
+        Assert.True(viewModel.ShowMediaPlaceholder);
+        Assert.Contains("Backend nicht verfügbar", viewModel.ErrorMessage);
+        Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
+    [Fact]
+    public void AudioSessionCreationFailure_ZeroesContentAndKeepsFallbackVisible()
+    {
+        byte[] content = [1, 2, 3, 4, 5];
+        using var viewModel = new VaultDocumentViewModel(
+            new VaultFileContent(8, "broken", FileType.audio, "flac", content),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            mediaPlaybackService: new ThrowingMediaPlaybackService());
+
+        Assert.True(viewModel.IsAudio);
+        Assert.True(viewModel.ShowMediaPlaceholder);
         Assert.Contains("Backend nicht verfügbar", viewModel.ErrorMessage);
         Assert.All(content, value => Assert.Equal((byte)0, value));
     }
@@ -252,9 +356,11 @@ public sealed class VaultDocumentViewModelTests
     private static byte[] OnePixelPng() => Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAXSURBVBhXY/jPwPCfoYHhPwMDw38wAABD1Al4TlSdlQAAAABJRU5ErkJggg==");
 
-    private sealed class ThrowingVideoPlaybackService : IVideoPlaybackService
+    private sealed class ThrowingMediaPlaybackService : IMediaPlaybackService
     {
-        public IVideoPlaybackSession CreateSession(byte[] decryptedContent) =>
+        public IMediaPlaybackSession CreateSession(
+            byte[] decryptedContent,
+            MediaPlaybackKind kind) =>
             throw new InvalidOperationException("Backend nicht verfügbar");
 
         public void Dispose()

@@ -22,7 +22,7 @@ public sealed partial class App : Application
     private static bool _exitAfterInitialization;
     private AppShellViewModel? _shell;
     private AppLifecycleCoordinator? _lifecycleCoordinator;
-    private IVideoPlaybackService? _videoPlaybackService;
+    private IMediaPlaybackService? _mediaPlaybackService;
     private AppShellView? _activeShellView;
     private TopLevel? _activeTopLevel;
     private Task? _initializationTask;
@@ -63,15 +63,15 @@ public sealed partial class App : Application
         var picker = new AvaloniaFilePickerService(
             GetActiveTopLevel,
             _lifecycleCoordinator);
-        _videoPlaybackService = _videoSurfaceFactory is null
+        _mediaPlaybackService = _videoSurfaceFactory is null
             ? null
-            : new LibVlcVideoPlaybackService(_videoSurfaceFactory);
+            : new LibVlcMediaPlaybackService(_videoSurfaceFactory);
         _shell = new AppShellViewModel(
             vault,
             picker,
             applyPreferences: ApplyPreferences,
             useDocumentWindows: ApplicationLifetime is IClassicDesktopStyleApplicationLifetime,
-            videoPlaybackService: _videoPlaybackService);
+            mediaPlaybackService: _mediaPlaybackService);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -195,7 +195,7 @@ public sealed partial class App : Application
         _lifecycleCoordinator = null;
         _shell?.Dispose();
         _shell = null;
-        _videoPlaybackService?.Dispose();
-        _videoPlaybackService = null;
+        _mediaPlaybackService?.Dispose();
+        _mediaPlaybackService = null;
     }
 }

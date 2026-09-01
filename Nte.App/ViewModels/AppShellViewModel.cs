@@ -10,7 +10,7 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
     private readonly IFilePickerService _filePicker;
     private readonly Action<VaultPreferences> _applyPreferences;
     private readonly bool _useDocumentWindows;
-    private readonly IVideoPlaybackService? _videoPlaybackService;
+    private readonly IMediaPlaybackService? _mediaPlaybackService;
     private readonly SynchronizationContext? _synchronizationContext;
     private object _currentPage = new LoadingViewModel();
     private string _statusMessage = string.Empty;
@@ -22,13 +22,13 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
         SynchronizationContext? synchronizationContext = null,
         Action<VaultPreferences>? applyPreferences = null,
         bool useDocumentWindows = false,
-        IVideoPlaybackService? videoPlaybackService = null)
+        IMediaPlaybackService? mediaPlaybackService = null)
     {
         _vault = vault;
         _filePicker = filePicker;
         _applyPreferences = applyPreferences ?? (_ => { });
         _useDocumentWindows = useDocumentWindows;
-        _videoPlaybackService = videoPlaybackService;
+        _mediaPlaybackService = mediaPlaybackService;
         _synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
         _vault.NotificationRaised += OnNotificationRaised;
     }
@@ -133,7 +133,7 @@ public sealed class AppShellViewModel : ObservableObject, IDisposable
             SetStatus,
             _applyPreferences,
             _useDocumentWindows,
-            _videoPlaybackService);
+            _mediaPlaybackService);
         CurrentPage = page;
         await page.InitializeAsync();
     }

@@ -4,22 +4,26 @@ using Nte.App.Services;
 
 namespace Nte.App.Tests.Fakes;
 
-internal sealed class FakeVideoPlaybackService : IVideoPlaybackService
+internal sealed class FakeMediaPlaybackService : IMediaPlaybackService
 {
-    public FakeVideoPlaybackSession Session { get; private set; } = null!;
+    public FakeMediaPlaybackSession Session { get; private set; } = null!;
+    public MediaPlaybackKind? LastKind { get; private set; }
 
-    public IVideoPlaybackSession CreateSession(byte[] decryptedContent)
+    public IMediaPlaybackSession CreateSession(byte[] decryptedContent, MediaPlaybackKind kind)
     {
-        Session = new FakeVideoPlaybackSession(decryptedContent);
+        LastKind = kind;
+        Session = new FakeMediaPlaybackSession(decryptedContent, kind);
         return Session;
     }
 
     public void Dispose() => Session?.Dispose();
 }
 
-internal sealed class FakeVideoPlaybackSession(byte[] content) : IVideoPlaybackSession
+internal sealed class FakeMediaPlaybackSession(
+    byte[] content,
+    MediaPlaybackKind kind) : IMediaPlaybackSession
 {
-    public Control Surface { get; } = new Border();
+    public Control? Surface { get; } = kind == MediaPlaybackKind.Video ? new Border() : null;
     public int PlayCount { get; private set; }
     public int PauseCount { get; private set; }
     public int DisposeCount { get; private set; }
@@ -27,8 +31,8 @@ internal sealed class FakeVideoPlaybackSession(byte[] content) : IVideoPlaybackS
     public bool IsDisposed => DisposeCount != 0;
     public bool ContentIsCleared => content.All(value => value == 0);
 
-    public event EventHandler<VideoPlaybackStateChangedEventArgs>? StateChanged;
-    public event EventHandler<VideoPlaybackFailedEventArgs>? Failed
+    public event EventHandler<MediaPlaybackStateChangedEventArgs>? StateChanged;
+    public event EventHandler<MediaPlaybackFailedEventArgs>? Failed
     {
         add { }
         remove { }
@@ -52,7 +56,7 @@ internal sealed class FakeVideoPlaybackSession(byte[] content) : IVideoPlaybackS
         long durationMilliseconds) =>
         StateChanged?.Invoke(
             this,
-            new VideoPlaybackStateChangedEventArgs(
+            new MediaPlaybackStateChangedEventArgs(
                 isPlaying,
                 canSeek,
                 positionMilliseconds,

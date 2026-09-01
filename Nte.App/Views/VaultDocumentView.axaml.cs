@@ -18,7 +18,7 @@ public sealed partial class VaultDocumentView : UserControl
     {
         Focus();
         if (DataContext is VaultDocumentViewModel viewModel)
-            await viewModel.StartVideoCommand.ExecuteAsync();
+            await viewModel.StartMediaCommand.ExecuteAsync();
     }
 
     private void Undo_Click(object? sender, RoutedEventArgs args) => TextEditor.Undo();
@@ -47,12 +47,12 @@ public sealed partial class VaultDocumentView : UserControl
         if (args.Handled || DataContext is not VaultDocumentViewModel viewModel)
             return;
 
-        AsyncCommand? command = viewModel.IsVideo
+        AsyncCommand? command = viewModel.IsMedia
             ? args.Key switch
             {
-                Key.Space => viewModel.ToggleVideoPlaybackCommand,
-                Key.Left or Key.J => viewModel.SeekVideoBackwardCommand,
-                Key.Right or Key.L => viewModel.SeekVideoForwardCommand,
+                Key.Space => viewModel.ToggleMediaPlaybackCommand,
+                Key.Left or Key.J => viewModel.SeekMediaBackwardCommand,
+                Key.Right or Key.L => viewModel.SeekMediaForwardCommand,
                 _ => null
             }
             : viewModel.IsImageDocument
@@ -71,22 +71,22 @@ public sealed partial class VaultDocumentView : UserControl
         await command.ExecuteAsync();
     }
 
-    private void VideoTimeline_PointerPressed(object? sender, PointerPressedEventArgs args)
+    private void MediaTimeline_PointerPressed(object? sender, PointerPressedEventArgs args)
     {
         if (DataContext is VaultDocumentViewModel viewModel)
-            viewModel.BeginVideoSeek();
+            viewModel.BeginMediaSeek();
     }
 
-    private void VideoTimeline_PointerReleased(object? sender, PointerReleasedEventArgs args)
+    private void MediaTimeline_PointerReleased(object? sender, PointerReleasedEventArgs args)
     {
         if (DataContext is VaultDocumentViewModel viewModel)
-            viewModel.CompleteVideoSeek();
+            viewModel.CompleteMediaSeek();
     }
 
-    private void VideoTimeline_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs args)
+    private void MediaTimeline_PointerCaptureLost(object? sender, PointerCaptureLostEventArgs args)
     {
         if (DataContext is VaultDocumentViewModel viewModel)
-            viewModel.CompleteVideoSeek();
+            viewModel.CompleteMediaSeek();
     }
 
     private void TextEditor_KeyDown(object? sender, KeyEventArgs args)

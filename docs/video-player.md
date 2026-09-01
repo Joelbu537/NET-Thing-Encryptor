@@ -1,8 +1,8 @@
-# Videoplayer ab Version 4.2.0
+# Medienplayer: Video ab Version 4.2.0, Audio ab Version 4.3.0
 
 ## Umfang
 
-Version 4.2.0 integriert die Videowiedergabe in den kanonischen Avalonia-Client für Windows und Android. Sie verwendet `LibVLCSharp` 3.10.1 und die jeweilige plattformgebundene VideoLAN-Laufzeit. Android bindet `VideoLAN.LibVLC.Android` 3.7.0-beta ein. Audio bleibt vorerst ohne internes Wiedergabebackend und kann weiterhin exportiert werden.
+Version 4.2.0 integriert die Videowiedergabe in den kanonischen Avalonia-Client für Windows und Android. Version 4.3.0 erweitert denselben Wiedergabekern um Audio. Beide verwenden `LibVLCSharp` 3.10.1 und die jeweilige plattformgebundene VideoLAN-Laufzeit. Android bindet `VideoLAN.LibVLC.Android` 3.7.0-beta ein.
 
 Linux und macOS verwenden denselben Desktop-View wie Windows, benötigen jedoch eine kompatible systemweit bereitgestellte LibVLC-Laufzeit. Diese Kombination ist noch nicht praktisch verifiziert und gehört deshalb weiterhin zur technischen Vorschau.
 
@@ -12,17 +12,17 @@ Die gemeinsame Anwendung hält Wiedergabestatus, Befehle und Lebenszyklus unabh�
 
 | Plattform | Videoausgabe |
 |---|---|
-| Windows | `LibVLCSharp.Avalonia.VideoView` im eigenen Dokumentfenster |
-| Android | native Videoansicht, über Avalonias `NativeControlHost` in die Dokumentansicht eingebettet; `VideoLAN.LibVLC.Android` 3.7.0-beta für `arm64-v8a` und `x86_64` |
-| Linux/macOS | Desktop-`VideoView`; systemweite LibVLC-Laufzeit erforderlich und noch nicht verifiziert |
+| Windows | Video über `LibVLCSharp.Avalonia.VideoView`, Audio ohne Bildausgabe; jeweils im eigenen Dokumentfenster |
+| Android | Video über eine native, mit Avalonias `NativeControlHost` eingebettete Ansicht; Audio ohne Bildausgabe; `VideoLAN.LibVLC.Android` 3.7.0-beta für `arm64-v8a` und `x86_64` |
+| Linux/macOS | Video über Desktop-`VideoView`, Audio ohne Bildausgabe; systemweite LibVLC-Laufzeit erforderlich und noch nicht verifiziert |
 
-Eine Wiedergabesitzung besitzt genau einen LibVLC-Player und genau einen entschlüsselten Eingabestrom. Fenster- beziehungsweise Ansichtswechsel erzeugen keine zweite entschlüsselte Kopie. Beim Schließen der Dokumentansicht oder beim Sperren des Tresors wird die Sitzung vollständig beendet und die native Videoansicht getrennt.
+Eine Wiedergabesitzung besitzt genau einen LibVLC-Player und genau einen entschlüsselten Eingabestrom. Fenster- beziehungsweise Ansichtswechsel erzeugen keine zweite entschlüsselte Kopie. Audio und Video teilen denselben LibVLC-Dienst; nur Videos fordern eine Plattformoberfläche an. Beim Schließen der Dokumentansicht oder beim Sperren des Tresors wird die Sitzung vollständig beendet und eine eventuell vorhandene native Videoansicht getrennt.
 
 ### Entscheidung zur Android-Laufzeit
 
 Die stabile Android-Laufzeit 3.6.5 wurde geprüft, aber nicht übernommen. Der Release-Build meldete damit vier `XA0141`-Warnungen für native Bibliotheken ohne die für Android 16 benötigte Unterstützung von 16-KB-Speicherseiten. `VideoLAN.LibVLC.Android` 3.7.0-beta beseitigt diese Warnungen im aktuellen Build und liefert native Bibliotheken für beide konfigurierten Architekturen `arm64-v8a` und `x86_64`.
 
-Die Beta bleibt ein bewusst akzeptiertes Risiko. Ein warnungsfreier Build belegt weder Decoderstabilität noch fehlerfreien Lebenszyklus auf realen Geräten. Vor jeder Veröffentlichung müssen deshalb Wiedergabe, Seek, Hintergrundwechsel, automatische Sperre, wiederholtes Öffnen und Freigabe auf realer Android-Hardware geprüft werden. Die Abnahme soll mindestens ein `arm64-v8a`-Gerät umfassen; Android 16 mit 16-KB-Speicherseiten ist einzubeziehen, sobald entsprechende Hardware verfügbar ist. Emulatorprüfungen ergänzen diesen Test, ersetzen ihn aber nicht.
+Die Beta bleibt ein bewusst akzeptiertes Risiko. Ein warnungsfreier Build belegt weder Decoderstabilität noch fehlerfreien Lebenszyklus auf realen Geräten. Vor jeder Veröffentlichung müssen Audio- und Videowiedergabe, Seek, Hintergrundwechsel, automatische Sperre, wiederholtes Öffnen und Freigabe auf realer Android-Hardware geprüft werden. Die Abnahme soll mindestens ein `arm64-v8a`-Gerät umfassen; Android 16 mit 16-KB-Speicherseiten ist einzubeziehen, sobald entsprechende Hardware verfügbar ist. Emulatorprüfungen ergänzen diesen Test, ersetzen ihn aber nicht.
 
 ## Klartext und Speicher
 
@@ -37,7 +37,7 @@ Diese Speichergrenzen müssen in Sicherheitsbewertung und Supporthinweisen berü
 
 ## Bedienung
 
-Der Player bietet sichtbare Schaltflächen für Play/Pause sowie Sprünge um zehn Sekunden und eine seekbare Zeitleiste. Die Zeitposition wird während der Wiedergabe aktualisiert und kann per Zeiger oder Touch geändert werden.
+Der Audio- und Videoplayer bietet sichtbare Schaltflächen für Play/Pause sowie Sprünge um zehn Sekunden und eine seekbare Zeitleiste. Die Zeitposition wird während der Wiedergabe aktualisiert und kann per Zeiger oder Touch geändert werden. Audio zeigt anstelle einer Videooberfläche eine kompakte Medienkarte mit Dateiname und Format.
 
 Zusätzlich gelten diese Tastenkürzel im Desktop-Dokumentfenster:
 
@@ -49,7 +49,7 @@ Zusätzlich gelten diese Tastenkürzel im Desktop-Dokumentfenster:
 
 ## Lebenszyklus und Fehlerverhalten
 
-Das Öffnen eines Videos übernimmt den entschlüsselten Puffer in die Wiedergabesitzung. Schlägt die Initialisierung fehl, wird der Puffer unmittelbar bereinigt und eine verständliche Fehlermeldung angezeigt. Nach erfolgreichem Start gilt diese Reihenfolge beim Schließen:
+Das Öffnen einer Audio- oder Videodatei übernimmt den entschlüsselten Puffer in die Wiedergabesitzung. Schlägt die Initialisierung fehl, wird der Puffer unmittelbar bereinigt und eine verständliche Fehlermeldung angezeigt. Nach erfolgreichem Start gilt diese Reihenfolge beim Schließen:
 
 1. weitere Status- und Zeitereignisse ignorieren;
 2. Wiedergabe stoppen und Videoausgabe trennen;
@@ -76,10 +76,10 @@ Zusätzlich müssen Desktop- und Android-Projekt in Release-Konfiguration gebaut
 
 Vor einem Release sind mindestens diese Fälle mit einem kurzen und einem größeren Testvideo zu prüfen:
 
-- Windows 10 und Windows 11: separates Videofenster, Seitenverhältnis, Größenänderung, Play/Pause, Zeitleiste, Schaltflächen und alle Tastenkürzel;
-- Windows: Fenster während laufender und pausierter Wiedergabe schließen und anschließend dasselbe sowie ein anderes Video erneut öffnen;
+- Windows 10 und Windows 11: separate Audio- und Videofenster, bei Video Seitenverhältnis und Größenänderung, bei beiden Play/Pause, Zeitleiste, Schaltflächen und alle Tastenkürzel;
+- Windows: Fenster während laufender und pausierter Wiedergabe schließen und anschließend dieselbe sowie eine andere Mediendatei erneut öffnen;
 - Windows: automatische Sperre auslösen und prüfen, dass Fenster, Wiedergabe und Ton beendet werden;
-- Android 12 oder neuer auf realer `arm64-v8a`-Hardware: native Darstellung, Rotation beziehungsweise Größenänderung, Touchsteuerung, Seek, wiederholtes Öffnen, App-Hintergrund und automatische Sperre;
+- Android 12 oder neuer auf realer `arm64-v8a`-Hardware: Audioausgabe, native Videodarstellung, Rotation beziehungsweise Größenänderung, Touchsteuerung, Seek, wiederholtes Öffnen, App-Hintergrund und automatische Sperre;
 - `x86_64`-Paketinhalt und Emulatorstart sowie, sobald verfügbar, Android 16 mit 16-KB-Speicherseiten; diese Prüfungen heben das reale Gerätetest-Gate für die Beta-Laufzeit nicht auf;
 - mindestens MP4/H.264 sowie ein weiteres im Tresor verwendetes Videoformat mit Tonspur;
 - Speicherbeobachtung bei einem größeren Video und Rückgang nach dem Schließen der Sitzung;

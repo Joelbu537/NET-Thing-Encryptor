@@ -56,12 +56,20 @@ public sealed class UnlockViewModel : ObservableObject
                 return;
 
             OnPropertyChanged(nameof(IsPasswordConfirmationVisible));
+            OnPropertyChanged(nameof(IsVaultSourceSelectionVisible));
             OnPropertyChanged(nameof(Heading));
             OnPropertyChanged(nameof(InstructionText));
         }
     }
 
     public bool IsPasswordConfirmationVisible => !HasPersistedVault;
+
+    public bool IsVaultSourceSelectionVisible => !HasPersistedVault;
+
+    public bool CanConnectRemoteVault => false;
+
+    public string RemoteVaultConnectionHint =>
+        "Remote-Tresore werden in einer zukünftigen Version unterstützt.";
 
     public string Heading => HasPersistedVault
         ? "Tresor entsperren"

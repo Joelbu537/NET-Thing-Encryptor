@@ -68,6 +68,31 @@ if ($RequireSignature -and $signature.Status -ne [System.Management.Automation.S
     throw "Installer signature verification failed: $($signature.StatusMessage)"
 }
 
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$installerSourcePath = Join-Path $repoRoot "installer\NETThingEncryptor.iss"
+$installerSource = Get-Content -LiteralPath $installerSourcePath -Raw
+$upgradeNoticeContract = @(
+    "english.UpdateNotice=",
+    "german.UpdateNotice=",
+    "english.RepairNotice=",
+    "german.RepairNotice=",
+    "CustomMessage('UpdateNotice')",
+    "CustomMessage('RepairNotice')",
+    "WizardForm.WelcomeLabel2.Caption",
+    "UninstallKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{D2AE186D-517D-406F-99D9-8D538AC9607D}_is1';",
+    "SuppressibleMsgBox(",
+    "ConsiderInstalledVersion(HKCU64,",
+    "ConsiderInstalledVersion(HKCU32,",
+    "ConsiderInstalledVersion(HKLM64,",
+    "ConsiderInstalledVersion(HKLM32,",
+    "CompareVersions(CandidateVersion, InstalledVersion) > 0"
+)
+foreach ($requiredSourceFragment in $upgradeNoticeContract) {
+    if (-not $installerSource.Contains($requiredSourceFragment, [StringComparison]::Ordinal)) {
+        throw "Installer upgrade-notice contract is missing: $requiredSourceFragment"
+    }
+}
+
 Write-Host "Static installer checks passed for $($installerItem.Name)."
 if (-not $RunInstallation) {
     return
@@ -77,9 +102,32 @@ if (-not $env:CI -and -not $AllowLocalMachineChanges) {
     throw "Installation smoke tests modify the current user's uninstall registry. Use -AllowLocalMachineChanges only on an isolated test machine."
 }
 
-$uninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{D2AE186D-517D-406F-99D9-8D538AC9607D}_is1"
-if (Test-Path -LiteralPath $uninstallKey) {
-    throw "NET Thing Encryptor is already registered for the current user. Refusing to replace it during a smoke test."
+function Test-UninstallRegistrationExists {
+    $subKey = "Software\Microsoft\Windows\CurrentVersion\Uninstall\{D2AE186D-517D-406F-99D9-8D538AC9607D}_is1"
+    foreach ($hive in @(
+        [Microsoft.Win32.RegistryHive]::CurrentUser,
+        [Microsoft.Win32.RegistryHive]::LocalMachine)) {
+        foreach ($view in @(
+            [Microsoft.Win32.RegistryView]::Registry64,
+            [Microsoft.Win32.RegistryView]::Registry32)) {
+            $baseKey = [Microsoft.Win32.RegistryKey]::OpenBaseKey($hive, $view)
+            try {
+                $registration = $baseKey.OpenSubKey($subKey)
+                if ($null -ne $registration) {
+                    $registration.Dispose()
+                    return $true
+                }
+            }
+            finally {
+                $baseKey.Dispose()
+            }
+        }
+    }
+    return $false
+}
+
+if (Test-UninstallRegistrationExists) {
+    throw "NET Thing Encryptor is already registered for this user or machine. Refusing to replace it during a smoke test."
 }
 
 $userDataDirectory = Join-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)) "NET Thing Encryptor"

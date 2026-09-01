@@ -7,9 +7,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>NET Thing Encryptor</AssemblyName>
     <RootNamespace>Nte.Desktop</RootNamespace>
-    <Version>4.2.0</Version>
-    <AssemblyVersion>4.2.0.0</AssemblyVersion>
-    <FileVersion>4.2.0.0</FileVersion>
+    <Version>4.3.0</Version>
+    <AssemblyVersion>4.3.0.0</AssemblyVersion>
+    <FileVersion>4.3.0.0</FileVersion>
     <ApplicationIcon>image.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>

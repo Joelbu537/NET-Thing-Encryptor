@@ -70,6 +70,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [CustomMessages]
+english.UpdateNotice=NET Thing Encryptor version %1 is already installed. Setup will update it to version %2.
+german.UpdateNotice=NET Thing Encryptor Version %1 ist bereits installiert. Das Setup aktualisiert die Anwendung auf Version %2.
+english.RepairNotice=NET Thing Encryptor version %1 is already installed. Setup will repair this version.
+german.RepairNotice=NET Thing Encryptor Version %1 ist bereits installiert. Das Setup repariert diese Version.
 english.DowngradeBlocked=A newer version (%1) is already installed. Setup %2 cannot downgrade it.
 german.DowngradeBlocked=Eine neuere Version (%1) ist bereits installiert. Setup %2 kann kein Downgrade durchführen.
 
@@ -94,6 +98,10 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
 
 [Code]
+var
+  HasInstalledVersion: Boolean;
+  InstalledVersion: String;
+
 function NextVersionPart(var VersionText: String): Integer;
 var
   SeparatorPosition: Integer;
@@ -137,28 +145,72 @@ begin
   end;
 end;
 
+procedure ConsiderInstalledVersion(
+  RootKey: Integer;
+  UninstallKey: String;
+  var FoundVersion: Boolean;
+  var InstalledVersion: String);
+var
+  CandidateVersion: String;
+begin
+  if not RegQueryStringValue(RootKey, UninstallKey, 'DisplayVersion', CandidateVersion) then
+    Exit;
+
+  if (not FoundVersion) or
+     (CompareVersions(CandidateVersion, InstalledVersion) > 0) then
+    InstalledVersion := CandidateVersion;
+  FoundVersion := True;
+end;
+
 function GetInstalledVersion(var InstalledVersion: String): Boolean;
 var
   UninstallKey: String;
 begin
-  UninstallKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{D2AE186D-517D-406F-99D9-8D538AC9607D}_is1';
-  Result := RegQueryStringValue(HKCU, UninstallKey, 'DisplayVersion', InstalledVersion);
-  if not Result then
-    Result := RegQueryStringValue(HKLM64, UninstallKey, 'DisplayVersion', InstalledVersion);
+  UninstallKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{D2AE186D-517D-406F-99D9-8D538AC9607D}_is1';
+  Result := False;
+  InstalledVersion := '';
+  if IsWin64 then
+  begin
+    ConsiderInstalledVersion(HKCU64, UninstallKey, Result, InstalledVersion);
+    ConsiderInstalledVersion(HKCU32, UninstallKey, Result, InstalledVersion);
+    ConsiderInstalledVersion(HKLM64, UninstallKey, Result, InstalledVersion);
+    ConsiderInstalledVersion(HKLM32, UninstallKey, Result, InstalledVersion);
+  end
+  else
+  begin
+    ConsiderInstalledVersion(HKCU, UninstallKey, Result, InstalledVersion);
+    ConsiderInstalledVersion(HKLM, UninstallKey, Result, InstalledVersion);
+  end;
 end;
 
 function InitializeSetup(): Boolean;
-var
-  InstalledVersion: String;
 begin
   Result := True;
-  if GetInstalledVersion(InstalledVersion) and
+  HasInstalledVersion := GetInstalledVersion(InstalledVersion);
+  if HasInstalledVersion and
      (CompareVersions(InstalledVersion, '{#AppVersion}') > 0) then
   begin
-    MsgBox(
+    SuppressibleMsgBox(
       FmtMessage(CustomMessage('DowngradeBlocked'), [InstalledVersion, '{#AppVersion}']),
       mbError,
-      MB_OK);
+      MB_OK,
+      IDOK);
     Result := False;
   end;
+end;
+
+procedure InitializeWizard;
+var
+  Notice: String;
+begin
+  if not HasInstalledVersion then
+    Exit;
+
+  if CompareVersions(InstalledVersion, '{#AppVersion}') < 0 then
+    Notice := FmtMessage(CustomMessage('UpdateNotice'), [InstalledVersion, '{#AppVersion}'])
+  else
+    Notice := FmtMessage(CustomMessage('RepairNotice'), [InstalledVersion]);
+
+  WizardForm.WelcomeLabel2.Caption :=
+    Notice + #13#10#13#10 + WizardForm.WelcomeLabel2.Caption;
 end;
