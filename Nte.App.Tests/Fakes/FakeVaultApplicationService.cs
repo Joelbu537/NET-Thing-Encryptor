@@ -30,6 +30,8 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
     public List<ulong> Deletes { get; } = [];
     public List<(ulong Id, byte[] Content)> SavedContents { get; } = [];
     public Dictionary<ulong, VaultFileContent> FileContents { get; } = [];
+    public List<(ulong Id, CancellationToken CancellationToken)> ReadFileRequests { get; } = [];
+    public Func<ulong, CancellationToken, Task<VaultFileContent>>? ReadFileAsyncHandler { get; set; }
     public int UnlockCalls { get; private set; }
     public int ArchiveImportCalls { get; private set; }
     public int ArchiveExportCalls { get; private set; }
@@ -100,6 +102,11 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
         ulong id,
         CancellationToken cancellationToken = default)
     {
+        ReadFileRequests.Add((id, cancellationToken));
+        if (ReadFileAsyncHandler is not null)
+            return ReadFileAsyncHandler(id, cancellationToken);
+
+        cancellationToken.ThrowIfCancellationRequested();
         VaultFileContent file = FileContents.GetValueOrDefault(id)
             ?? new VaultFileContent(id, "file", FileType.other, "bin", [1, 2, 3]);
         return Task.FromResult(file with { Content = file.Content.ToArray() });

@@ -292,6 +292,105 @@ public sealed class VaultDocumentViewModelTests
     }
 
     [Theory]
+    [InlineData(FileType.audio, "mp3", MediaPlaybackKind.Audio)]
+    [InlineData(FileType.video, "mp4", MediaPlaybackKind.Video)]
+    public async Task LoadingMedia_RemembersStartRequestUntilSessionIsCreated(
+        FileType type,
+        string extension,
+        MediaPlaybackKind expectedKind)
+    {
+        var readStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var readCompletion = new TaskCompletionSource<VaultFileContent>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        int readCalls = 0;
+        var playback = new FakeMediaPlaybackService();
+        byte[] content = [9, 8, 7, 6, 5];
+        var viewModel = VaultDocumentViewModel.CreateLoading(
+            new VaultFileReference(8, "medium", type, extension),
+            (_, cancellationToken) =>
+            {
+                readCalls++;
+                readStarted.TrySetResult();
+                return readCompletion.Task.WaitAsync(cancellationToken);
+            },
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            mediaPlaybackService: playback);
+
+        Task firstLoad = viewModel.LoadAsync();
+        Task secondLoad = viewModel.LoadAsync();
+        await readStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.True(viewModel.IsLoading);
+        Assert.True(viewModel.StartMediaCommand.CanExecute(null));
+        await viewModel.StartMediaCommand.ExecuteAsync();
+        Assert.Null(playback.LastKind);
+
+        readCompletion.SetResult(new VaultFileContent(
+            8,
+            "medium",
+            type,
+            extension,
+            content));
+        await Task.WhenAll(firstLoad, secondLoad).WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, readCalls);
+        Assert.False(viewModel.IsLoading);
+        Assert.True(viewModel.IsContentReady);
+        Assert.Equal(expectedKind, playback.LastKind);
+        Assert.Equal(1, playback.Session.PlayCount);
+
+        viewModel.Dispose();
+        Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
+    [Fact]
+    public async Task DisposeDuringBlockedVideoSessionCreation_DiscardsSessionAndClearsContent()
+    {
+        byte[] content = [7, 6, 5, 4, 3, 2, 1];
+        var playback = new BlockingMediaPlaybackService();
+        var viewModel = VaultDocumentViewModel.CreateLoading(
+            new VaultFileReference(17, "race", FileType.video, "mp4"),
+            (_, _) => Task.FromResult(new VaultFileContent(
+                17,
+                "race",
+                FileType.video,
+                "mp4",
+                content)),
+            (_, _) => Task.CompletedTask,
+            () => { },
+            _ => { },
+            mediaPlaybackService: playback);
+        await viewModel.StartMediaCommand.ExecuteAsync();
+
+        Task loading = viewModel.LoadAsync();
+        await playback.SessionCreationStarted.WaitAsync(TestContext.Current.CancellationToken);
+        try
+        {
+            await Task.Run(
+                    viewModel.Dispose,
+                    TestContext.Current.CancellationToken)
+                .WaitAsync(TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            playback.ReleaseSessionCreation();
+        }
+
+        await loading.WaitAsync(TestContext.Current.CancellationToken);
+
+        FakeMediaPlaybackSession session = Assert.IsType<FakeMediaPlaybackSession>(
+            playback.CreatedSession);
+        Assert.Equal(1, session.DisposeCount);
+        Assert.True(session.ContentIsCleared);
+        Assert.Equal(0, session.PlayCount);
+        Assert.False(viewModel.HasMediaPlayback);
+        Assert.Null(viewModel.VideoSurface);
+        Assert.All(content, value => Assert.Equal((byte)0, value));
+    }
+
+    [Theory]
     [InlineData(FileType.image, "png")]
     [InlineData(FileType.audio, "flac")]
     [InlineData(FileType.video, "mp4")]
@@ -354,7 +453,7 @@ public sealed class VaultDocumentViewModelTests
     }
 
     private static byte[] OnePixelPng() => Convert.FromBase64String(
-        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAXSURBVBhXY/jPwPCfoYHhPwMDw38wAABD1Al4TlSdlQAAAABJRU5ErkJggg==");
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/jPwPCfARkAAB7zAf+x9MCaAAAAAElFTkSuQmCC");
 
     private sealed class ThrowingMediaPlaybackService : IMediaPlaybackService
     {
@@ -362,6 +461,33 @@ public sealed class VaultDocumentViewModelTests
             byte[] decryptedContent,
             MediaPlaybackKind kind) =>
             throw new InvalidOperationException("Backend nicht verfügbar");
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class BlockingMediaPlaybackService : IMediaPlaybackService
+    {
+        private readonly TaskCompletionSource _sessionCreationStarted = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _releaseSessionCreation = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task SessionCreationStarted => _sessionCreationStarted.Task;
+        public IMediaPlaybackSession? CreatedSession { get; private set; }
+
+        public IMediaPlaybackSession CreateSession(
+            byte[] decryptedContent,
+            MediaPlaybackKind kind)
+        {
+            _sessionCreationStarted.TrySetResult();
+            _releaseSessionCreation.Task.GetAwaiter().GetResult();
+            CreatedSession = new FakeMediaPlaybackSession(decryptedContent, kind);
+            return CreatedSession;
+        }
+
+        public void ReleaseSessionCreation() => _releaseSessionCreation.TrySetResult();
 
         public void Dispose()
         {

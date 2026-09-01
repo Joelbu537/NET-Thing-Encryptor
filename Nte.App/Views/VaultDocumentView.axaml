@@ -16,7 +16,7 @@
     </Grid>
 
     <Grid Grid.Row="1">
-      <Grid IsVisible="{Binding IsText}" RowDefinitions="Auto,*" RowSpacing="8">
+      <Grid IsVisible="{Binding ShowTextContent}" RowDefinitions="Auto,*" RowSpacing="8">
         <WrapPanel>
           <Button Content="Bearbeiten / Schreibschutz" Command="{Binding ToggleEditingCommand}" Margin="0,0,8,6" />
           <Button Content="Speichern" Classes="primary" Command="{Binding SaveCommand}" Margin="0,0,8,6" />
@@ -33,7 +33,7 @@
                  KeyDown="TextEditor_KeyDown" />
       </Grid>
 
-      <Grid IsVisible="{Binding IsImageDocument}" RowDefinitions="Auto,*" RowSpacing="8">
+      <Grid IsVisible="{Binding ShowImageContent}" RowDefinitions="Auto,*" RowSpacing="8">
         <WrapPanel IsVisible="{Binding IsImageSeries}">
           <TextBlock Text="{Binding ImagePositionText}" VerticalAlignment="Center" Margin="0,0,12,6" />
           <Button Content="Reihenfolge mischen" Command="{Binding RandomiseImagesCommand}" Margin="0,0,8,6" />
@@ -52,7 +52,7 @@
         </Border>
       </Grid>
 
-      <Grid IsVisible="{Binding IsMedia}" RowDefinitions="*,Auto" RowSpacing="10">
+      <Grid IsVisible="{Binding ShowMediaContent}" RowDefinitions="*,Auto" RowSpacing="10">
         <Border BorderThickness="1" BorderBrush="#40607080" CornerRadius="8"
                 Background="#101418" ClipToBounds="True" MinHeight="120">
           <Grid>
@@ -65,9 +65,6 @@
                         Spacing="12">
               <TextBlock Text="♪" Foreground="White" FontSize="72"
                          HorizontalAlignment="Center" />
-              <TextBlock Text="{Binding DisplayName}" Foreground="White"
-                         FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
-                         HorizontalAlignment="Center" MaxWidth="560" />
             </StackPanel>
             <TextBlock Text="{Binding MediaUnavailableMessage}"
                        IsVisible="{Binding ShowMediaPlaceholder}"
@@ -103,15 +100,32 @@
         </Grid>
       </Grid>
 
-      <Border IsVisible="{Binding IsGeneric}" Padding="24" BorderThickness="1"
+      <Border IsVisible="{Binding ShowGenericContent}" Padding="24" BorderThickness="1"
               BorderBrush="#40607080" CornerRadius="8">
         <TextBlock Text="{Binding GenericMessage}" TextWrapping="Wrap"
                    HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" />
       </Border>
+
+      <Border IsVisible="{Binding IsLoading}"
+              Background="{DynamicResource AppSurfaceBrush}" CornerRadius="8">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Spacing="14" Margin="24">
+          <ProgressBar IsIndeterminate="True" Width="240" />
+          <TextBlock Text="{Binding LoadingMessage}" TextWrapping="Wrap"
+                     HorizontalAlignment="Center" TextAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <Border IsVisible="{Binding HasLoadFailed}" Padding="24"
+              BorderThickness="1" BorderBrush="#80D13438" CornerRadius="8">
+        <TextBlock Text="Der Inhalt konnte nicht geladen werden."
+                   TextWrapping="Wrap" HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+      </Border>
     </Grid>
 
     <StackPanel Grid.Row="2" Spacing="8">
-      <WrapPanel IsVisible="{Binding IsText}">
+      <WrapPanel IsVisible="{Binding ShowTextContent}">
         <TextBlock Text="{Binding EncodingText}" Opacity="0.65" Margin="0,0,16,0" />
         <TextBlock Text="{Binding CharacterCountText}" Opacity="0.65" />
       </WrapPanel>

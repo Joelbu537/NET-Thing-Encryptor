@@ -18,6 +18,8 @@ Die gemeinsame Anwendung hält Wiedergabestatus, Befehle und Lebenszyklus unabh�
 
 Eine Wiedergabesitzung besitzt genau einen LibVLC-Player und genau einen entschlüsselten Eingabestrom. Fenster- beziehungsweise Ansichtswechsel erzeugen keine zweite entschlüsselte Kopie. Audio und Video teilen denselben LibVLC-Dienst; nur Videos fordern eine Plattformoberfläche an. Beim Schließen der Dokumentansicht oder beim Sperren des Tresors wird die Sitzung vollständig beendet und eine eventuell vorhandene native Videoansicht getrennt.
 
+Seit Version 4.3.1 wird das Dokumentfenster beziehungsweise die eingebettete Android-Ansicht bereits vor dem Einlesen des Medieninhalts angezeigt. Ein dokumenteigener Ladezustand bleibt sichtbar, während die Datei entschlüsselt und die Wiedergabesitzung aufgebaut wird. Wird die Ansicht geschlossen oder der Tresor gesperrt, fordert der Dokumentlebenszyklus den Abbruch an; ein bereits zurückgegebener, aber nicht übernommener Klartextpuffer wird überschrieben.
+
 ### Entscheidung zur Android-Laufzeit
 
 Die stabile Android-Laufzeit 3.6.5 wurde geprüft, aber nicht übernommen. Der Release-Build meldete damit vier `XA0141`-Warnungen für native Bibliotheken ohne die für Android 16 benötigte Unterstützung von 16-KB-Speicherseiten. `VideoLAN.LibVLC.Android` 3.7.0-beta beseitigt diese Warnungen im aktuellen Build und liefert native Bibliotheken für beide konfigurierten Architekturen `arm64-v8a` und `x86_64`.
@@ -37,7 +39,7 @@ Diese Speichergrenzen müssen in Sicherheitsbewertung und Supporthinweisen berü
 
 ## Bedienung
 
-Der Audio- und Videoplayer bietet sichtbare Schaltflächen für Play/Pause sowie Sprünge um zehn Sekunden und eine seekbare Zeitleiste. Die Zeitposition wird während der Wiedergabe aktualisiert und kann per Zeiger oder Touch geändert werden. Audio zeigt anstelle einer Videooberfläche eine kompakte Medienkarte mit Dateiname und Format.
+Der Audio- und Videoplayer bietet sichtbare Schaltflächen für Play/Pause sowie Sprünge um zehn Sekunden und eine seekbare Zeitleiste. Die Zeitposition wird während der Wiedergabe aktualisiert und kann per Zeiger oder Touch geändert werden. Audio zeigt anstelle einer Videooberfläche eine schlichte Medienkarte mit Notensymbol; der Dateiname bleibt in der Dokumentüberschrift sichtbar.
 
 Zusätzlich gelten diese Tastenkürzel im Desktop-Dokumentfenster:
 

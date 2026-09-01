@@ -16,7 +16,7 @@ public sealed class AppShellViewModelTests
         await shell.InitializeAsync();
 
         Assert.IsType<UnlockViewModel>(shell.CurrentPage);
-        Assert.Equal("v4.3.0", shell.VersionText);
+        Assert.Equal("v4.3.1", shell.VersionText);
     }
 
     [Fact]

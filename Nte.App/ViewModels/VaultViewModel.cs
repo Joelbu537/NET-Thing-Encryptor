@@ -472,23 +472,22 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             return;
         }
 
-        await RunBusyAsync(async cancellationToken =>
-        {
-            VaultFileContent content = await _vault.ReadFileAsync(item.Id, cancellationToken);
-            VaultImageSeriesOptions? imageSeries = item.Type == FileType.image
-                ? CreateImageSeriesOptions()
-                : null;
-            ActiveDocument = new VaultDocumentViewModel(
-                content,
-                (data, token) => _vault.SaveFileContentAsync(item.Id, data, token),
-                CloseActiveDocumentAndRefresh,
-                _setStatus,
-                imageSeries,
-                imageSeries is null ? null : _vault.ReadFileAsync,
-                mediaPlaybackService: _mediaPlaybackService,
-                showBackButton: !_useDocumentWindows ||
-                    item.Type is not (FileType.image or FileType.audio or FileType.video));
-        }, "Der Inhalt konnte nicht geöffnet werden");
+        VaultImageSeriesOptions? imageSeries = item.Type == FileType.image
+            ? CreateImageSeriesOptions()
+            : null;
+        var document = VaultDocumentViewModel.CreateLoading(
+            new VaultFileReference(item.Id, item.Name, item.Type, item.Extension),
+            _vault.ReadFileAsync,
+            (data, token) => _vault.SaveFileContentAsync(item.Id, data, token),
+            CloseActiveDocumentAndRefresh,
+            _setStatus,
+            imageSeries,
+            imageSeries is null ? null : _vault.ReadFileAsync,
+            mediaPlaybackService: _mediaPlaybackService,
+            showBackButton: !_useDocumentWindows ||
+                item.Type is not (FileType.image or FileType.audio or FileType.video));
+        ActiveDocument = document;
+        _ = document.LoadAsync();
     }
 
     private VaultImageSeriesOptions CreateImageSeriesOptions()

@@ -11,14 +11,17 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private readonly Func<ReadOnlyMemory<byte>, CancellationToken, Task> _save;
     private readonly Action _close;
     private readonly Action<string> _setStatus;
-    private readonly DecodedTextDocument? _textDocument;
+    private DecodedTextDocument? _textDocument;
     private readonly List<VaultImageReference> _images = [];
+    private readonly Func<ulong, CancellationToken, Task<VaultFileContent>>? _loadContent;
     private readonly Func<ulong, CancellationToken, Task<VaultFileContent>>? _loadImage;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
     private readonly Func<byte[], Bitmap?> _decodeImage;
+    private readonly IMediaPlaybackService? _mediaPlaybackService;
     private readonly bool _includeSelectedImageWhenRandomising;
     private readonly bool _loopAutoplay;
     private readonly TimeSpan _autoplayInterval;
+    private readonly object _contentGate = new();
     private IMediaPlaybackSession? _mediaSession;
     private Control? _videoSurface;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
@@ -33,6 +36,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private int _imageIndex = -1;
     private bool _isEditing;
     private bool _hasDecodedImage;
+    private bool _isLoading;
+    private bool _isContentReady;
     private bool _isBusy;
     private bool _isAutoplayRunning;
     private bool _showDiscardConfirmation;
@@ -45,7 +50,8 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     private double _mediaPositionMilliseconds;
     private double _mediaDurationMilliseconds;
     private readonly bool _showBackButton;
-    private bool _disposed;
+    private volatile bool _disposed;
+    private Task? _loadTask;
     private CancellationTokenSource? _saveCancellation;
     private CancellationTokenSource? _autoplayCancellation;
 
@@ -72,6 +78,29 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     {
     }
 
+    public static VaultDocumentViewModel CreateLoading(
+        VaultFileReference file,
+        Func<ulong, CancellationToken, Task<VaultFileContent>> load,
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task> save,
+        Action close,
+        Action<string> setStatus,
+        VaultImageSeriesOptions? imageSeries = null,
+        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage = null,
+        IMediaPlaybackService? mediaPlaybackService = null,
+        bool showBackButton = true) =>
+        new(
+            file,
+            load,
+            save,
+            close,
+            setStatus,
+            imageSeries,
+            loadImage,
+            static (delay, cancellationToken) => Task.Delay(delay, cancellationToken),
+            DecodeImage,
+            mediaPlaybackService,
+            showBackButton);
+
     internal VaultDocumentViewModel(
         VaultFileContent file,
         Func<ReadOnlyMemory<byte>, CancellationToken, Task> save,
@@ -83,18 +112,51 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         Func<byte[], Bitmap?>? decodeImage = null,
         IMediaPlaybackService? mediaPlaybackService = null,
         bool showBackButton = true)
+        : this(
+            new VaultFileReference(file.Id, file.Name, file.Type, file.Extension),
+            loadContent: null,
+            save,
+            close,
+            setStatus,
+            imageSeries,
+            loadImage,
+            delay,
+            decodeImage,
+            mediaPlaybackService,
+            showBackButton)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        ApplyLoadedContent(file, CancellationToken.None);
+        _isContentReady = true;
+    }
+
+    private VaultDocumentViewModel(
+        VaultFileReference file,
+        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadContent,
+        Func<ReadOnlyMemory<byte>, CancellationToken, Task> save,
+        Action close,
+        Action<string> setStatus,
+        VaultImageSeriesOptions? imageSeries,
+        Func<ulong, CancellationToken, Task<VaultFileContent>>? loadImage,
+        Func<TimeSpan, CancellationToken, Task> delay,
+        Func<byte[], Bitmap?>? decodeImage,
+        IMediaPlaybackService? mediaPlaybackService,
+        bool showBackButton)
     {
         ArgumentNullException.ThrowIfNull(file);
         _save = save ?? throw new ArgumentNullException(nameof(save));
         _close = close ?? throw new ArgumentNullException(nameof(close));
         _setStatus = setStatus ?? throw new ArgumentNullException(nameof(setStatus));
+        _loadContent = loadContent;
         _delay = delay ?? throw new ArgumentNullException(nameof(delay));
         _decodeImage = decodeImage ?? DecodeImage;
+        _mediaPlaybackService = mediaPlaybackService;
         _id = file.Id;
         _name = file.Name;
         _extension = file.Extension;
         Type = file.Type;
         _showBackButton = showBackButton;
+        _isLoading = loadContent is not null;
 
         if (file.Type == FileType.image && imageSeries is not null && loadImage is not null)
         {
@@ -117,72 +179,20 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
             _autoplayInterval = TimeSpan.FromSeconds(5);
         }
 
-        bool mediaSessionOwnsContent = false;
-        try
-        {
-            if (file.Type == FileType.text)
-            {
-                _textDocument = TextDocumentCodec.Decode(file.Content);
-                _text = _textDocument.Text;
-                _savedText = _text;
-            }
-            else if (file.Type == FileType.image)
-            {
-                _image = _decodeImage(file.Content);
-                _hasDecodedImage = true;
-            }
-            else if (file.Type is FileType.audio or FileType.video && mediaPlaybackService is not null)
-            {
-                IMediaPlaybackSession? session = mediaPlaybackService.CreateSession(
-                    file.Content,
-                    file.Type == FileType.video
-                        ? MediaPlaybackKind.Video
-                        : MediaPlaybackKind.Audio);
-                try
-                {
-                    _videoSurface = session.Surface;
-                    session.StateChanged += MediaSession_StateChanged;
-                    session.Failed += MediaSession_Failed;
-                    _mediaSession = session;
-                    mediaSessionOwnsContent = true;
-                    session = null;
-                }
-                finally
-                {
-                    session?.Dispose();
-                }
-            }
-            else if (file.Type is FileType.audio or FileType.video)
-            {
-                ErrorMessage = IsAudio
-                    ? "Der Audioplayer ist auf dieser Plattform nicht verfügbar."
-                    : "Der Videoplayer ist auf dieser Plattform nicht verfügbar.";
-            }
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Der Inhalt konnte nicht dargestellt werden: {ex.Message}";
-        }
-        finally
-        {
-            if (!mediaSessionOwnsContent)
-                CryptographicOperations.ZeroMemory(file.Content);
-        }
-
-        SaveCommand = new AsyncCommand(SaveAsync, () => IsText && IsDirty && !IsBusy);
-        ToggleEditingCommand = new AsyncCommand(ToggleEditingAsync, () => IsText && !IsBusy);
+        SaveCommand = new AsyncCommand(SaveAsync, () => IsText && IsContentReady && IsDirty && !IsBusy);
+        ToggleEditingCommand = new AsyncCommand(ToggleEditingAsync, () => IsText && IsContentReady && !IsBusy);
         CloseCommand = new AsyncCommand(RequestCloseAsync, () => !IsBusy);
         DiscardAndCloseCommand = new AsyncCommand(DiscardAndCloseAsync, () => !IsBusy);
         CancelCloseCommand = new AsyncCommand(CancelCloseAsync, () => !IsBusy);
         PreviousImageCommand = new AsyncCommand(
             () => NavigateImageAsync(-1),
-            () => IsImageSeries && !IsBusy && _imageIndex > 0);
+            () => IsContentReady && IsImageSeries && !IsBusy && _imageIndex > 0);
         NextImageCommand = new AsyncCommand(
             () => NavigateImageAsync(1),
-            () => IsImageSeries && !IsBusy && _imageIndex < _images.Count - 1);
+            () => IsContentReady && IsImageSeries && !IsBusy && _imageIndex < _images.Count - 1);
         RandomiseImagesCommand = new AsyncCommand(
             RandomiseImagesAsync,
-            () => IsImageSeries && !IsBusy);
+            () => IsContentReady && IsImageSeries && !IsBusy);
         ToggleAutoplayCommand = new AsyncCommand(
             ToggleAutoplayAsync,
             CanToggleAutoplay);
@@ -213,7 +223,19 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public bool IsAudio => Type == FileType.audio;
     public bool IsMedia => Type is FileType.audio or FileType.video;
     public bool IsGeneric => !IsText && !IsImageDocument && !IsMedia;
+    public bool ShowTextContent => IsText && IsContentReady;
+    public bool ShowImageContent => IsImageDocument && IsContentReady;
+    public bool ShowMediaContent => IsMedia && IsContentReady;
+    public bool ShowGenericContent => IsGeneric && IsContentReady;
     public bool ShowBackButton => _showBackButton;
+    public string LoadingMessage => Type switch
+    {
+        FileType.text => "Text wird entschlüsselt und geladen …",
+        FileType.image => "Bild wird entschlüsselt und geladen …",
+        FileType.audio => "Audio wird entschlüsselt und geladen …",
+        FileType.video => "Video wird entschlüsselt und geladen …",
+        _ => "Inhalt wird entschlüsselt und geladen …"
+    };
     public string GenericMessage =>
         "Für diesen Dateityp ist keine interne Vorschau verfügbar. Der Inhalt kann sicher exportiert werden.";
     public string ImagePositionText => _images.Count == 0
@@ -225,7 +247,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public bool HasMediaPlayback => _mediaSession is not null;
     public bool HasVideoSurface => IsVideo && _videoSurface is not null;
     public bool ShowAudioPresentation => IsAudio && HasMediaPlayback;
-    public bool ShowMediaPlaceholder => IsMedia && !HasMediaPlayback;
+    public bool ShowMediaPlaceholder => IsMedia && IsContentReady && !HasMediaPlayback;
     public string MediaUnavailableMessage => IsAudio
         ? "Der Audioplayer ist auf dieser Plattform nicht verfügbar."
         : "Der Videoplayer ist auf dieser Plattform nicht verfügbar.";
@@ -317,7 +339,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         }
     }
 
-    public bool IsReadOnly => !IsEditing || IsBusy;
+    public bool IsReadOnly => !IsContentReady || !IsEditing || IsBusy;
     public bool IsDirty => IsText && !string.Equals(Text, _savedText, StringComparison.Ordinal);
     public string EncodingText => _textDocument?.EncodingName ?? string.Empty;
     public string CharacterCountText => $"{Text.Length:N0} Zeichen";
@@ -337,8 +359,48 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public string ErrorMessage
     {
         get => _errorMessage;
-        private set => SetProperty(ref _errorMessage, value);
+        private set
+        {
+            if (SetProperty(ref _errorMessage, value))
+                OnPropertyChanged(nameof(HasLoadFailed));
+        }
     }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
+        {
+            if (!SetProperty(ref _isLoading, value))
+                return;
+            OnPropertyChanged(nameof(HasLoadFailed));
+            OnPropertyChanged(nameof(IsReadOnly));
+            OnPropertyChanged(nameof(ShowMediaPlaceholder));
+        }
+    }
+
+    public bool IsContentReady
+    {
+        get => _isContentReady;
+        private set
+        {
+            if (!SetProperty(ref _isContentReady, value))
+                return;
+            OnPropertyChanged(nameof(HasLoadFailed));
+            OnPropertyChanged(nameof(ShowTextContent));
+            OnPropertyChanged(nameof(ShowImageContent));
+            OnPropertyChanged(nameof(ShowMediaContent));
+            OnPropertyChanged(nameof(ShowGenericContent));
+            OnPropertyChanged(nameof(ShowMediaPlaceholder));
+            OnPropertyChanged(nameof(IsReadOnly));
+            SaveCommand.NotifyCanExecuteChanged();
+            ToggleEditingCommand.NotifyCanExecuteChanged();
+            NotifyImageCommands();
+        }
+    }
+
+    public bool HasLoadFailed => !IsLoading && !IsContentReady &&
+        !string.IsNullOrWhiteSpace(ErrorMessage);
 
     public bool IsBusy
     {
@@ -386,6 +448,14 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     public AsyncCommand SeekMediaBackwardCommand { get; }
     public AsyncCommand SeekMediaForwardCommand { get; }
 
+    public Task LoadAsync()
+    {
+        if (_loadContent is null)
+            return Task.CompletedTask;
+        lock (_contentGate)
+            return _loadTask ??= LoadCoreAsync();
+    }
+
     public bool HandleBackRequested()
     {
         _ = RequestCloseAsync();
@@ -400,26 +470,36 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
-        _disposed = true;
+        Bitmap? image;
+        IMediaPlaybackSession? mediaSession;
+        lock (_contentGate)
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            image = _image;
+            _image = null;
+            _hasDecodedImage = false;
+            mediaSession = _mediaSession;
+            _mediaSession = null;
+            _videoSurface = null;
+            _isLoading = false;
+            _isContentReady = false;
+            _textDocument = null;
+            _text = string.Empty;
+            _savedText = string.Empty;
+        }
+
         _saveCancellation?.Cancel();
         _lifetimeCancellation.Cancel();
         StopAutoplay();
-        Bitmap? image = Image;
-        SetImage(null, decoded: false);
         image?.Dispose();
-        IMediaPlaybackSession? mediaSession = _mediaSession;
-        _mediaSession = null;
         if (mediaSession is not null)
         {
             mediaSession.StateChanged -= MediaSession_StateChanged;
             mediaSession.Failed -= MediaSession_Failed;
             mediaSession.Dispose();
         }
-        _videoSurface = null;
-        _text = string.Empty;
-        _savedText = string.Empty;
     }
 
     public void BeginMediaSeek()
@@ -443,13 +523,163 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
         _resumeMediaAfterSeek = false;
     }
 
+    private async Task LoadCoreAsync()
+    {
+        await Task.Yield();
+        CancellationToken cancellationToken = _lifetimeCancellation.Token;
+        VaultFileContent? file = null;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            file = await _loadContent!(_id, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (_disposed)
+                throw new OperationCanceledException(cancellationToken);
+
+            ApplyLoadedContent(file, cancellationToken);
+            file = null;
+            lock (_contentGate)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_disposed)
+                    throw new OperationCanceledException(cancellationToken);
+                IsContentReady = true;
+            }
+        }
+        catch (OperationCanceledException) when (
+            cancellationToken.IsCancellationRequested || _disposed)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (!_disposed && !cancellationToken.IsCancellationRequested)
+                ErrorMessage = $"Der Inhalt konnte nicht geladen werden: {ex.Message}";
+        }
+        finally
+        {
+            if (file?.Content is not null)
+                CryptographicOperations.ZeroMemory(file.Content);
+            lock (_contentGate)
+            {
+                if (!_disposed)
+                    IsLoading = false;
+            }
+        }
+    }
+
+    private void ApplyLoadedContent(
+        VaultFileContent file,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        if (file.Content is null)
+            throw new InvalidDataException("Der geladene Inhalt ist leer.");
+        if (file.Id != Id || file.Type != Type)
+            throw new InvalidDataException("Der geladene Eintrag entspricht nicht dem geöffneten Dokument.");
+
+        bool mediaSessionOwnsContent = false;
+        Bitmap? decodedImage = null;
+        IMediaPlaybackSession? pendingMediaSession = null;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ErrorMessage = string.Empty;
+            if (file.Type == FileType.text)
+            {
+                DecodedTextDocument textDocument = TextDocumentCodec.Decode(file.Content);
+                lock (_contentGate)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (_disposed)
+                        throw new OperationCanceledException(cancellationToken);
+                    _textDocument = textDocument;
+                    _savedText = textDocument.Text;
+                    _text = textDocument.Text;
+                }
+                if (!_disposed)
+                {
+                    OnPropertyChanged(nameof(Text));
+                    OnPropertyChanged(nameof(IsDirty));
+                    OnPropertyChanged(nameof(EncodingText));
+                    OnPropertyChanged(nameof(CharacterCountText));
+                    UpdateSearchCount();
+                    SaveCommand.NotifyCanExecuteChanged();
+                }
+            }
+            else if (file.Type == FileType.image)
+            {
+                decodedImage = _decodeImage(file.Content);
+                lock (_contentGate)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (_disposed)
+                        throw new OperationCanceledException(cancellationToken);
+                    _image = decodedImage;
+                    _hasDecodedImage = true;
+                    decodedImage = null;
+                }
+                if (!_disposed)
+                    NotifyImagePresentationChanged();
+            }
+            else if (file.Type is FileType.audio or FileType.video &&
+                     _mediaPlaybackService is not null)
+            {
+                pendingMediaSession = _mediaPlaybackService.CreateSession(
+                    file.Content,
+                    file.Type == FileType.video
+                        ? MediaPlaybackKind.Video
+                        : MediaPlaybackKind.Audio);
+                lock (_contentGate)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (_disposed)
+                        throw new OperationCanceledException(cancellationToken);
+
+                    _videoSurface = pendingMediaSession.Surface;
+                    pendingMediaSession.StateChanged += MediaSession_StateChanged;
+                    pendingMediaSession.Failed += MediaSession_Failed;
+                    _mediaSession = pendingMediaSession;
+                    pendingMediaSession = null;
+                    mediaSessionOwnsContent = true;
+                    if (_mediaStartRequested)
+                        _mediaSession.Play();
+                }
+                if (!_disposed)
+                    NotifyMediaPresentationChanged();
+            }
+            else if (file.Type is FileType.audio or FileType.video)
+            {
+                ErrorMessage = MediaUnavailableMessage;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            if (!_disposed && !cancellationToken.IsCancellationRequested)
+                ErrorMessage = $"Der Inhalt konnte nicht dargestellt werden: {ex.Message}";
+        }
+        finally
+        {
+            decodedImage?.Dispose();
+            pendingMediaSession?.Dispose();
+            if (!mediaSessionOwnsContent)
+                CryptographicOperations.ZeroMemory(file.Content);
+        }
+    }
+
     private Task StartMediaAsync()
     {
-        if (_mediaSession is null || _mediaStartRequested)
-            return Task.CompletedTask;
-        _mediaStartRequested = true;
+        lock (_contentGate)
+        {
+            if (_disposed || _mediaStartRequested)
+                return Task.CompletedTask;
+            _mediaStartRequested = true;
+            _mediaSession?.Play();
+        }
         StartMediaCommand.NotifyCanExecuteChanged();
-        _mediaSession.Play();
         return Task.CompletedTask;
     }
 
@@ -479,7 +709,20 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     }
 
     private bool CanStartMedia() =>
-        IsMedia && _mediaSession is not null && !_mediaStartRequested;
+        IsMedia && !_disposed && !_mediaStartRequested;
+
+    private void NotifyMediaPresentationChanged()
+    {
+        OnPropertyChanged(nameof(HasMediaPlayback));
+        OnPropertyChanged(nameof(HasVideoSurface));
+        OnPropertyChanged(nameof(ShowAudioPresentation));
+        OnPropertyChanged(nameof(ShowMediaPlaceholder));
+        OnPropertyChanged(nameof(VideoSurface));
+        StartMediaCommand.NotifyCanExecuteChanged();
+        ToggleMediaPlaybackCommand.NotifyCanExecuteChanged();
+        SeekMediaBackwardCommand.NotifyCanExecuteChanged();
+        SeekMediaForwardCommand.NotifyCanExecuteChanged();
+    }
 
     private void MediaSession_StateChanged(
         object? sender,
@@ -709,7 +952,7 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     }
 
     private bool CanToggleAutoplay() =>
-        IsImageSeries &&
+        IsContentReady && IsImageSeries &&
         (IsAutoplayRunning || (!IsBusy && (_loopAutoplay || _imageIndex < _images.Count - 1)));
 
     private void NotifyImageCommands()
@@ -730,6 +973,11 @@ public sealed class VaultDocumentViewModel : ObservableObject, IDisposable
     {
         _image = image;
         _hasDecodedImage = decoded;
+        NotifyImagePresentationChanged();
+    }
+
+    private void NotifyImagePresentationChanged()
+    {
         OnPropertyChanged(nameof(Image));
         OnPropertyChanged(nameof(IsImage));
         OnPropertyChanged(nameof(IsImageSeries));

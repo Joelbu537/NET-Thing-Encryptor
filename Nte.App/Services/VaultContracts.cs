@@ -20,6 +20,12 @@ public sealed record VaultFileContent(
     string Extension,
     byte[] Content);
 
+public sealed record VaultFileReference(
+    ulong Id,
+    string Name,
+    FileType Type,
+    string Extension);
+
 public sealed record VaultImageReference(
     ulong Id,
     string Name,

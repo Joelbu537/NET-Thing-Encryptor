@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using NET_Thing_Encryptor;
 using Nte.App.Services;
 using Nte.App.Tests.Fakes;
@@ -210,6 +211,7 @@ public sealed class VaultViewModelTests
         await viewModel.OpenSelectedCommand.ExecuteAsync();
 
         VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        await document.LoadAsync();
         Assert.True(document.IsImageSeries);
         Assert.Equal("1 / 2", document.ImagePositionText);
     }
@@ -243,6 +245,248 @@ public sealed class VaultViewModelTests
         Assert.True(viewModel.UseDocumentWindows);
         Assert.True(viewModel.ShowVaultContent);
         Assert.False(viewModel.ShowInlineDocument);
+    }
+
+    [Theory]
+    [InlineData(FileType.text, "Notiz", "txt")]
+    [InlineData(FileType.image, "Bild", "png")]
+    [InlineData(FileType.audio, "Lied", "mp3")]
+    [InlineData(FileType.video, "Film", "mp4")]
+    public async Task DelayedPlayerRead_PublishesLoadingDocumentImmediatelyAndCompletesItInPlace(
+        FileType type,
+        string name,
+        string extension)
+    {
+        var item = CreatePlayerItem(type, name, extension);
+        var readStarted = NewCompletion<CancellationToken>();
+        var readCompletion = NewCompletion<VaultFileContent>();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [item];
+        vault.ReadFileAsyncHandler = (id, cancellationToken) =>
+        {
+            Assert.Equal(item.Id, id);
+            readStarted.TrySetResult(cancellationToken);
+            return readCompletion.Task.WaitAsync(cancellationToken);
+        };
+        var playback = new FakeMediaPlaybackService();
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true,
+            mediaPlaybackService: playback);
+        await viewModel.InitializeAsync();
+
+        Task activation = viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        await readStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        Assert.Equal(type, document.Type);
+        Assert.Equal($"{name}.{extension}", document.DisplayName);
+        Assert.True(document.IsLoading);
+        Assert.False(document.IsContentReady);
+        Assert.False(document.HasLoadFailed);
+        Assert.True(viewModel.ShowVaultContent);
+        Assert.False(viewModel.ShowInlineDocument);
+        Assert.False(document.ShowMediaPlaceholder);
+
+        Task loaded = WaitForLoadingToFinishAsync(document);
+        readCompletion.SetResult(CreatePlayerContent(item));
+        await Task.WhenAll(activation, loaded).WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Same(document, viewModel.ActiveDocument);
+        Assert.False(document.IsLoading);
+        Assert.True(document.IsContentReady);
+        Assert.False(document.HasLoadFailed);
+        if (type != FileType.image)
+            Assert.Empty(document.ErrorMessage);
+        switch (type)
+        {
+            case FileType.text:
+                Assert.Equal("Geladener Text", document.Text);
+                break;
+            case FileType.image:
+                Assert.True(document.IsImageDocument);
+                break;
+            case FileType.audio:
+                Assert.True(document.HasMediaPlayback);
+                Assert.Equal(MediaPlaybackKind.Audio, playback.LastKind);
+                break;
+            case FileType.video:
+                Assert.True(document.HasMediaPlayback);
+                Assert.Equal(MediaPlaybackKind.Video, playback.LastKind);
+                break;
+        }
+    }
+
+    [Theory]
+    [InlineData(FileType.text, "txt")]
+    [InlineData(FileType.image, "png")]
+    [InlineData(FileType.audio, "mp3")]
+    [InlineData(FileType.video, "mp4")]
+    public async Task FailedPlayerRead_KeepsPublishedDocumentOpenAndShowsTheError(
+        FileType type,
+        string extension)
+    {
+        var item = CreatePlayerItem(type, "Defekt", extension);
+        var readStarted = NewCompletion<CancellationToken>();
+        var readCompletion = NewCompletion<VaultFileContent>();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [item];
+        vault.ReadFileAsyncHandler = (_, cancellationToken) =>
+        {
+            readStarted.TrySetResult(cancellationToken);
+            return readCompletion.Task.WaitAsync(cancellationToken);
+        };
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true,
+            mediaPlaybackService: new FakeMediaPlaybackService());
+        await viewModel.InitializeAsync();
+
+        Task activation = viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        await readStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        Task loaded = WaitForLoadingToFinishAsync(document);
+
+        readCompletion.SetException(new InvalidDataException("Testinhalt ist beschädigt"));
+        await Task.WhenAll(activation, loaded).WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Same(document, viewModel.ActiveDocument);
+        Assert.False(document.IsLoading);
+        Assert.False(document.IsContentReady);
+        Assert.True(document.HasLoadFailed);
+        Assert.Contains("Testinhalt ist beschädigt", document.ErrorMessage);
+        Assert.Empty(viewModel.ErrorMessage);
+        Assert.True(document.CloseCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task ClosingPlayerWhileLoading_CancelsReadAndDoesNotRestoreDocument()
+    {
+        var item = CreatePlayerItem(FileType.video, "Lang", "mp4");
+        var readStarted = NewCompletion<CancellationToken>();
+        var readCancelled = NewCompletion();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [item];
+        vault.ReadFileAsyncHandler = async (_, cancellationToken) =>
+        {
+            readStarted.TrySetResult(cancellationToken);
+            using CancellationTokenRegistration registration = cancellationToken.Register(
+                () => readCancelled.TrySetResult());
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("Unreachable");
+        };
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true,
+            mediaPlaybackService: new FakeMediaPlaybackService());
+        await viewModel.InitializeAsync();
+
+        Task activation = viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        await readStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        Task loading = document.LoadAsync();
+        Assert.True(document.CloseCommand.CanExecute(null));
+
+        await document.CloseCommand.ExecuteAsync();
+        await readCancelled.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await Task.WhenAll(activation, loading).WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(viewModel.ActiveDocument);
+        Assert.True(Assert.Single(vault.ReadFileRequests).CancellationToken.IsCancellationRequested);
+        Assert.Empty(viewModel.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task LockingWhilePlayerLoads_CancelsReadAndNeverRestoresDocument()
+    {
+        var item = CreatePlayerItem(FileType.audio, "Lang", "flac");
+        var readStarted = NewCompletion<CancellationToken>();
+        var readCancelled = NewCompletion();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [item];
+        vault.ReadFileAsyncHandler = async (_, cancellationToken) =>
+        {
+            readStarted.TrySetResult(cancellationToken);
+            using CancellationTokenRegistration registration = cancellationToken.Register(
+                () => readCancelled.TrySetResult());
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("Unreachable");
+        };
+        int lockNotifications = 0;
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => lockNotifications++,
+            _ => { },
+            mediaPlaybackService: new FakeMediaPlaybackService());
+        await viewModel.InitializeAsync();
+
+        Task activation = viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        await readStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        Task loading = document.LoadAsync();
+
+        viewModel.LockImmediately("Gesperrt");
+        await readCancelled.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await Task.WhenAll(activation, loading).WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(viewModel.ActiveDocument);
+        Assert.Empty(viewModel.Items);
+        Assert.Equal(1, lockNotifications);
+        Assert.True(Assert.Single(vault.ReadFileRequests).CancellationToken.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task LateContentAfterClose_IsZeroedAndNeverCreatesPlaybackSession()
+    {
+        var item = CreatePlayerItem(FileType.video, "Verspätet", "mp4");
+        var readStarted = NewCompletion<CancellationToken>();
+        var readCompletion = NewCompletion<VaultFileContent>();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [item];
+        vault.ReadFileAsyncHandler = (_, cancellationToken) =>
+        {
+            readStarted.TrySetResult(cancellationToken);
+            return readCompletion.Task;
+        };
+        var playback = new FakeMediaPlaybackService();
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true,
+            mediaPlaybackService: playback);
+        await viewModel.InitializeAsync();
+
+        Task activation = viewModel.ActivateItemAsync(Assert.Single(viewModel.Items));
+        CancellationToken readToken = await readStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        Task loading = document.LoadAsync();
+        await document.CloseCommand.ExecuteAsync();
+        Assert.True(readToken.IsCancellationRequested);
+
+        byte[] lateContent = [11, 22, 33, 44, 55];
+        readCompletion.SetResult(new VaultFileContent(
+            item.Id,
+            item.Name,
+            item.Type,
+            item.Extension,
+            lateContent));
+        await Task.WhenAll(activation, loading).WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(viewModel.ActiveDocument);
+        Assert.Null(playback.LastKind);
+        Assert.All(lateContent, value => Assert.Equal((byte)0, value));
     }
 
     [Fact]
@@ -421,6 +665,7 @@ public sealed class VaultViewModelTests
 
         await viewModel.OpenSelectedCommand.ExecuteAsync();
         VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        await document.LoadAsync();
         await document.ToggleEditingCommand.ExecuteAsync();
         document.Text = "nachher";
         await document.SaveCommand.ExecuteAsync();
@@ -519,7 +764,8 @@ public sealed class VaultViewModelTests
 
         await viewModel.OpenSelectedCommand.ExecuteAsync();
 
-        Assert.NotNull(viewModel.ActiveDocument);
+        VaultDocumentViewModel document = Assert.IsType<VaultDocumentViewModel>(viewModel.ActiveDocument);
+        await document.LoadAsync();
         Assert.False(playback.Session.IsDisposed);
 
         viewModel.LockImmediately("Gesperrt");
@@ -533,6 +779,56 @@ public sealed class VaultViewModelTests
         FakeVaultApplicationService vault,
         FakeFilePickerService picker) => new(vault, picker, () => { }, _ => { });
 
+    private static VaultItem CreatePlayerItem(FileType type, string name, string extension) => new(
+        90,
+        name,
+        type,
+        1024,
+        extension,
+        new DateOnly(2026, 9, 1));
+
+    private static VaultFileContent CreatePlayerContent(VaultItem item) => new(
+        item.Id,
+        item.Name,
+        item.Type,
+        item.Extension,
+        item.Type switch
+        {
+            FileType.text => "Geladener Text"u8.ToArray(),
+            FileType.image => OnePixelPng(),
+            _ => [1, 2, 3, 4, 5]
+        });
+
+    private static TaskCompletionSource<T> NewCompletion<T>() =>
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private static TaskCompletionSource NewCompletion() =>
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private static Task WaitForLoadingToFinishAsync(VaultDocumentViewModel document)
+    {
+        if (!document.IsLoading)
+            return Task.CompletedTask;
+
+        var completion = NewCompletion();
+        PropertyChangedEventHandler? handler = null;
+        handler = (_, args) =>
+        {
+            if (args.PropertyName != nameof(VaultDocumentViewModel.IsLoading) || document.IsLoading)
+                return;
+            document.PropertyChanged -= handler;
+            completion.TrySetResult();
+        };
+        document.PropertyChanged += handler;
+        if (!document.IsLoading)
+        {
+            document.PropertyChanged -= handler;
+            completion.TrySetResult();
+        }
+
+        return completion.Task;
+    }
+
     private static byte[] OnePixelPng() => Convert.FromBase64String(
-        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAXSURBVBhXY/jPwPCfoYHhPwMDw38wAABD1Al4TlSdlQAAAABJRU5ErkJggg==");
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/jPwPCfARkAAB7zAf+x9MCaAAAAAElFTkSuQmCC");
 }

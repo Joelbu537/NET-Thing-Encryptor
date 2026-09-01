@@ -1,6 +1,6 @@
 # Plattformspezifische Oberflächenangleichung vor M9
 
-Diese Änderung verfeinert den nach M8 ausgelieferten Avalonia-Client bis einschließlich Version 4.3.0. Sie ist kein Beginn von M9. Ziel ist eine vertrautere Windows-Bedienung, ohne Android in ein ungeeignetes Desktop-Raster zu zwingen.
+Diese Änderung verfeinert den nach M8 ausgelieferten Avalonia-Client bis einschließlich Version 4.3.1. Sie ist kein Beginn von M9. Ziel ist eine vertrautere Windows-Bedienung, ohne Android in ein ungeeignetes Desktop-Raster zu zwingen.
 
 ## Windows-Vertrag
 
@@ -22,6 +22,8 @@ Der Sperrbildschirm unterscheidet zwischen einem bestehenden Tresor und der Erst
 Die Einstellungen sind ein eigenes, dem Hauptfenster zugeordnetes modales Fenster. Schließen verwirft den noch nicht gespeicherten Entwurf, „Speichern und anwenden“ persistiert ihn. Der vollständige `.ntevault`-Export befindet sich im Abschnitt „Tresorsicherung“. Der aktive Einstellungsdialog ist zugleich Eigentümer nativer Dateiauswahldialoge und meldet Tastatur- sowie Zeigeraktivität an die automatische Sperre.
 
 Dokumente öffnen auf Desktop-Systemen in einem eigenen, dem Hauptfenster zugeordneten Fenster; Android behält die eingebettete Ansicht. Deshalb besitzen Bild- und Medienansichten auf Desktop keinen zusätzlichen Zurück-Knopf, während die eingebettete Android-Ansicht ihn weiterhin anbietet. Bilder werden ohne Scrollcontainer proportional an die tatsächlich verfügbare Fläche angepasst. Bei Bildserien navigiert ein Klick oder Tippen auf die linke beziehungsweise rechte Bildhälfte zum vorherigen beziehungsweise nächsten Bild; die sichtbaren Navigationsknöpfe entfallen. Die Pfeiltasten bleiben als Tastaturalternative erhalten.
+
+Ab Version 4.3.1 erscheint die Dokumentansicht für Text, Bilder, Audio und Video unmittelbar nach der Aktivierung und zeigt während Entschlüsselung und Laden einen dokumenteigenen, unbestimmten Fortschrittszustand. Schließen oder Sperren fordert den Abbruch eines noch laufenden Ladevorgangs an; ein dennoch eintreffender entschlüsselter Puffer wird verworfen und überschrieben.
 
 Videos verwenden ab Version 4.2.0 und Audio ab Version 4.3.0 ein gemeinsames LibVLCSharp-Wiedergabebackend. Auf Desktop-Systemen rendert `LibVLCSharp.Avalonia.VideoView` Videos im eigenen Dokumentfenster; Android bindet dafür die native Videoansicht über einen `NativeControlHost` ein. Audio benötigt keine Videooberfläche. Play/Pause, Sprünge um zehn Sekunden und die Zeitleiste sind für beide Medienarten direkt bedienbar. Leertaste schaltet Play/Pause um, Links/Rechts sowie J/L springen zurück beziehungsweise vor. Entschlüsselte Medien werden nicht in temporäre Klartextdateien geschrieben. Details zu Besitz, Speicherbereinigung und Plattformgrenzen stehen in [video-player.md](video-player.md).
 
