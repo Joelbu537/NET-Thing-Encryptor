@@ -1,6 +1,6 @@
 # Plattformspezifische Oberflächenangleichung vor M9
 
-Diese Änderung verfeinert den nach M8 ausgelieferten Avalonia-Client bis einschließlich Version 4.3.1. Sie ist kein Beginn von M9. Ziel ist eine vertrautere Windows-Bedienung, ohne Android in ein ungeeignetes Desktop-Raster zu zwingen.
+Diese Änderung verfeinert den nach M8 ausgelieferten Avalonia-Client bis einschließlich Version 4.3.2. Sie ist kein Beginn von M9. Ziel ist eine vertrautere Windows-Bedienung, ohne Android in ein ungeeignetes Desktop-Raster zu zwingen.
 
 ## Windows-Vertrag
 
@@ -17,11 +17,11 @@ Der Stammordner wird als `/` angezeigt; Unterordner bilden einen kompakten Pfad 
 
 Einzeilige Textfelder zentrieren ihren Inhalt vertikal. Eingabe in das Suchfeld kann mit Enter ausgeführt werden. Der Rücksetzknopf liegt innerhalb des Suchfelds. Die Statuszeile zeigt nach dem Entsperren keine redundante Meldung an; spätere Aktions- und Fehlermeldungen können weiterhin dort erscheinen. In Aktionsleisten steht Abbrechen beziehungsweise Schließen links und die bestätigende Aktion rechts.
 
-Der Sperrbildschirm unterscheidet zwischen einem bestehenden Tresor und der Ersteinrichtung. Bei der Ersteinrichtung wird das Passwort zur Bestätigung zweimal verlangt; ein bestehender oder importierter Tresor benötigt nur das Entsperrpasswort. Archivimport und der sichtbar als noch nicht verfügbar gekennzeichnete Einstieg zu einem künftigen Remote-Tresor erscheinen ausschließlich, solange noch kein lokaler Tresor existiert. Die Remote-Schaltfläche besitzt noch keine Verbindungslogik. Eine automatische Sperre nach Inaktivität erzeugt keine zusätzliche Statusmeldung.
+Der Sperrbildschirm unterscheidet zwischen einem bestehenden Tresor und der Ersteinrichtung. Bei der Ersteinrichtung wird das Passwort zur Bestätigung zweimal verlangt; ein bestehender oder importierter Tresor benötigt nur das Entsperrpasswort. Sobald der Sperrbildschirm sichtbar wird, erhält das erste Passwortfeld den Eingabefokus und markiert einen eventuell vorhandenen Inhalt vollständig. Archivimport und der sichtbar als noch nicht verfügbar gekennzeichnete Einstieg zu einem künftigen Remote-Tresor erscheinen ausschließlich, solange noch kein lokaler Tresor existiert. Die Remote-Schaltfläche besitzt noch keine Verbindungslogik. Eine automatische Sperre nach Inaktivität erzeugt keine zusätzliche Statusmeldung.
 
 Die Einstellungen sind ein eigenes, dem Hauptfenster zugeordnetes modales Fenster. Schließen verwirft den noch nicht gespeicherten Entwurf, „Speichern und anwenden“ persistiert ihn. Der vollständige `.ntevault`-Export befindet sich im Abschnitt „Tresorsicherung“. Der aktive Einstellungsdialog ist zugleich Eigentümer nativer Dateiauswahldialoge und meldet Tastatur- sowie Zeigeraktivität an die automatische Sperre.
 
-Dokumente öffnen auf Desktop-Systemen in einem eigenen, dem Hauptfenster zugeordneten Fenster; Android behält die eingebettete Ansicht. Deshalb besitzen Bild- und Medienansichten auf Desktop keinen zusätzlichen Zurück-Knopf, während die eingebettete Android-Ansicht ihn weiterhin anbietet. Bilder werden ohne Scrollcontainer proportional an die tatsächlich verfügbare Fläche angepasst. Bei Bildserien navigiert ein Klick oder Tippen auf die linke beziehungsweise rechte Bildhälfte zum vorherigen beziehungsweise nächsten Bild; die sichtbaren Navigationsknöpfe entfallen. Die Pfeiltasten bleiben als Tastaturalternative erhalten.
+Dokumente öffnen auf Desktop-Systemen in einem eigenen, dem Hauptfenster zugeordneten, nicht-modalen Fenster; Android behält die einzelne eingebettete Ansicht und ersetzt sie beim Öffnen eines weiteren Dokuments. Das Desktop-Hauptfenster bleibt bedienbar, mehrere Dokumentfenster können gleichzeitig aktiv sein und das Schließen eines Fensters beeinflusst die übrigen nicht. Sperren oder Beenden schließt dagegen alle offenen Dokumente und gibt ihre entschlüsselten Inhalte frei. Deshalb besitzen Bild- und Medienansichten auf Desktop keinen zusätzlichen Zurück-Knopf, während die eingebettete Android-Ansicht ihn weiterhin anbietet. Bilder werden ohne Scrollcontainer proportional an die tatsächlich verfügbare Fläche angepasst. Bei Bildserien navigiert ein Klick oder Tippen auf die linke beziehungsweise rechte Bildhälfte zum vorherigen beziehungsweise nächsten Bild; die sichtbaren Navigationsknöpfe entfallen. Die Pfeiltasten bleiben als Tastaturalternative erhalten.
 
 Ab Version 4.3.1 erscheint die Dokumentansicht für Text, Bilder, Audio und Video unmittelbar nach der Aktivierung und zeigt während Entschlüsselung und Laden einen dokumenteigenen, unbestimmten Fortschrittszustand. Schließen oder Sperren fordert den Abbruch eines noch laufenden Ladevorgangs an; ein dennoch eintreffender entschlüsselter Puffer wird verworfen und überschrieben.
 
@@ -63,6 +63,7 @@ Unter .NET 10 mit xUnit 4 muss `global.json` für die Testausführung den Runner
 Die manuelle Windows-Prüfung verwendet einen isolierten Ordner über `NTE_DATA_DIRECTORY` und umfasst:
 
 - Entsperren eines Testtresors
+- Kontrolle, dass das Passwortfeld beim Erscheinen des Sperrbildschirms unmittelbar Tastatureingaben annimmt und vorhandenen Text vollständig markiert
 - Anlegen eines Ordners und Kontrolle des Originalsymbols sowie der Statuszählung
 - Öffnen des Ordners per Doppelklick
 - Rechtsklick auf eine Zeile, Öffnen des Kontextmenüs und Kontrolle der Auswahlstabilität
@@ -73,8 +74,9 @@ Die manuelle Windows-Prüfung verwendet einen isolierten Ordner über `NTE_DATA_
 - Öffnen eines Bildes im eigenen Fenster, Größenanpassung sowie Navigation über beide Bildhälften und Pfeiltasten
 - Öffnen eines Videos im eigenen Fenster, Start/Pause, Zeitleiste, Zehn-Sekunden-Sprünge und die Tastenkürzel Leertaste, Links/Rechts und J/L
 - Öffnen einer Audiodatei im eigenen Fenster mit denselben Wiedergabesteuerungen
+- Gleichzeitiges Öffnen mindestens zweier verschiedener Dokumente, weitere Bedienung der Hauptansicht und unabhängiges Schließen der Dokumentfenster
 - Kontrolle, dass Bild-, Audio- und Videofenster keinen zusätzlichen Zurück-Knopf zeigen
-- Schließen des Medienfensters sowie automatische Tresorsperre bei laufender und pausierter Wiedergabe
+- Schließen eines Medienfensters ohne Beeinträchtigung weiterer Fenster sowie automatische Tresorsperre mit mehreren geöffneten Dokumenten bei laufender und pausierter Wiedergabe
 - Kontrolle der vertikalen Textzentrierung und der Reihenfolge Abbrechen links / Bestätigen rechts
 - Kontrolle, dass die Hauptansicht keine zusätzliche breite Produktleiste enthält
 

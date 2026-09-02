@@ -15,9 +15,12 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private readonly Action<VaultPreferences> _applyPreferences;
     private readonly bool _useDocumentWindows;
     private readonly IMediaPlaybackService? _mediaPlaybackService;
+    private readonly SemaphoreSlim _operationGate = new(1, 1);
+    private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly List<(ulong Id, string Name)> _path = [(0, "Tresor")];
     private readonly List<VaultItemViewModel> _folderItems = [];
     private readonly List<VaultItemViewModel> _selectedItems = [];
+    private readonly ObservableCollection<VaultDocumentViewModel> _openDocuments = [];
     private VaultItemViewModel? _selectedItem;
     private VaultFolderTarget? _selectedMoveTarget;
     private VaultDocumentViewModel? _activeDocument;
@@ -36,6 +39,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private bool _isShowingGlobalResults;
     private bool _isBusy;
     private bool _isLocked;
+    private bool _isDisposed;
     private bool _showCreateFolderDialog;
     private bool _showRenameDialog;
     private bool _showMoveDialog;
@@ -67,6 +71,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         _applyPreferences = applyPreferences ?? (_ => { });
         _useDocumentWindows = useDocumentWindows;
         _mediaPlaybackService = mediaPlaybackService;
+        OpenDocuments = new ReadOnlyObservableCollection<VaultDocumentViewModel>(_openDocuments);
 
         BackCommand = new AsyncCommand(GoBackAsync, () => !IsBusy);
         GoRootCommand = new AsyncCommand(GoRootAsync, () => !IsBusy);
@@ -111,6 +116,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<VaultItemViewModel> Items { get; } = [];
     public ObservableCollection<VaultFolderTarget> FolderTargets { get; } = [];
+    public ReadOnlyObservableCollection<VaultDocumentViewModel> OpenDocuments { get; }
     public IReadOnlyList<string> SearchTypes => SearchTypeValues;
 
     public VaultItemViewModel? SelectedItem
@@ -367,7 +373,9 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     public Task InitializeAsync() => RunBusyAsync(async cancellationToken =>
     {
-        ApplyPreferences(await _vault.GetPreferencesAsync(cancellationToken));
+        VaultPreferences preferences = await _vault.GetPreferencesAsync(cancellationToken);
+        ThrowIfOperationStopped(cancellationToken);
+        ApplyPreferences(preferences);
         await ReloadFolderTargetsAsync(cancellationToken);
         await ReloadFolderItemsAsync(cancellationToken);
     }, "Der Tresor konnte nicht geladen werden");
@@ -396,7 +404,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     {
         if (_isLocked)
             return false;
-        if (ActiveDocument is not null)
+        if (!UseDocumentWindows && ActiveDocument is not null)
             return ActiveDocument.HandleBackRequested();
         if (HasActionDialog)
         {
@@ -421,14 +429,15 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     public void LockImmediately(string statusMessage)
     {
-        if (_isLocked)
+        if (_isLocked || _isDisposed)
             return;
         _isLocked = true;
+        _lifetimeCancellation.Cancel();
         _operationCancellation?.Cancel();
         _settingsSnapshot = null;
         ShowSettings = false;
         CloseActionDialogs();
-        CloseActiveDocument();
+        CloseAllDocuments();
         _vault.Lock();
         _folderItems.Clear();
         Items.Clear();
@@ -440,14 +449,20 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        if (_isDisposed)
+            return;
+        _isDisposed = true;
+        _lifetimeCancellation.Cancel();
         _operationCancellation?.Cancel();
         _settingsSnapshot = null;
         ShowSettings = false;
         CloseActionDialogs();
-        CloseActiveDocument();
+        CloseAllDocuments();
     }
 
     public void DismissSettings() => CloseSettings(restoreSnapshot: true);
+
+    internal void CloseOpenDocuments() => CloseAllDocuments();
 
     private Task RefreshAsync() => IsShowingGlobalResults ? SearchAsync() : RunBusyAsync(
         async cancellationToken =>
@@ -475,17 +490,22 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         VaultImageSeriesOptions? imageSeries = item.Type == FileType.image
             ? CreateImageSeriesOptions()
             : null;
-        var document = VaultDocumentViewModel.CreateLoading(
+        VaultDocumentViewModel document = null!;
+        document = VaultDocumentViewModel.CreateLoading(
             new VaultFileReference(item.Id, item.Name, item.Type, item.Extension),
             _vault.ReadFileAsync,
             (data, token) => _vault.SaveFileContentAsync(item.Id, data, token),
-            CloseActiveDocumentAndRefresh,
+            () => CloseDocumentAndRefresh(document),
             _setStatus,
             imageSeries,
             imageSeries is null ? null : _vault.ReadFileAsync,
             mediaPlaybackService: _mediaPlaybackService,
             showBackButton: !_useDocumentWindows ||
                 item.Type is not (FileType.image or FileType.audio or FileType.video));
+
+        if (!UseDocumentWindows)
+            CloseAllDocuments();
+        _openDocuments.Add(document);
         ActiveDocument = document;
         _ = document.LoadAsync();
     }
@@ -557,18 +577,23 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         await RunBusyAsync(async cancellationToken =>
         {
             IReadOnlyList<IReadableExternalFile> files = await _filePicker.PickDocumentsAsync(cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             if (files.Count == 0)
                 return;
             var names = new HashSet<string>(_folderItems.Select(item => item.Name), StringComparer.OrdinalIgnoreCase);
             int imported = 0;
             foreach (IReadableExternalFile file in files)
             {
+                ThrowIfOperationStopped(cancellationToken);
                 string objectName = CreateUniqueName(file.Name, names);
                 await using Stream source = await file.OpenReadAsync(cancellationToken);
+                ThrowIfOperationStopped(cancellationToken);
                 await _vault.ImportFileAsync(source, file.Name, CurrentFolderId, objectName, cancellationToken);
+                ThrowIfOperationStopped(cancellationToken);
                 names.Add(objectName);
                 imported++;
             }
+            ThrowIfOperationStopped(cancellationToken);
             _setStatus(imported == 1 ? "Ein Dokument importiert." : $"{imported} Dokumente importiert.");
             await ReloadFolderItemsAsync(cancellationToken);
         }, "Dokumente konnten nicht importiert werden");
@@ -588,10 +613,13 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                 IWritableExternalFile? file = await _filePicker.PickDocumentExportAsync(
                     item.SuggestedFileName,
                     cancellationToken);
+                ThrowIfOperationStopped(cancellationToken);
                 if (file is null)
                     return;
                 await using Stream destination = await file.OpenWriteAsync(cancellationToken);
+                ThrowIfOperationStopped(cancellationToken);
                 await _vault.ExportFileAsync(item.Id, destination, cancellationToken);
+                ThrowIfOperationStopped(cancellationToken);
                 _setStatus($"„{item.SuggestedFileName}“ exportiert.");
             }, "Das Dokument konnte nicht exportiert werden");
             return;
@@ -600,6 +628,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         await RunBusyAsync(async cancellationToken =>
         {
             IWritableExternalFolder? exportFolder = await _filePicker.PickExportFolderAsync(cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             if (exportFolder is null)
                 return;
 
@@ -607,16 +636,19 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             var count = new ExportCount();
             foreach (VaultItemViewModel item in items)
             {
+                ThrowIfOperationStopped(cancellationToken);
                 if (item.IsFolder)
                 {
                     IWritableExternalFolder destination = await exportFolder.CreateUniqueFolderAsync(
                         item.Name,
                         cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
                     ExportCount childCount = await ExportFolderAsync(
                         item.Id,
                         destination,
                         activeFolderPath,
                         cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
                     count = new ExportCount(
                         count.Files + childCount.Files,
                         count.Folders + childCount.Folders + 1);
@@ -628,12 +660,14 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                         item.SuggestedFileName,
                         exportFolder,
                         cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
                     count = count with { Files = count.Files + 1 };
                 }
             }
 
             string fileText = count.Files == 1 ? "1 Datei" : $"{count.Files} Dateien";
             string folderText = count.Folders == 1 ? "1 Ordner" : $"{count.Folders} Ordner";
+            ThrowIfOperationStopped(cancellationToken);
             _setStatus($"Auswahl exportiert: {fileText}, {folderText}. Vorhandene Namen wurden nicht überschrieben.");
         }, "Die Auswahl konnte nicht vollständig exportiert werden");
     }
@@ -652,6 +686,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             int fileCount = 0;
             int folderCount = 0;
             IReadOnlyList<VaultItem> children = await _vault.GetFolderItemsAsync(folderId, cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             foreach (VaultItem child in children)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -660,11 +695,13 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                     IWritableExternalFolder childDestination = await destination.CreateUniqueFolderAsync(
                         child.Name,
                         cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
                     ExportCount childCount = await ExportFolderAsync(
                         child.Id,
                         childDestination,
                         activeFolderPath,
                         cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
                     fileCount += childCount.Files;
                     folderCount += childCount.Folders + 1;
                 }
@@ -675,6 +712,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                         CreateSuggestedFileName(child.Name, child.Extension),
                         destination,
                         cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
                     fileCount++;
                 }
             }
@@ -695,8 +733,11 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         IWritableExternalFile file = await destination.CreateUniqueFileAsync(
             suggestedFileName,
             cancellationToken);
+        ThrowIfOperationStopped(cancellationToken);
         await using Stream output = await file.OpenWriteAsync(cancellationToken);
+        ThrowIfOperationStopped(cancellationToken);
         await _vault.ExportFileAsync(fileId, output, cancellationToken);
+        ThrowIfOperationStopped(cancellationToken);
     }
 
     private Task SearchAsync()
@@ -727,6 +768,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                     createdFrom,
                     createdTo),
                 cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             _folderItems.Clear();
             ReplaceItems(results.Select(item => new VaultItemViewModel(item)));
             IsShowingGlobalResults = true;
@@ -775,7 +817,11 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             async cancellationToken =>
             {
                 foreach (VaultItemViewModel item in items)
+                {
+                    ThrowIfOperationStopped(cancellationToken);
                     await _vault.MoveObjectAsync(item.Id, target.Id, cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
+                }
             },
             "Das Objekt konnte nicht verschoben werden");
         if (!succeeded)
@@ -804,7 +850,11 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             async cancellationToken =>
             {
                 foreach (VaultItemViewModel item in items)
+                {
+                    ThrowIfOperationStopped(cancellationToken);
                     await _vault.DeleteObjectAsync(item.Id, cancellationToken);
+                    ThrowIfOperationStopped(cancellationToken);
+                }
             },
             "Das Objekt konnte nicht gelöscht werden");
         if (!succeeded)
@@ -887,10 +937,13 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         {
             string suggestedName = $"NET-Thing-Encryptor-{DateTime.Now:yyyy-MM-dd}.ntevault";
             IWritableExternalFile? file = await _filePicker.PickVaultArchiveExportAsync(suggestedName, cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             if (file is null)
                 return;
             await using Stream destination = await file.OpenWriteAsync(cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             int count = await _vault.ExportVaultAsync(destination, cancellationToken);
+            ThrowIfOperationStopped(cancellationToken);
             _setStatus($"Tresorarchiv exportiert ({count} Objekte). Bewahre es wie den Tresor geschützt auf.");
         }, "Das Tresorarchiv konnte nicht exportiert werden");
     }
@@ -904,6 +957,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private async Task ReloadFolderItemsAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<VaultItem> items = await _vault.GetFolderItemsAsync(CurrentFolderId, cancellationToken);
+        ThrowIfOperationStopped(cancellationToken);
         _folderItems.Clear();
         _folderItems.AddRange(items.Select(item => new VaultItemViewModel(item)));
         IsShowingGlobalResults = false;
@@ -914,6 +968,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private async Task ReloadFolderTargetsAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<VaultFolderTarget> targets = await _vault.GetFolderTargetsAsync(cancellationToken);
+        ThrowIfOperationStopped(cancellationToken);
         FolderTargets.Clear();
         foreach (VaultFolderTarget target in targets)
             FolderTargets.Add(target);
@@ -960,30 +1015,62 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
 
     private async Task<bool> RunBusyAsync(Func<CancellationToken, Task> action, string errorPrefix)
     {
-        using var cancellation = new CancellationTokenSource();
-        _operationCancellation = cancellation;
-        IsBusy = true;
-        ErrorMessage = string.Empty;
+        CancellationToken lifetimeToken = _lifetimeCancellation.Token;
         try
         {
-            await action(cancellation.Token);
-            return true;
+            await _operationGate.WaitAsync(lifetimeToken);
         }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (lifetimeToken.IsCancellationRequested)
         {
             return false;
         }
-        catch (Exception ex)
+
+        try
         {
-            ErrorMessage = $"{errorPrefix}: {ex.Message}";
-            return false;
+            if (_isLocked || _isDisposed)
+                return false;
+
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
+            _operationCancellation = cancellation;
+            try
+            {
+                ThrowIfOperationStopped(cancellation.Token);
+                IsBusy = true;
+                ErrorMessage = string.Empty;
+                await action(cancellation.Token);
+                ThrowIfOperationStopped(cancellation.Token);
+                return true;
+            }
+            catch (OperationCanceledException) when (
+                cancellation.IsCancellationRequested || _isLocked || _isDisposed)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                if (cancellation.IsCancellationRequested || _isLocked || _isDisposed)
+                    return false;
+                ErrorMessage = $"{errorPrefix}: {ex.Message}";
+                return false;
+            }
+            finally
+            {
+                if (ReferenceEquals(_operationCancellation, cancellation))
+                    _operationCancellation = null;
+                IsBusy = false;
+            }
         }
         finally
         {
-            if (ReferenceEquals(_operationCancellation, cancellation))
-                _operationCancellation = null;
-            IsBusy = false;
+            _operationGate.Release();
         }
+    }
+
+    private void ThrowIfOperationStopped(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_isLocked || _isDisposed)
+            throw new OperationCanceledException(cancellationToken);
     }
 
     private bool CanMove()
@@ -993,18 +1080,30 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         return _selectedItems.All(item => item.IsFolder) || SelectedMoveTarget.Id != 0;
     }
 
-    private void CloseActiveDocument()
+    private bool CloseDocument(VaultDocumentViewModel document)
     {
-        VaultDocumentViewModel? document = ActiveDocument;
-        ActiveDocument = null;
-        document?.Dispose();
+        if (!_openDocuments.Remove(document))
+            return false;
+
+        if (ReferenceEquals(ActiveDocument, document))
+            ActiveDocument = _openDocuments.LastOrDefault();
+        document.Dispose();
+        return true;
     }
 
-    private void CloseActiveDocumentAndRefresh()
+    private void CloseDocumentAndRefresh(VaultDocumentViewModel document)
     {
-        CloseActiveDocument();
-        if (!_isLocked)
+        if (CloseDocument(document) && !_isLocked)
             _ = RefreshAsync();
+    }
+
+    private void CloseAllDocuments()
+    {
+        VaultDocumentViewModel[] documents = _openDocuments.ToArray();
+        _openDocuments.Clear();
+        ActiveDocument = null;
+        foreach (VaultDocumentViewModel document in documents)
+            document.Dispose();
     }
 
     private void NotifyLocationChanged()

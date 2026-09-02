@@ -31,6 +31,7 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
     public List<(ulong Id, byte[] Content)> SavedContents { get; } = [];
     public Dictionary<ulong, VaultFileContent> FileContents { get; } = [];
     public List<(ulong Id, CancellationToken CancellationToken)> ReadFileRequests { get; } = [];
+    public Func<ulong, CancellationToken, Task<IReadOnlyList<VaultItem>>>? GetFolderItemsAsyncHandler { get; set; }
     public Func<ulong, CancellationToken, Task<VaultFileContent>>? ReadFileAsyncHandler { get; set; }
     public int UnlockCalls { get; private set; }
     public int ArchiveImportCalls { get; private set; }
@@ -51,8 +52,12 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
 
     public Task<IReadOnlyList<VaultItem>> GetFolderItemsAsync(
         ulong folderId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(Folders.GetValueOrDefault(folderId, []));
+        CancellationToken cancellationToken = default)
+    {
+        if (GetFolderItemsAsyncHandler is not null)
+            return GetFolderItemsAsyncHandler(folderId, cancellationToken);
+        return Task.FromResult(Folders.GetValueOrDefault(folderId, []));
+    }
 
     public Task CreateFolderAsync(
         string name,

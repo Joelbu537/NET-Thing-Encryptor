@@ -47,7 +47,7 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 3. Dieselbe `Version` und einen höheren `ApplicationVersion`-Wert in `Nte.Android` setzen.
 4. Änderungen auf `master` zusammenführen.
 5. Windows- und Android-Signierungs-Secrets im Repository prüfen.
-6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.3.0`.
+6. Annotierten Tag erstellen und veröffentlichen, beispielsweise `v4.3.2`.
 7. Den Workflow „Signed release“ abwarten.
 8. Signaturen und SHA-256-Prüfsummen der veröffentlichten Dateien stichprobenartig prüfen.
 9. Upgrade von der zuletzt veröffentlichten WinForms- beziehungsweise Avalonia-Version in einer Windows-Test-VM durchführen.

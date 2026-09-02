@@ -247,6 +247,348 @@ public sealed class VaultViewModelTests
         Assert.False(viewModel.ShowInlineDocument);
     }
 
+    [Fact]
+    public async Task DesktopDocuments_RemainOpenAndCloseIndependently()
+    {
+        VaultItem secondFile = TextFile with { Id = 21, Name = "Zweite Notiz" };
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [TextFile, secondFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Erster Inhalt"u8.ToArray());
+        vault.FileContents[21] = new VaultFileContent(
+            21,
+            "Zweite Notiz",
+            FileType.text,
+            "txt",
+            "Zweiter Inhalt"u8.ToArray());
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 20));
+        VaultDocumentViewModel firstDocument = Assert.Single(viewModel.OpenDocuments);
+        await firstDocument.LoadAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 21));
+        VaultDocumentViewModel secondDocument = viewModel.OpenDocuments.Single(document => document.Id == 21);
+        await secondDocument.LoadAsync();
+
+        Assert.Equal(
+            new ulong[] { 20, 21 },
+            viewModel.OpenDocuments.Select(document => document.Id).ToArray());
+        Assert.Equal("Erster Inhalt", firstDocument.Text);
+        Assert.Equal("Zweiter Inhalt", secondDocument.Text);
+
+        await firstDocument.CloseCommand.ExecuteAsync();
+
+        Assert.Equal(
+            new ulong[] { 21 },
+            viewModel.OpenDocuments.Select(document => document.Id).ToArray());
+        Assert.Empty(firstDocument.Text);
+        Assert.Same(secondDocument, viewModel.ActiveDocument);
+        Assert.Equal("Zweiter Inhalt", secondDocument.Text);
+        Assert.True(secondDocument.IsContentReady);
+
+        await secondDocument.CloseCommand.ExecuteAsync();
+
+        Assert.Empty(viewModel.OpenDocuments);
+        Assert.Null(viewModel.ActiveDocument);
+        Assert.Empty(secondDocument.Text);
+    }
+
+    [Fact]
+    public async Task DesktopDocuments_LoadConcurrentlyAndKeepTheirOwnContent()
+    {
+        VaultItem secondFile = TextFile with { Id = 21, Name = "Zweite Notiz" };
+        var firstReadStarted = NewCompletion();
+        var secondReadStarted = NewCompletion();
+        var firstReadCompletion = NewCompletion<VaultFileContent>();
+        var secondReadCompletion = NewCompletion<VaultFileContent>();
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [TextFile, secondFile];
+        vault.ReadFileAsyncHandler = (id, cancellationToken) =>
+        {
+            TaskCompletionSource started = id == 20 ? firstReadStarted : secondReadStarted;
+            TaskCompletionSource<VaultFileContent> completion = id == 20
+                ? firstReadCompletion
+                : secondReadCompletion;
+            started.TrySetResult();
+            return completion.Task.WaitAsync(cancellationToken);
+        };
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 20));
+        await firstReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 21));
+        await secondReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        VaultDocumentViewModel firstDocument = viewModel.OpenDocuments.Single(document => document.Id == 20);
+        VaultDocumentViewModel secondDocument = viewModel.OpenDocuments.Single(document => document.Id == 21);
+
+        Task secondLoaded = WaitForLoadingToFinishAsync(secondDocument);
+        secondReadCompletion.SetResult(new VaultFileContent(
+            21,
+            "Zweite Notiz",
+            FileType.text,
+            "txt",
+            "Zweiter Inhalt"u8.ToArray()));
+        await secondLoaded.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(firstDocument.IsLoading);
+        Assert.Equal("Zweiter Inhalt", secondDocument.Text);
+
+        Task firstLoaded = WaitForLoadingToFinishAsync(firstDocument);
+        firstReadCompletion.SetResult(new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Erster Inhalt"u8.ToArray()));
+        await firstLoaded.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("Erster Inhalt", firstDocument.Text);
+        Assert.Equal("Zweiter Inhalt", secondDocument.Text);
+        Assert.All(viewModel.OpenDocuments, document => Assert.True(document.IsContentReady));
+    }
+
+    [Fact]
+    public async Task ClosingDesktopDocuments_SerializesTheirFolderRefreshes()
+    {
+        VaultItem secondFile = TextFile with { Id = 21, Name = "Zweite Notiz" };
+        var firstRefreshStarted = NewCompletion();
+        var secondRefreshStarted = NewCompletion();
+        var allowFirstRefresh = NewCompletion();
+        var allowSecondRefresh = NewCompletion();
+        int refreshCount = 0;
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [TextFile, secondFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Erster Inhalt"u8.ToArray());
+        vault.FileContents[21] = new VaultFileContent(
+            21,
+            "Zweite Notiz",
+            FileType.text,
+            "txt",
+            "Zweiter Inhalt"u8.ToArray());
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 20));
+        await viewModel.OpenDocuments.Single().LoadAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 21));
+        await viewModel.OpenDocuments.Single(document => document.Id == 21).LoadAsync();
+        VaultDocumentViewModel[] documents = viewModel.OpenDocuments.ToArray();
+        vault.GetFolderItemsAsyncHandler = async (folderId, cancellationToken) =>
+        {
+            int refresh = Interlocked.Increment(ref refreshCount);
+            TaskCompletionSource started = refresh == 1 ? firstRefreshStarted : secondRefreshStarted;
+            TaskCompletionSource release = refresh == 1 ? allowFirstRefresh : allowSecondRefresh;
+            started.TrySetResult();
+            await release.Task.WaitAsync(cancellationToken);
+            return vault.Folders.GetValueOrDefault(folderId, []);
+        };
+
+        await documents[0].CloseCommand.ExecuteAsync();
+        await firstRefreshStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await documents[1].CloseCommand.ExecuteAsync();
+
+        Assert.False(secondRefreshStarted.Task.IsCompleted);
+        Assert.Equal(1, Volatile.Read(ref refreshCount));
+
+        allowFirstRefresh.SetResult();
+        await secondRefreshStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Task refreshesFinished = WaitForBusyToFinishAsync(viewModel);
+        allowSecondRefresh.SetResult();
+        await refreshesFinished.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, refreshCount);
+        Assert.Empty(viewModel.OpenDocuments);
+    }
+
+    [Fact]
+    public async Task LockingDuringUncooperativeRefresh_CancelsWaitingRefreshAndRejectsLateItems()
+    {
+        VaultItem secondFolder = Folder with { Id = 11, Name = "Zweiter Ordner" };
+        var firstRefreshStarted = NewCompletion<CancellationToken>();
+        var releaseFirstRefresh = NewCompletion<IReadOnlyList<VaultItem>>();
+        int refreshCount = 0;
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [Folder, secondFolder];
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+        VaultItemViewModel firstFolder = viewModel.Items.Single(item => item.Id == Folder.Id);
+        VaultItemViewModel otherFolder = viewModel.Items.Single(item => item.Id == secondFolder.Id);
+        vault.GetFolderItemsAsyncHandler = (_, cancellationToken) =>
+        {
+            Interlocked.Increment(ref refreshCount);
+            firstRefreshStarted.TrySetResult(cancellationToken);
+            return releaseFirstRefresh.Task;
+        };
+
+        Task activeRefresh = viewModel.ActivateItemAsync(firstFolder);
+        CancellationToken activeToken = await firstRefreshStarted.Task.WaitAsync(
+            TestContext.Current.CancellationToken);
+        Task waitingRefresh = viewModel.ActivateItemAsync(otherFolder);
+        Assert.False(waitingRefresh.IsCompleted);
+
+        viewModel.LockImmediately("Tresor gesperrt.");
+
+        await waitingRefresh.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.True(activeToken.IsCancellationRequested);
+        Assert.False(activeRefresh.IsCompleted);
+        Assert.Equal(1, Volatile.Read(ref refreshCount));
+        Assert.Empty(viewModel.Items);
+
+        releaseFirstRefresh.SetResult([TextFile]);
+        await activeRefresh.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, refreshCount);
+        Assert.Empty(viewModel.Items);
+        Assert.False(viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task LockingDesktopVault_ClosesEveryOpenDocument()
+    {
+        VaultItem secondFile = TextFile with { Id = 21, Name = "Zweite Notiz" };
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [TextFile, secondFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Erster Inhalt"u8.ToArray());
+        vault.FileContents[21] = new VaultFileContent(
+            21,
+            "Zweite Notiz",
+            FileType.text,
+            "txt",
+            "Zweiter Inhalt"u8.ToArray());
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 20));
+        await viewModel.OpenDocuments.Single().LoadAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 21));
+        await viewModel.OpenDocuments.Single(document => document.Id == 21).LoadAsync();
+        VaultDocumentViewModel[] documents = viewModel.OpenDocuments.ToArray();
+
+        viewModel.LockImmediately("Tresor gesperrt.");
+
+        Assert.Empty(viewModel.OpenDocuments);
+        Assert.All(documents, document => Assert.Empty(document.Text));
+        Assert.Empty(viewModel.Items);
+    }
+
+    [Fact]
+    public async Task DetachingDesktopView_ClosesDocumentsWithoutLockingVaultContent()
+    {
+        VaultItem secondFile = TextFile with { Id = 21, Name = "Zweite Notiz" };
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [TextFile, secondFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Erster Inhalt"u8.ToArray());
+        vault.FileContents[21] = new VaultFileContent(
+            21,
+            "Zweite Notiz",
+            FileType.text,
+            "txt",
+            "Zweiter Inhalt"u8.ToArray());
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: true);
+        await viewModel.InitializeAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 20));
+        await viewModel.OpenDocuments.Single().LoadAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 21));
+        await viewModel.OpenDocuments.Single(document => document.Id == 21).LoadAsync();
+        VaultDocumentViewModel[] documents = viewModel.OpenDocuments.ToArray();
+
+        viewModel.CloseOpenDocuments();
+
+        Assert.Empty(viewModel.OpenDocuments);
+        Assert.Null(viewModel.ActiveDocument);
+        Assert.All(documents, document => Assert.Empty(document.Text));
+        Assert.Equal(2, viewModel.Items.Count);
+    }
+
+    [Fact]
+    public async Task InlineDocument_ReplacesAndDisposesThePreviouslyOpenedDocument()
+    {
+        VaultItem secondFile = TextFile with { Id = 21, Name = "Zweite Notiz" };
+        var vault = new FakeVaultApplicationService();
+        vault.Folders[0] = [TextFile, secondFile];
+        vault.FileContents[20] = new VaultFileContent(
+            20,
+            "Notiz",
+            FileType.text,
+            "txt",
+            "Erster Inhalt"u8.ToArray());
+        vault.FileContents[21] = new VaultFileContent(
+            21,
+            "Zweite Notiz",
+            FileType.text,
+            "txt",
+            "Zweiter Inhalt"u8.ToArray());
+        using var viewModel = new VaultViewModel(
+            vault,
+            new FakeFilePickerService(),
+            () => { },
+            _ => { },
+            useDocumentWindows: false);
+        await viewModel.InitializeAsync();
+
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 20));
+        VaultDocumentViewModel firstDocument = Assert.Single(viewModel.OpenDocuments);
+        await firstDocument.LoadAsync();
+        await viewModel.ActivateItemAsync(viewModel.Items.Single(item => item.Id == 21));
+        VaultDocumentViewModel secondDocument = Assert.Single(viewModel.OpenDocuments);
+        await secondDocument.LoadAsync();
+
+        Assert.Equal((ulong)21, secondDocument.Id);
+        Assert.Same(secondDocument, viewModel.ActiveDocument);
+        Assert.Empty(firstDocument.Text);
+        Assert.Equal("Zweiter Inhalt", secondDocument.Text);
+    }
+
     [Theory]
     [InlineData(FileType.text, "Notiz", "txt")]
     [InlineData(FileType.image, "Bild", "png")]
@@ -823,6 +1165,30 @@ public sealed class VaultViewModelTests
         if (!document.IsLoading)
         {
             document.PropertyChanged -= handler;
+            completion.TrySetResult();
+        }
+
+        return completion.Task;
+    }
+
+    private static Task WaitForBusyToFinishAsync(VaultViewModel viewModel)
+    {
+        if (!viewModel.IsBusy)
+            return Task.CompletedTask;
+
+        var completion = NewCompletion();
+        PropertyChangedEventHandler? handler = null;
+        handler = (_, args) =>
+        {
+            if (args.PropertyName != nameof(VaultViewModel.IsBusy) || viewModel.IsBusy)
+                return;
+            viewModel.PropertyChanged -= handler;
+            completion.TrySetResult();
+        };
+        viewModel.PropertyChanged += handler;
+        if (!viewModel.IsBusy)
+        {
+            viewModel.PropertyChanged -= handler;
             completion.TrySetResult();
         }
 

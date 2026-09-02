@@ -15,7 +15,7 @@ Linux und macOS sind weiter technische Vorschauen: Die CI prüft die Publishes, 
 
 ## Plattformspezifische Bedienung
 
-Der Windows-Client verwendet eine kompakte Symbolleiste, eine Dateiliste in Detailansicht und eine feste Statuszeile mit Version, Meldung, Datei- und Ordnerzahl sowie sichtbarer Gesamtgröße. Ordner und Dokumente werden per Doppelklick geöffnet; Auswahlaktionen liegen im Rechtsklick-Kontextmenü. Die Einstellungen erscheinen als eigenes modales Fenster, der vollständige Tresorexport liegt dort im Bereich „Tresorsicherung“. Bilder, Audio und Videos öffnen in eigenen Fenstern; Medien können über Schaltflächen, Zeitleiste oder Tastatur gesteuert werden. Der in separaten Fenstern überflüssige Zurück-Knopf bleibt nur in der eingebetteten Android-Ansicht sichtbar.
+Der Windows-Client verwendet eine kompakte Symbolleiste, eine Dateiliste in Detailansicht und eine feste Statuszeile mit Version, Meldung, Datei- und Ordnerzahl sowie sichtbarer Gesamtgröße. Ordner und Dokumente werden per Doppelklick geöffnet; Auswahlaktionen liegen im Rechtsklick-Kontextmenü. Beim Anzeigen des Sperrbildschirms erhält das Passwortfeld automatisch den Eingabefokus und markiert einen eventuell vorhandenen Inhalt. Die Einstellungen erscheinen als eigenes modales Fenster, der vollständige Tresorexport liegt dort im Bereich „Tresorsicherung“. Text-, Bild-, Audio- und Videodokumente öffnen in eigenen nicht-modalen Fenstern, sodass die Hauptansicht bedienbar bleibt und mehrere Dokumente gleichzeitig geöffnet sein können. Medien können über Schaltflächen, Zeitleiste oder Tastatur gesteuert werden. Der in separaten Fenstern überflüssige Zurück-Knopf bleibt nur in der eingebetteten Android-Ansicht sichtbar.
 
 Android verwendet dieselben Funktionen und Dateitypsymbole in einer kompakteren Zeilenansicht. Auswahlaktionen sind über den Drei-Punkte-Knopf einer Zeile erreichbar, die Desktop-Statuszeile entfällt und die Einstellungen belegen als deckende Seite die verfügbare App-Fläche. Solange noch kein lokaler Tresor existiert, zeigt die Ersteinrichtung den Archivimport und einen deaktivierten Einstieg für eine künftig mögliche Remote-Tresor-Verbindung. Der genaue UI-Vertrag und die Prüfschritte stehen in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md); Architektur, Speicherregeln und Abnahme der Medienwiedergabe beschreibt [docs/video-player.md](docs/video-player.md).
 
@@ -81,7 +81,7 @@ Nützliche Optionen:
 .\build\build-installer.ps1 -SkipTests
 
 # Sicherstellen, dass Projekt und Release-Tag dieselbe Version verwenden
-.\build\build-installer.ps1 -ExpectedVersion 4.3.1
+.\build\build-installer.ps1 -ExpectedVersion 4.3.2
 
 # Optionales Single-File-Paket; vor einer Veröffentlichung separat prüfen
 .\build\build-installer.ps1 -SingleFile
@@ -120,16 +120,16 @@ Die statische Prüfung validiert Version, SHA-256-Prüfsumme und optional die Si
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.3.1.exe" `
-  -ExpectedVersion 4.3.1
+  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.3.2.exe" `
+  -ExpectedVersion 4.3.2
 ```
 
 Der vollständige Smoke-Test installiert und deinstalliert die englische und deutsche Variante. Er darf nur in einem isolierten CI-Konto oder einer Test-VM ausgeführt werden:
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.3.1.exe" `
-  -ExpectedVersion 4.3.1 `
+  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.3.2.exe" `
+  -ExpectedVersion 4.3.2 `
   -RunInstallation `
   -AllowLocalMachineChanges
 ```
@@ -157,7 +157,7 @@ Ein alter `Data`-Ordner neben einer portablen EXE wird beim ersten Start atomisc
 ### Unbeaufsichtigte Installation
 
 ```powershell
-NET-Thing-Encryptor-Setup-4.3.1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+NET-Thing-Encryptor-Setup-4.3.2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
 Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselben Silent-Schalter.
@@ -165,7 +165,7 @@ Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselb
 ## Automatisierte Releases
 
 - `.github/workflows/ci.yml` testet auf Pull Requests und auf `master` die gemeinsamen Komponenten, beide priorisierten Plattformen, die sekundären Desktop-Publishes sowie den WinForms-Rückfallbuild und das in-place Upgrade auf Avalonia.
-- `.github/workflows/release.yml` wird durch Tags wie `v4.3.1` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
+- `.github/workflows/release.yml` wird durch Tags wie `v4.3.2` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
 
 Für signierte Releases werden diese Repository-Secrets benötigt:
 

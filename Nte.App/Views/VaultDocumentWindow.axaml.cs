@@ -48,6 +48,13 @@ public sealed partial class VaultDocumentWindow : Window
     {
         if (_allowClose || DataContext is not VaultDocumentViewModel viewModel)
             return;
+
+        if (args.CloseReason is WindowCloseReason.ApplicationShutdown or WindowCloseReason.OSShutdown ||
+            (args.CloseReason == WindowCloseReason.OwnerWindowClosing && !viewModel.IsDirty))
+        {
+            return;
+        }
+
         args.Cancel = true;
         _ = viewModel.CloseCommand.ExecuteAsync();
     }

@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -13,14 +14,19 @@ public sealed partial class VaultView : UserControl
 {
     private VaultViewModel? _subscribedViewModel;
     private SettingsWindow? _settingsWindow;
-    private VaultDocumentWindow? _documentWindow;
-    private bool _isUnloaded;
+    private readonly Dictionary<VaultDocumentViewModel, VaultDocumentWindow> _documentWindows = [];
+    private bool _isUnloaded = true;
     private bool _isActivatingItem;
 
     public VaultView()
     {
         AvaloniaXamlLoader.Load(this);
-        DataContextChanged += (_, _) => AttachViewModel();
+        DataContextChanged += (_, _) =>
+        {
+            AttachViewModel();
+            UpdateSettingsPresentation();
+            UpdateDocumentPresentation();
+        };
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -36,13 +42,18 @@ public sealed partial class VaultView : UserControl
     private void OnUnloaded(object? sender, RoutedEventArgs args)
     {
         _isUnloaded = true;
-        if (_subscribedViewModel is not null)
-            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        VaultViewModel? viewModel = _subscribedViewModel;
+        if (viewModel is not null)
+        {
+            viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            ((INotifyCollectionChanged)viewModel.OpenDocuments).CollectionChanged -=
+                OnOpenDocumentsChanged;
+            viewModel.CloseOpenDocuments();
+        }
         _subscribedViewModel = null;
         _settingsWindow?.Close();
         _settingsWindow = null;
-        _documentWindow?.CloseFromViewModel();
-        _documentWindow = null;
+        CloseDocumentWindows();
     }
 
     private void AttachViewModel()
@@ -50,18 +61,31 @@ public sealed partial class VaultView : UserControl
         if (ReferenceEquals(_subscribedViewModel, DataContext))
             return;
         if (_subscribedViewModel is not null)
+        {
             _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            ((INotifyCollectionChanged)_subscribedViewModel.OpenDocuments).CollectionChanged -=
+                OnOpenDocumentsChanged;
+            _subscribedViewModel.CloseOpenDocuments();
+        }
+        CloseDocumentWindows();
         _subscribedViewModel = DataContext as VaultViewModel;
         if (_subscribedViewModel is not null)
+        {
             _subscribedViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            ((INotifyCollectionChanged)_subscribedViewModel.OpenDocuments).CollectionChanged +=
+                OnOpenDocumentsChanged;
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName == nameof(VaultViewModel.ShowSettings))
             Dispatcher.UIThread.Post(UpdateSettingsPresentation);
-        else if (args.PropertyName == nameof(VaultViewModel.ActiveDocument))
-            Dispatcher.UIThread.Post(UpdateDocumentPresentation);
+    }
+
+    private void OnOpenDocumentsChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        Dispatcher.UIThread.Post(UpdateDocumentPresentation);
     }
 
     private void UpdateSettingsPresentation()
@@ -112,44 +136,56 @@ public sealed partial class VaultView : UserControl
         if (_isUnloaded || DataContext is not VaultViewModel { UseDocumentWindows: true } viewModel)
             return;
 
-        VaultDocumentViewModel? document = viewModel.ActiveDocument;
-        if (document is null)
-        {
-            _documentWindow?.CloseFromViewModel();
-            return;
-        }
-
         if (TopLevel.GetTopLevel(this) is not Window owner)
             return;
 
-        if (_documentWindow is not null)
+        var expectedDocuments = viewModel.OpenDocuments.ToHashSet();
+        foreach ((VaultDocumentViewModel document, VaultDocumentWindow window) in
+                 _documentWindows.Where(entry => !expectedDocuments.Contains(entry.Key)).ToArray())
         {
-            _documentWindow.Activate();
-            return;
+            window.CloseFromViewModel();
         }
 
-        var window = new VaultDocumentWindow { DataContext = document };
-        _documentWindow = window;
-        _ = ShowDocumentWindowAsync(window, owner, viewModel, document);
+        foreach (VaultDocumentViewModel document in viewModel.OpenDocuments)
+        {
+            if (_documentWindows.ContainsKey(document))
+                continue;
+
+            var window = new VaultDocumentWindow { DataContext = document };
+            _documentWindows.Add(document, window);
+            window.Closed += (_, _) => OnDocumentWindowClosed(window, viewModel, document);
+            try
+            {
+                window.Show(owner);
+            }
+            catch
+            {
+                _documentWindows.Remove(document);
+                document.ForceClose();
+                throw;
+            }
+        }
     }
 
-    private async Task ShowDocumentWindowAsync(
+    private void OnDocumentWindowClosed(
         VaultDocumentWindow window,
-        Window owner,
         VaultViewModel viewModel,
         VaultDocumentViewModel document)
     {
-        try
-        {
-            await window.ShowDialog(owner);
-        }
-        finally
-        {
-            if (ReferenceEquals(_documentWindow, window))
-                _documentWindow = null;
-            if (ReferenceEquals(viewModel.ActiveDocument, document))
-                document.ForceClose();
-        }
+        if (_documentWindows.TryGetValue(document, out VaultDocumentWindow? current) &&
+            ReferenceEquals(current, window))
+            _documentWindows.Remove(document);
+
+        if (viewModel.OpenDocuments.Contains(document))
+            document.ForceClose();
+    }
+
+    private void CloseDocumentWindows()
+    {
+        VaultDocumentWindow[] windows = _documentWindows.Values.ToArray();
+        _documentWindows.Clear();
+        foreach (VaultDocumentWindow window in windows)
+            window.CloseFromViewModel();
     }
 
     private void Items_SelectionChanged(object? sender, SelectionChangedEventArgs args)

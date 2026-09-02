@@ -5,6 +5,23 @@ namespace Nte.App.Tests;
 public sealed class UnlockViewTests
 {
     [Fact]
+    public void PasswordInput_RequestsFocusAndFullSelectionWhenViewLoads()
+    {
+        string viewPath = FindUnlockViewPath();
+        XDocument document = XDocument.Load(viewPath);
+        XNamespace avalonia = "https://github.com/avaloniaui";
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        Assert.Equal("UnlockView_Loaded", document.Root?.Attribute("Loaded")?.Value);
+        XElement passwordInput = FindNamedElement(document, avalonia, xaml, "PasswordTextBox");
+        Assert.Equal("{Binding Password, Mode=TwoWay}", passwordInput.Attribute("Text")?.Value);
+
+        string codeBehind = File.ReadAllText(Path.ChangeExtension(viewPath, ".axaml.cs"));
+        Assert.Contains("PasswordTextBox.Focus();", codeBehind, StringComparison.Ordinal);
+        Assert.Contains("PasswordTextBox.SelectAll();", codeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VaultSourceAreas_FollowInitialSetupStateAndKeepRemoteActionUnavailable()
     {
         XDocument document = XDocument.Load(FindUnlockViewPath());

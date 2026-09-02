@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Nte.App.ViewModels"
              x:Class="Nte.App.Views.UnlockView"
-             x:DataType="vm:UnlockViewModel">
+             x:DataType="vm:UnlockViewModel"
+             Loaded="UnlockView_Loaded">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
     <Border Margin="16" MaxWidth="520" Padding="24" CornerRadius="12" BorderThickness="1"
@@ -12,7 +13,8 @@
         <TextBlock Text="{Binding InstructionText}"
                    TextWrapping="Wrap" Opacity="0.75" />
         <TextBlock Text="Passwort" FontWeight="SemiBold" />
-        <TextBox Classes="single-line"
+        <TextBox x:Name="PasswordTextBox"
+                 Classes="single-line"
                  Text="{Binding Password, Mode=TwoWay}"
                  PasswordChar="●"
                  PlaceholderText="Passwort"

@@ -10,7 +10,7 @@
         MinWidth="640"
         MinHeight="480"
         WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False"
+        ShowInTaskbar="True"
         Background="{DynamicResource AppSurfaceBrush}">
   <views:WindowFrame x:Name="Frame" Title="{Binding DisplayName}">
     <views:WindowFrame.WindowContent>

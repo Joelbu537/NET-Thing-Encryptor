@@ -12,11 +12,11 @@ Die gemeinsame Anwendung hält Wiedergabestatus, Befehle und Lebenszyklus unabh�
 
 | Plattform | Videoausgabe |
 |---|---|
-| Windows | Video über `LibVLCSharp.Avalonia.VideoView`, Audio ohne Bildausgabe; jeweils im eigenen Dokumentfenster |
+| Windows | Video über `LibVLCSharp.Avalonia.VideoView`, Audio ohne Bildausgabe; jeweils im eigenen nicht-modalen Dokumentfenster, mehrere Fenster parallel möglich |
 | Android | Video über eine native, mit Avalonias `NativeControlHost` eingebettete Ansicht; Audio ohne Bildausgabe; `VideoLAN.LibVLC.Android` 3.7.0-beta für `arm64-v8a` und `x86_64` |
 | Linux/macOS | Video über Desktop-`VideoView`, Audio ohne Bildausgabe; systemweite LibVLC-Laufzeit erforderlich und noch nicht verifiziert |
 
-Eine Wiedergabesitzung besitzt genau einen LibVLC-Player und genau einen entschlüsselten Eingabestrom. Fenster- beziehungsweise Ansichtswechsel erzeugen keine zweite entschlüsselte Kopie. Audio und Video teilen denselben LibVLC-Dienst; nur Videos fordern eine Plattformoberfläche an. Beim Schließen der Dokumentansicht oder beim Sperren des Tresors wird die Sitzung vollständig beendet und eine eventuell vorhandene native Videoansicht getrennt.
+Eine Wiedergabesitzung besitzt genau einen LibVLC-Player und genau einen entschlüsselten Eingabestrom; Darstellungsänderungen innerhalb ihres Fensters erzeugen keine zweite entschlüsselte Kopie. Audio und Video teilen denselben LibVLC-Dienst; nur Videos fordern eine Plattformoberfläche an. Auf Desktop-Systemen besitzt jedes gleichzeitig geöffnete Mediendokument eine unabhängige Sitzung. Dadurch summiert sich der Speicherbedarf der entschlüsselten Dateien und Decoder. Beim Schließen eines Dokumentfensters wird nur dessen Sitzung beendet; beim Sperren oder Beenden werden alle offenen Sitzungen vollständig beendet und eventuell vorhandene native Videoansichten getrennt. Android hält weiterhin genau eine eingebettete Dokumentansicht vor.
 
 Seit Version 4.3.1 wird das Dokumentfenster beziehungsweise die eingebettete Android-Ansicht bereits vor dem Einlesen des Medieninhalts angezeigt. Ein dokumenteigener Ladezustand bleibt sichtbar, während die Datei entschlüsselt und die Wiedergabesitzung aufgebaut wird. Wird die Ansicht geschlossen oder der Tresor gesperrt, fordert der Dokumentlebenszyklus den Abbruch an; ein bereits zurückgegebener, aber nicht übernommener Klartextpuffer wird überschrieben.
 
@@ -70,6 +70,7 @@ Die gemeinsamen Tests prüfen mindestens:
 - Formatierung und Aktualisierung der Zeitposition;
 - idempotentes Beenden der Sitzung;
 - Beenden einer offenen Wiedergabe bei Tresorsperre;
+- unabhängiges Schließen paralleler Desktop-Wiedergabesitzungen und Beenden aller Sitzungen bei Tresorsperre;
 - Bereinigung des verwalteten Puffers nach der Freigabe sowie bei einer fehlgeschlagenen Initialisierung.
 
 Zusätzlich müssen Desktop- und Android-Projekt in Release-Konfiguration gebaut werden. Der Windows-Publish- und Installer-Test prüft, dass Wrapper, native VideoLAN-Laufzeit und Plugins vollständig enthalten sind.
@@ -80,6 +81,7 @@ Vor einem Release sind mindestens diese Fälle mit einem kurzen und einem größ
 
 - Windows 10 und Windows 11: separate Audio- und Videofenster, bei Video Seitenverhältnis und Größenänderung, bei beiden Play/Pause, Zeitleiste, Schaltflächen und alle Tastenkürzel;
 - Windows: Fenster während laufender und pausierter Wiedergabe schließen und anschließend dieselbe sowie eine andere Mediendatei erneut öffnen;
+- Windows: mindestens zwei Mediendateien gleichzeitig in nicht-modalen Fenstern öffnen, das Hauptfenster weiter bedienen und ein Medienfenster schließen, ohne die andere Wiedergabe zu beenden;
 - Windows: automatische Sperre auslösen und prüfen, dass Fenster, Wiedergabe und Ton beendet werden;
 - Android 12 oder neuer auf realer `arm64-v8a`-Hardware: Audioausgabe, native Videodarstellung, Rotation beziehungsweise Größenänderung, Touchsteuerung, Seek, wiederholtes Öffnen, App-Hintergrund und automatische Sperre;
 - `x86_64`-Paketinhalt und Emulatorstart sowie, sobald verfügbar, Android 16 mit 16-KB-Speicherseiten; diese Prüfungen heben das reale Gerätetest-Gate für die Beta-Laufzeit nicht auf;
