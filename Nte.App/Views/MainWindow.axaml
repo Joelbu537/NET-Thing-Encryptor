@@ -3,6 +3,7 @@
         xmlns:views="using:Nte.App.Views"
         x:Class="Nte.App.Views.MainWindow"
         Title="NET Thing Encryptor"
+        Icon="/Assets/AppIcon.png"
         Width="1024"
         Height="720"
         MinWidth="720"

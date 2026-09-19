@@ -1,6 +1,6 @@
 # NET Thing Encryptor
 
-NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Seit M6 ist der plattformübergreifende Avalonia-Client das kanonische Produkt für den Windows-Installer und Android-Releases. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und einzeln, mehrfach oder als Ordnerstruktur exportieren sowie vollständige `.ntevault`-Archive übertragen. Hinzu kommen lokale und globale Suche, Mehrfachauswahl, Umbenennen, Verschieben, rekursives Löschen, Textbearbeitung, Bildserien mit Zufallsreihenfolge und Autoplay, Audio- und Videowiedergabe aus dem Arbeitsspeicher sowie portable Einstellungen. Android verwendet einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox und Transfer.
+NET Thing Encryptor ist eine Anwendung zum verschlüsselten Verwalten von Dateien. Seit M6 ist der plattformübergreifende Avalonia-Client das kanonische Produkt für den Windows-Installer und Android-Releases. Er kann Tresore entsperren, Ordner navigieren und anlegen, Dokumente über Systemdialoge importieren und einzeln, mehrfach oder als Ordnerstruktur exportieren sowie vollständige `.ntevault`-Archive übertragen. Hinzu kommen lokale und globale Suche, Mehrfachauswahl, Umbenennen, Verschieben, rekursives Löschen, Textbearbeitung, Bildserien mit Zufallsreihenfolge und Autoplay, Audio- und Videowiedergabe aus dem Arbeitsspeicher sowie portable Einstellungen. Ein optionaler Linux-Server stellt die weiterhin clientseitig verschlüsselten Tresordateien mehreren Geräten über HTTPS bereit. Android verwendet alternativ einen privaten App-Tresor, streambasierte Dokumentanbieter-Zugriffe und automatische Sitzungssperren. `Nte.Core` enthält die UI-unabhängige Kernlogik für .NET 10; `Nte.Storage` kapselt Dateisystem, Sandbox, Remotezugriff und Transfer.
 
 Der frühere WinForms-Client bleibt vorerst als eingefrorener, separat getesteter Rückfallpfad im Quellbaum. Neue Produktfunktionen und reguläre Pakete entstehen ausschließlich in den Avalonia-Projekten.
 
@@ -8,16 +8,33 @@ Der frühere WinForms-Client bleibt vorerst als eingefrorener, separat getestete
 
 - Windows 10 ab Build 19041 oder Windows 11, x64, selbstenthaltender Avalonia-Installer pro Benutzer
 - Android 12 oder neuer (API 31 bis 36), AAB für Stores und APK für direkte Testinstallation
-- Linux x64, Runtime-Publish und CI-Starttest unter Xvfb
+- Linux x64 auf Debian/Ubuntu, selbstenthaltendes `.deb`-Paket und portables `.tar.gz`
 - macOS ARM64, Runtime-Publish
+- Dedicated Server mit Linux x64 oder ARM64 und .NET-10-Runtime beziehungsweise Docker
 
-Linux und macOS sind weiter technische Vorschauen: Die CI prüft die Publishes, aber es gibt noch keine distributionsspezifischen Linux-Pakete und kein signiertes beziehungsweise notarisiertes macOS-App-Bundle.
+Das Linux-Paket installiert die App samt Desktop-Eintrag und verwendet die von Debian beziehungsweise Ubuntu bereitgestellte LibVLC-Laufzeit. macOS bleibt eine technische Vorschau: Die CI prüft den Publish, aber es gibt noch kein signiertes beziehungsweise notarisiertes App-Bundle.
+
+## Remote-Tresor
+
+`Nte.RemoteServer` stellt einen verschlüsselten Tresor auf einem Linux-Server bereit. Der Server sieht weder das Tresorpasswort noch entschlüsselte Dateinamen oder Inhalte. Das separate Server-Zugangspasswort schützt die HTTP-API. Remote-Verbindungen verwenden immer HTTPS; unverschlüsseltes HTTP ist ausschließlich für lokale Tests auf demselben Gerät zulässig.
+
+Schnellstart mit Docker Compose:
+
+```bash
+cd deploy
+export NTE_REMOTE_ACCESS_PASSWORD='ein-langes-zufaelliges-server-passwort'
+docker compose -f docker-compose.remote.yml up -d --build
+```
+
+Die Compose-Vorgabe bindet den Dienst sicher an `127.0.0.1:5248`; für andere Geräte wird anschließend ein HTTPS-Reverse-Proxy eingerichtet. Der Sperrbildschirm trennt lokale und entfernte Tresore in eigene Reiter. Für die Remote-Verbindung genügen Servername oder IP-Adresse, da `https://` automatisch ergänzt wird. Danach das Server-Zugangspasswort eingeben und den Tresor wie gewohnt mit dessen eigenem Tresorpasswort entsperren. Einen bestehenden lokalen Tresor lagert man ohne erneute Entschlüsselung aus: zuerst unter „Einstellungen → Tresorsicherung“ als `.ntevault` exportieren, mit dem leeren Remote-Speicher verbinden und dort das Archiv importieren. Der Import zeigt seinen Prüf- und Übertragungsfortschritt; die lokale Kopie wird dabei nicht automatisch gelöscht.
+
+Produktionsbetrieb, TLS-Reverse-Proxy, Umgebungsvariablen, Backup und Update sind in [docs/remote-vault.md](docs/remote-vault.md) beschrieben.
 
 ## Plattformspezifische Bedienung
 
 Der Windows-Client verwendet eine kompakte Symbolleiste, eine Dateiliste in Detailansicht und eine feste Statuszeile mit Version, Meldung, Datei- und Ordnerzahl sowie sichtbarer Gesamtgröße. Ordner und Dokumente werden per Doppelklick geöffnet; Auswahlaktionen liegen im Rechtsklick-Kontextmenü. Beim Anzeigen des Sperrbildschirms erhält das Passwortfeld automatisch den Eingabefokus und markiert einen eventuell vorhandenen Inhalt. Die Einstellungen erscheinen als eigenes modales Fenster, der vollständige Tresorexport liegt dort im Bereich „Tresorsicherung“. Text-, Bild-, Audio- und Videodokumente öffnen in eigenen nicht-modalen Fenstern, sodass die Hauptansicht bedienbar bleibt und mehrere Dokumente gleichzeitig geöffnet sein können. Medien können über Schaltflächen, Zeitleiste oder Tastatur gesteuert werden. Der in separaten Fenstern überflüssige Zurück-Knopf bleibt nur in der eingebetteten Android-Ansicht sichtbar.
 
-Android verwendet dieselben Funktionen und Dateitypsymbole in einer kompakteren Zeilenansicht. Auswahlaktionen sind über den Drei-Punkte-Knopf einer Zeile erreichbar, die Desktop-Statuszeile entfällt und die Einstellungen belegen als deckende Seite die verfügbare App-Fläche. Solange noch kein lokaler Tresor existiert, zeigt die Ersteinrichtung den Archivimport und einen deaktivierten Einstieg für eine künftig mögliche Remote-Tresor-Verbindung. Der genaue UI-Vertrag und die Prüfschritte stehen in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md); Architektur, Speicherregeln und Abnahme der Medienwiedergabe beschreibt [docs/video-player.md](docs/video-player.md).
+Android verwendet dieselben Funktionen und Dateitypsymbole in einer kompakteren Zeilenansicht. Auswahlaktionen sind über den Drei-Punkte-Knopf einer Zeile erreichbar, die Desktop-Statuszeile entfällt und die Einstellungen belegen als deckende Seite die verfügbare App-Fläche. Der Sperrbildschirm bietet neben dem lokalen Tresor die Verbindung zu einem Remote-Tresor; auf einem leeren Speicher kann außerdem ein Archiv importiert werden. Der genaue UI-Vertrag und die Prüfschritte stehen in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md); Architektur, Speicherregeln und Abnahme der Medienwiedergabe beschreibt [docs/video-player.md](docs/video-player.md).
 
 ## Avalonia-Desktop-Client starten
 
@@ -28,6 +45,16 @@ dotnet run --project ".\Nte.Desktop\Nte.Desktop.csproj"
 ```
 
 Der Client verwendet denselben Benutzerdatenordner und dasselbe Tresorformat wie die WinForms-Referenz. Für einen isolierten Entwicklungsstart kann `NTE_DATA_DIRECTORY` auf ein separates Verzeichnis gesetzt werden. `--startup-probe` startet die vollständige Oberfläche mit einem temporären Tresor und schließt sie nach der Initialisierung automatisch.
+
+## Linux-Pakete bauen
+
+Der Linux-x64-Build ist selbstenthaltend und benötigt keine separat installierte .NET-Laufzeit. Auf Debian oder Ubuntu werden PowerShell, `dpkg-deb`, `tar` und die nativen Desktop-/LibVLC-Abhängigkeiten benötigt. Das Paket-Skript erzeugt ein installierbares `.deb`, ein portables `.tar.gz` und SHA-256-Dateien:
+
+```powershell
+./build/build-linux-package.ps1 -Clean
+```
+
+Die auslieferbaren Ergebnisse liegen unter `artifacts/release/desktop/linux-x64`; Publish- und Paketierungszwischenstände unter `artifacts/staging/desktop/linux-x64`. Das Debian-Paket deklariert `libvlc5`, `vlc-plugin-base`, `vlc-plugin-video-output` sowie die benötigten X11-/Fontconfig-Bibliotheken als Abhängigkeiten. CI installiert das erzeugte Paket und prüft sowohl den Avalonia-Start unter Xvfb als auch das Laden der systemweiten LibVLC-Laufzeit. Details stehen in [docs/linux.md](docs/linux.md).
 
 ## Android-Pakete bauen
 
@@ -48,9 +75,9 @@ Der Android-Medienplayer verwendet `VideoLAN.LibVLC.Android` 3.7.0-beta für `ar
 Die kanonischen plattformübergreifenden Tests und der Windows-Installer benötigen nur .NET SDK 10.0.400:
 
 ```powershell
-dotnet test ".\Nte.Core.Tests\Nte.Core.Tests.csproj" -c Release
-dotnet test ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release
-dotnet test ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release
+dotnet run --project ".\Nte.Core.Tests\Nte.Core.Tests.csproj" -c Release -- --minimum-expected-tests 1
+dotnet run --project ".\Nte.Storage.Tests\Nte.Storage.Tests.csproj" -c Release -- --minimum-expected-tests 1
+dotnet run --project ".\Nte.App.Tests\Nte.App.Tests.csproj" -c Release -- --minimum-expected-tests 1
 ```
 
 Der WinForms-Rückfallpfad benötigt weiterhin .NET 11 Preview 7 und wird in einem eigenen CI-Job über `build/legacy-winforms.slnf` geprüft. CI testet den gemeinsamen Kern unter Linux, startet dort den Avalonia-Client unter Xvfb, publiziert den Desktop-Host für macOS ARM64, baut Android-AAB und -APK und erzeugt den Avalonia-Windows-Installer. Die Architekturentscheidungen stehen in [docs/m1-core-extraction.md](docs/m1-core-extraction.md), [docs/m2-storage-transfer.md](docs/m2-storage-transfer.md), [docs/m3-avalonia-client.md](docs/m3-avalonia-client.md), [docs/m4-android-client.md](docs/m4-android-client.md), [docs/m5-feature-parity.md](docs/m5-feature-parity.md), [docs/m6-cutover.md](docs/m6-cutover.md), [docs/m7-winforms-retirement.md](docs/m7-winforms-retirement.md) und [docs/m8-post-cutover-hardening.md](docs/m8-post-cutover-hardening.md). Die nach M8 vorgezogene Oberflächenangleichung ist separat in [docs/platform-ui-refinement.md](docs/platform-ui-refinement.md) beschrieben; sie startet M9 ausdrücklich nicht.
@@ -66,7 +93,7 @@ Voraussetzungen:
 .\build\build-installer.ps1 -Clean
 ```
 
-Das Skript stellt Abhängigkeiten wieder her, führt die Release-Tests aus, veröffentlicht die App self-contained und baut anschließend den Installer. Die Ausgabe liegt unter `artifacts\installer` und besteht aus:
+Das Skript stellt Abhängigkeiten wieder her, führt die Release-Tests aus, veröffentlicht die App self-contained nach `artifacts\staging\desktop\windows-x64\publish` und baut anschließend den Installer. Die auslieferbare Ausgabe liegt unter `artifacts\release\desktop\windows-x64` und besteht aus:
 
 - `NET-Thing-Encryptor-Setup-<Version>.exe`
 - `NET-Thing-Encryptor-Setup-<Version>.exe.sha256`
@@ -81,7 +108,7 @@ Nützliche Optionen:
 .\build\build-installer.ps1 -SkipTests
 
 # Sicherstellen, dass Projekt und Release-Tag dieselbe Version verwenden
-.\build\build-installer.ps1 -ExpectedVersion 4.3.2
+.\build\build-installer.ps1 -ExpectedVersion 4.3.3
 
 # Optionales Single-File-Paket; vor einer Veröffentlichung separat prüfen
 .\build\build-installer.ps1 -SingleFile
@@ -99,7 +126,7 @@ M7 hält den eingefrorenen WinForms-Stand bis zum Erreichen der dokumentierten L
   -Clean
 ```
 
-Die Ausgabe `artifacts\legacy-winforms\installer\NET-Thing-Encryptor-WinForms-Rollback-Setup-<Version>.exe` dient ausschließlich CI und einem ausdrücklich beschlossenen Notfall-Rückfall. Der reguläre Release-Workflow durchsucht dieses Verzeichnis nicht. `build/test-winforms-upgrade.ps1` installiert das Rückfallpaket in einem isolierten Konto, aktualisiert es in-place auf Avalonia und vergleicht das M0-Kompatibilitätsfixture vor Upgrade und nach Deinstallation bytegenau.
+Die Ausgabe `artifacts\verification\legacy-winforms\windows-x64\NET-Thing-Encryptor-WinForms-Rollback-Setup-<Version>.exe` dient ausschließlich CI und einem ausdrücklich beschlossenen Notfall-Rückfall. Der reguläre Release-Workflow durchsucht dieses Verzeichnis nicht. `build/test-winforms-upgrade.ps1` installiert das Rückfallpaket in einem isolierten Konto, aktualisiert es in-place auf Avalonia und vergleicht das M0-Kompatibilitätsfixture vor Upgrade und nach Deinstallation bytegenau.
 
 ## Code-Signierung
 
@@ -120,16 +147,16 @@ Die statische Prüfung validiert Version, SHA-256-Prüfsumme und optional die Si
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.3.2.exe" `
-  -ExpectedVersion 4.3.2
+  -InstallerPath ".\artifacts\release\desktop\windows-x64\NET-Thing-Encryptor-Setup-4.3.3.exe" `
+  -ExpectedVersion 4.3.3
 ```
 
 Der vollständige Smoke-Test installiert und deinstalliert die englische und deutsche Variante. Er darf nur in einem isolierten CI-Konto oder einer Test-VM ausgeführt werden:
 
 ```powershell
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-4.3.2.exe" `
-  -ExpectedVersion 4.3.2 `
+  -InstallerPath ".\artifacts\release\desktop\windows-x64\NET-Thing-Encryptor-Setup-4.3.3.exe" `
+  -ExpectedVersion 4.3.3 `
   -RunInstallation `
   -AllowLocalMachineChanges
 ```
@@ -157,15 +184,23 @@ Ein alter `Data`-Ordner neben einer portablen EXE wird beim ersten Start atomisc
 ### Unbeaufsichtigte Installation
 
 ```powershell
-NET-Thing-Encryptor-Setup-4.3.2.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+NET-Thing-Encryptor-Setup-4.3.3.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
 Der Uninstaller befindet sich im Installationsverzeichnis und akzeptiert dieselben Silent-Schalter.
 
 ## Automatisierte Releases
 
+Build-Ausgaben folgen einem gemeinsamen Vertrag:
+
+- `artifacts/release`: ausschließlich veröffentlichbare, benannte Pakete samt Prüfsummen;
+- `artifacts/staging`: entpackte Publishes und temporäre Paketierungsbäume;
+- `artifacts/verification`: Smoke-Test-, Rückfall- und sonstige Prüfausgaben.
+
+Desktop-Artefakte sind darunter nach Plattform und Architektur (`windows-x64`, `linux-x64`, `macos-arm64`) gegliedert. Android liegt unter `release/android`, Serverpakete unter `release/server/<Runtime>`.
+
 - `.github/workflows/ci.yml` testet auf Pull Requests und auf `master` die gemeinsamen Komponenten, beide priorisierten Plattformen, die sekundären Desktop-Publishes sowie den WinForms-Rückfallbuild und das in-place Upgrade auf Avalonia.
-- `.github/workflows/release.yml` wird durch Tags wie `v4.3.2` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK sowie alle Prüfsummen als GitHub Release.
+- `.github/workflows/release.yml` wird durch Tags wie `v4.3.3` gestartet, prüft die Versionsgleichheit, verlangt Windows- und Android-Signaturen, installiert und prüft das Linux-Paket, führt den Windows-Installations-Smoke-Test aus und veröffentlicht Setup, AAB, APK, Linux-DEB, Linux-Tarball sowie alle Prüfsummen als GitHub Release.
 
 Für signierte Releases werden diese Repository-Secrets benötigt:
 

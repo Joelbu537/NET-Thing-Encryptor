@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <color name="app_icon_background">#FFFFFF</color>
+
   <style name="NteTheme.NoActionBar" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
     <item name="android:windowActionBar">false</item>
     <item name="android:windowNoTitle">true</item>

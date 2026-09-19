@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Nte.Storage</AssemblyName>
     <RootNamespace>NET_Thing_Encryptor</RootNamespace>
-    <Version>4.3.2</Version>
+    <Version>4.3.3</Version>
   </PropertyGroup>
 
   <ItemGroup>

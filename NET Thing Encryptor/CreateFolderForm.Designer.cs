@@ -134,7 +134,8 @@
             Controls.Add(tableLayoutPanel);
             Font = new Font("Segoe UI", 12F);
             FormBorderStyle = FormBorderStyle.FixedDialog;
-            Icon = (Icon)resources.GetObject("$this.Icon");
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(
+                System.Windows.Forms.Application.ExecutablePath);
             Margin = new Padding(4);
             Name = "CreateFolderForm";
             StartPosition = FormStartPosition.CenterScreen;

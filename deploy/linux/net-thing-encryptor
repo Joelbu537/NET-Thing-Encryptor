@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/net-thing-encryptor/NET\ Thing\ Encryptor "$@"

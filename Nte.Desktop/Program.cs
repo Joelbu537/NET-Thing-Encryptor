@@ -1,5 +1,6 @@
 using Avalonia;
 using LibVLCSharp.Avalonia;
+using LibVLCSharp.Shared;
 using NET_Thing_Encryptor;
 using Nte.App.Services;
 using AvaloniaApplication = Nte.App.App;
@@ -19,6 +20,12 @@ internal static class Program
             out bool ownsApplicationMutex);
         if (!ownsApplicationMutex)
             return;
+
+        if (args.Contains("--media-runtime-probe", StringComparer.Ordinal))
+        {
+            VerifyMediaRuntime();
+            return;
+        }
 
         bool startupProbe = args.Contains("--startup-probe", StringComparer.Ordinal);
         string? configuredDataDirectory = Environment.GetEnvironmentVariable("NTE_DATA_DIRECTORY");
@@ -68,4 +75,11 @@ internal static class Program
         AppBuilder.Configure<AvaloniaApplication>()
             .UsePlatformDetect()
             .LogToTrace();
+
+    private static void VerifyMediaRuntime()
+    {
+        Core.Initialize();
+        using var libVlc = new LibVLC("--no-video-title-show", "--quiet");
+        _ = libVlc.Version;
+    }
 }

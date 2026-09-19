@@ -1,0 +1,15 @@
+services:
+  nte-remote-vault:
+    build:
+      context: ..
+      dockerfile: Nte.RemoteServer/Dockerfile
+    restart: unless-stopped
+    environment:
+      NTE_REMOTE_ACCESS_PASSWORD: ${NTE_REMOTE_ACCESS_PASSWORD:?Set NTE_REMOTE_ACCESS_PASSWORD}
+    ports:
+      - "127.0.0.1:5248:5248"
+    volumes:
+      - nte-remote-data:/data
+
+volumes:
+  nte-remote-data:

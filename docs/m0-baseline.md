@@ -33,7 +33,7 @@ Referenzbefehle:
 dotnet test ".\NET Thing Encryptor.sln" -c Release
 .\build\build-installer.ps1 -Clean -ExpectedVersion 3.7.0
 .\build\test-installer.ps1 `
-  -InstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-3.7.0.exe" `
+  -InstallerPath ".\artifacts\release\desktop\windows-x64\NET-Thing-Encryptor-Setup-3.7.0.exe" `
   -ExpectedVersion 3.7.0
 ```
 

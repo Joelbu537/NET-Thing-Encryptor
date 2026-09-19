@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Nte.RemoteServer</AssemblyName>
+    <RootNamespace>Nte.RemoteServer</RootNamespace>
+    <Version>4.3.3</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nte.Core\Nte.Core.csproj" />
+    <ProjectReference Include="..\Nte.Storage\Nte.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

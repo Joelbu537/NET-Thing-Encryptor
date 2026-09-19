@@ -91,6 +91,68 @@ public sealed class VaultStorageTests : IDisposable
     }
 
     [Fact]
+    public async Task Archive_ExportReportsMonotonicProgressThroughCompletion()
+    {
+        FileSystemVaultStorage sourceStorage = await CreateVaultAsync(includeFile: true);
+        var service = new VaultArchiveService();
+        using var archive = new MemoryStream();
+        var reported = new List<VaultArchiveExportProgress>();
+        var progress = new ImmediateProgress<VaultArchiveExportProgress>(reported.Add);
+
+        VaultArchiveExportResult result = await service.ExportAsync(
+            sourceStorage,
+            archive,
+            TestContext.Current.CancellationToken,
+            progress);
+
+        Assert.NotEmpty(reported);
+        Assert.Equal(0, reported[0].Percentage);
+        Assert.Equal(100, reported[^1].Percentage);
+        Assert.Equal(result.ObjectCount, reported[^1].CompletedObjects);
+        Assert.Equal(result.ObjectCount, reported[^1].TotalObjects);
+        Assert.All(
+            reported.Zip(reported.Skip(1)),
+            pair => Assert.True(pair.First.Percentage <= pair.Second.Percentage));
+    }
+
+    [Fact]
+    public async Task Archive_ImportReportsValidationAndObjectProgressThroughCompletion()
+    {
+        FileSystemVaultStorage sourceStorage = await CreateVaultAsync(includeFile: true);
+        var service = new VaultArchiveService();
+        using var archive = new MemoryStream();
+        await service.ExportAsync(
+            sourceStorage,
+            archive,
+            TestContext.Current.CancellationToken);
+        archive.Position = 0;
+
+        var destination = new FileSystemVaultStorage(Path.Combine(_testDirectory, "progress-import"));
+        var reported = new List<VaultArchiveImportProgress>();
+        var progress = new ImmediateProgress<VaultArchiveImportProgress>(reported.Add);
+
+        VaultArchiveImportResult result = await service.ImportAsync(
+            archive,
+            destination,
+            TestContext.Current.CancellationToken,
+            progress);
+
+        Assert.NotEmpty(reported);
+        Assert.Equal(VaultArchiveImportPhase.ReadingArchive, reported[0].Phase);
+        Assert.True(reported[0].IsIndeterminate);
+        Assert.Contains(reported, item => item.Phase == VaultArchiveImportPhase.ValidatingArchive);
+        Assert.Contains(reported, item => item.Phase == VaultArchiveImportPhase.WritingObjects);
+        Assert.Equal(VaultArchiveImportPhase.Completing, reported[^1].Phase);
+        Assert.Equal(100, reported[^1].Percentage);
+        Assert.Equal(result.ObjectCount, reported[^1].CompletedObjects);
+        Assert.Equal(result.ObjectCount, reported[^1].TotalObjects);
+        VaultArchiveImportProgress[] determinate = reported.Where(item => !item.IsIndeterminate).ToArray();
+        Assert.All(
+            determinate.Zip(determinate.Skip(1)),
+            pair => Assert.True(pair.First.Percentage <= pair.Second.Percentage));
+    }
+
+    [Fact]
     public async Task Archive_ExistingDestination_OverwritesNothing()
     {
         FileSystemVaultStorage sourceStorage = await CreateVaultAsync(includeFile: true);
@@ -346,6 +408,11 @@ public sealed class VaultStorageTests : IDisposable
                 inner.Dispose();
             base.Dispose(disposing);
         }
+    }
+
+    private sealed class ImmediateProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
     }
 
     private sealed class NonSeekableWriteStream(Stream inner) : Stream

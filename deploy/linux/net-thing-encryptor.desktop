@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=NET Thing Encryptor
+Comment=Encrypted file vault
+Exec=net-thing-encryptor
+Icon=net-thing-encryptor
+Terminal=false
+Categories=Utility;Security;
+StartupNotify=true

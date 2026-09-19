@@ -850,6 +850,50 @@ public sealed class VaultViewModelTests
     }
 
     [Fact]
+    public async Task ArchiveExport_ExposesDeterminateProgressWhileRunning()
+    {
+        var releaseExport = NewCompletion();
+        var progressVisible = NewCompletion();
+        var vault = new FakeVaultApplicationService
+        {
+            ExportVaultAsyncHandler = async (destination, progress, cancellationToken) =>
+            {
+                progress?.Report(new VaultArchiveExportProgress(2, 4, 1, 2));
+                await releaseExport.Task.WaitAsync(cancellationToken);
+                await destination.WriteAsync("archive"u8.ToArray(), cancellationToken);
+                progress?.Report(new VaultArchiveExportProgress(4, 4, 2, 2));
+                return 2;
+            }
+        };
+        var viewModel = CreateViewModel(vault, new FakeFilePickerService());
+        await viewModel.InitializeAsync();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(VaultViewModel.VaultExportProgress) &&
+                viewModel.VaultExportProgress == 50)
+            {
+                progressVisible.TrySetResult();
+            }
+        };
+
+        Task export = viewModel.ExportVaultCommand.ExecuteAsync();
+        await progressVisible.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(viewModel.IsVaultExportProgressVisible);
+        Assert.Equal(50, viewModel.VaultExportProgress);
+        Assert.Equal("50%", viewModel.VaultExportProgressPercentText);
+        Assert.Contains("1 von 2", viewModel.VaultExportProgressDetail);
+        Assert.Equal("Tresorarchiv wird exportiert …", viewModel.ExportVaultButtonText);
+
+        releaseExport.TrySetResult();
+        await export.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.False(viewModel.IsVaultExportProgressVisible);
+        Assert.Equal(100, viewModel.VaultExportProgress);
+        Assert.Equal("Tresorarchiv exportieren …", viewModel.ExportVaultButtonText);
+    }
+
+    [Fact]
     public async Task VisibleFolderStatisticsFollowTheDisplayedItems()
     {
         var vault = new FakeVaultApplicationService();
@@ -936,7 +980,9 @@ public sealed class VaultViewModelTests
         var viewModel = CreateViewModel(vault, new FakeFilePickerService());
         await viewModel.InitializeAsync();
 
+        Assert.False(viewModel.HasSelection);
         viewModel.SetSelectedItems(viewModel.Items);
+        Assert.True(viewModel.HasSelection);
         Assert.Equal("2 Objekte ausgewählt", viewModel.SelectionCountText);
         viewModel.SelectedMoveTarget = viewModel.FolderTargets.Single(item => item.Id == 30);
         await viewModel.MoveCommand.ExecuteAsync();

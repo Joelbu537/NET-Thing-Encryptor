@@ -7,9 +7,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>NET Thing Encryptor</AssemblyName>
     <RootNamespace>Nte.Desktop</RootNamespace>
-    <Version>4.3.2</Version>
-    <AssemblyVersion>4.3.2.0</AssemblyVersion>
-    <FileVersion>4.3.2.0</FileVersion>
+    <Version>4.3.3</Version>
+    <AssemblyVersion>4.3.3.0</AssemblyVersion>
+    <FileVersion>4.3.3.0</FileVersion>
     <ApplicationIcon>image.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -17,7 +17,8 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
     <PackageReference Include="LibVLCSharp.Avalonia" Version="3.10.1" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1"
+                      Condition="'$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'win-x64'" />
   </ItemGroup>
 
   <ItemGroup>

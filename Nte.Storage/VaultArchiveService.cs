@@ -8,6 +8,38 @@ namespace NET_Thing_Encryptor;
 public sealed record VaultArchiveExportResult(int ObjectCount);
 public sealed record VaultArchiveImportResult(int ObjectCount);
 
+public readonly record struct VaultArchiveExportProgress(
+    int CompletedSteps,
+    int TotalSteps,
+    int CompletedObjects,
+    int TotalObjects)
+{
+    public double Percentage => TotalSteps <= 0
+        ? 100
+        : Math.Clamp(CompletedSteps * 100d / TotalSteps, 0, 100);
+}
+
+public enum VaultArchiveImportPhase
+{
+    ReadingArchive,
+    ValidatingArchive,
+    WritingObjects,
+    Completing
+}
+
+public readonly record struct VaultArchiveImportProgress(
+    int CompletedSteps,
+    int TotalSteps,
+    int CompletedObjects,
+    int TotalObjects,
+    VaultArchiveImportPhase Phase)
+{
+    public bool IsIndeterminate => TotalSteps <= 0;
+    public double Percentage => IsIndeterminate
+        ? 0
+        : Math.Clamp(CompletedSteps * 100d / TotalSteps, 0, 100);
+}
+
 public sealed class VaultArchiveException(string message, Exception? innerException = null)
     : IOException(message, innerException);
 
@@ -39,15 +71,17 @@ public sealed class VaultArchiveService
     /// </summary>
     public Task<VaultArchiveExportResult> ExportCurrentAsync(
         Stream destination,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveExportProgress>? progress = null) =>
         ThingData.RunStorageExclusiveAsync(
-            storage => ExportAsync(storage, destination, cancellationToken),
+            storage => ExportAsync(storage, destination, cancellationToken, progress),
             cancellationToken);
 
     public async Task<VaultArchiveExportResult> ExportAsync(
         IVaultStorage source,
         Stream destination,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveExportProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(destination);
@@ -60,6 +94,9 @@ public sealed class VaultArchiveService
 
         IReadOnlyCollection<ulong> ids = source.ListObjectIds();
         var manifestEntries = new List<VaultArchiveEntry>(ids.Count + 1);
+        int totalSteps = ids.Count + 2;
+        int completedObjects = 0;
+        ReportExportProgress(progress, 0, totalSteps, completedObjects, ids.Count);
 
         using (var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -69,6 +106,7 @@ public sealed class VaultArchiveService
                 0,
                 "root/0.nte",
                 cancellationToken).ConfigureAwait(false));
+            ReportExportProgress(progress, 1, totalSteps, completedObjects, ids.Count);
 
             foreach (ulong id in ids.Order())
             {
@@ -78,6 +116,13 @@ public sealed class VaultArchiveService
                     id,
                     $"objects/{ThingData.IDToHex(id)}.nte",
                     cancellationToken).ConfigureAwait(false));
+                completedObjects++;
+                ReportExportProgress(
+                    progress,
+                    completedObjects + 1,
+                    totalSteps,
+                    completedObjects,
+                    ids.Count);
             }
 
             ZipArchiveEntry manifestEntry = archive.CreateEntry(ManifestPath, CompressionLevel.Optimal);
@@ -95,13 +140,15 @@ public sealed class VaultArchiveService
         }
 
         await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        ReportExportProgress(progress, totalSteps, totalSteps, completedObjects, ids.Count);
         return new VaultArchiveExportResult(ids.Count);
     }
 
     public async Task<VaultArchiveImportResult> ImportAsync(
         Stream source,
         IVaultStorage destination,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveImportProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(destination);
@@ -110,6 +157,13 @@ public sealed class VaultArchiveService
 
         await destination.InitializeAsync(cancellationToken).ConfigureAwait(false);
         EnsureEmpty(destination);
+        ReportImportProgress(
+            progress,
+            0,
+            0,
+            0,
+            0,
+            VaultArchiveImportPhase.ReadingArchive);
 
         string temporaryPath = Path.Combine(
             Path.GetTempPath(),
@@ -138,12 +192,22 @@ public sealed class VaultArchiveService
             using var archive = new ZipArchive(archiveInput, ZipArchiveMode.Read, leaveOpen: false);
 
             (VaultArchiveManifest manifest, IReadOnlyDictionary<string, ZipArchiveEntry> entries) =
-                await ValidateArchiveAsync(archive, cancellationToken).ConfigureAwait(false);
+                await ValidateArchiveAsync(archive, cancellationToken, progress).ConfigureAwait(false);
+            int totalObjects = manifest.Entries.Count - 1;
+            int totalSteps = (manifest.Entries.Count * 2) + 2;
             ZipArchiveEntry rootEntry = entries["root/0.nte"];
             byte[] remappedRoot = await CreateRemappedRootAsync(
                 rootEntry,
                 destination.ObjectLocation,
                 cancellationToken).ConfigureAwait(false);
+            int completedSteps = manifest.Entries.Count + 2;
+            ReportImportProgress(
+                progress,
+                completedSteps,
+                totalSteps,
+                0,
+                totalObjects,
+                VaultArchiveImportPhase.WritingObjects);
 
             EnsureEmpty(destination);
             await using IVaultStorageSnapshot snapshot = await destination.CreateSnapshotAsync(
@@ -151,6 +215,7 @@ public sealed class VaultArchiveService
                 cancellationToken).ConfigureAwait(false);
             try
             {
+                int completedObjects = 0;
                 foreach (VaultArchiveEntry item in manifest.Entries
                              .Where(entry => entry.Path.StartsWith("objects/", StringComparison.Ordinal))
                              .OrderBy(entry => entry.Path, StringComparer.Ordinal))
@@ -159,11 +224,34 @@ public sealed class VaultArchiveService
                     await using Stream entryStream = entries[item.Path].Open();
                     await destination.WriteAtomicallyAsync(id, entryStream, cancellationToken)
                         .ConfigureAwait(false);
+                    completedObjects++;
+                    completedSteps++;
+                    ReportImportProgress(
+                        progress,
+                        completedSteps,
+                        totalSteps,
+                        completedObjects,
+                        totalObjects,
+                        VaultArchiveImportPhase.WritingObjects);
                 }
 
+                ReportImportProgress(
+                    progress,
+                    completedSteps,
+                    totalSteps,
+                    completedObjects,
+                    totalObjects,
+                    VaultArchiveImportPhase.Completing);
                 using var rootStream = new MemoryStream(remappedRoot, writable: false);
                 await destination.WriteAtomicallyAsync(0, rootStream, cancellationToken)
                     .ConfigureAwait(false);
+                ReportImportProgress(
+                    progress,
+                    totalSteps,
+                    totalSteps,
+                    completedObjects,
+                    totalObjects,
+                    VaultArchiveImportPhase.Completing);
             }
             catch
             {
@@ -220,7 +308,10 @@ public sealed class VaultArchiveService
     }
 
     private static async Task<(VaultArchiveManifest Manifest, IReadOnlyDictionary<string, ZipArchiveEntry> Entries)>
-        ValidateArchiveAsync(ZipArchive archive, CancellationToken cancellationToken)
+        ValidateArchiveAsync(
+            ZipArchive archive,
+            CancellationToken cancellationToken,
+            IProgress<VaultArchiveImportProgress>? progress)
     {
         if (archive.Entries.Count == 0 || archive.Entries.Count > MaximumEntryCount + 1)
             throw new VaultArchiveException("The vault archive has an invalid entry count.");
@@ -252,6 +343,16 @@ public sealed class VaultArchiveService
             manifest.Entries.Count > MaximumEntryCount)
             throw new VaultArchiveException("The vault archive manifest has an invalid entry count.");
 
+        int totalObjects = manifest.Entries.Count - 1;
+        int totalSteps = (manifest.Entries.Count * 2) + 2;
+        int completedSteps = 1;
+        ReportImportProgress(
+            progress,
+            completedSteps,
+            totalSteps,
+            0,
+            totalObjects,
+            VaultArchiveImportPhase.ValidatingArchive);
         var expectedPaths = new HashSet<string>(StringComparer.Ordinal);
         foreach (VaultArchiveEntry item in manifest.Entries)
         {
@@ -275,6 +376,14 @@ public sealed class VaultArchiveService
                 await SHA256.HashDataAsync(input, cancellationToken).ConfigureAwait(false));
             if (!string.Equals(actualHash, item.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new VaultArchiveException($"The vault archive hash does not match: {item.Path}");
+            completedSteps++;
+            ReportImportProgress(
+                progress,
+                completedSteps,
+                totalSteps,
+                0,
+                totalObjects,
+                VaultArchiveImportPhase.ValidatingArchive);
         }
 
         if (!expectedPaths.Contains("root/0.nte"))
@@ -365,6 +474,32 @@ public sealed class VaultArchiveService
         }
         return (length, Convert.ToHexString(hash.GetHashAndReset()));
     }
+
+    private static void ReportExportProgress(
+        IProgress<VaultArchiveExportProgress>? progress,
+        int completedSteps,
+        int totalSteps,
+        int completedObjects,
+        int totalObjects) =>
+        progress?.Report(new VaultArchiveExportProgress(
+            completedSteps,
+            totalSteps,
+            completedObjects,
+            totalObjects));
+
+    private static void ReportImportProgress(
+        IProgress<VaultArchiveImportProgress>? progress,
+        int completedSteps,
+        int totalSteps,
+        int completedObjects,
+        int totalObjects,
+        VaultArchiveImportPhase phase) =>
+        progress?.Report(new VaultArchiveImportProgress(
+            completedSteps,
+            totalSteps,
+            completedObjects,
+            totalObjects,
+            phase));
 
     private sealed record VaultArchiveManifest(
         string Format,

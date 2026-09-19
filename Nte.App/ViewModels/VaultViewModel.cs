@@ -45,6 +45,9 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
     private bool _showMoveDialog;
     private bool _showDeleteConfirmation;
     private bool _showSettings;
+    private bool _isVaultExportProgressVisible;
+    private double _vaultExportProgress;
+    private string _vaultExportProgressDetail = string.Empty;
     private VaultPreferences? _settingsSnapshot;
     private bool _darkMode;
     private int _autoLockMinutes = 5;
@@ -132,6 +135,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
             RenameName = value?.Name ?? string.Empty;
             CloseActionDialogs();
             NotifySelectionCommands();
+            OnPropertyChanged(nameof(HasSelection));
             OnPropertyChanged(nameof(SelectionCountText));
         }
     }
@@ -243,6 +247,40 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         }
     }
 
+    public bool IsVaultExportProgressVisible
+    {
+        get => _isVaultExportProgressVisible;
+        private set
+        {
+            if (!SetProperty(ref _isVaultExportProgressVisible, value))
+                return;
+            OnPropertyChanged(nameof(ExportVaultButtonText));
+        }
+    }
+
+    public double VaultExportProgress
+    {
+        get => _vaultExportProgress;
+        private set
+        {
+            if (!SetProperty(ref _vaultExportProgress, Math.Clamp(value, 0, 100)))
+                return;
+            OnPropertyChanged(nameof(VaultExportProgressPercentText));
+        }
+    }
+
+    public string VaultExportProgressDetail
+    {
+        get => _vaultExportProgressDetail;
+        private set => SetProperty(ref _vaultExportProgressDetail, value);
+    }
+
+    public string VaultExportProgressPercentText => $"{VaultExportProgress:0}%";
+
+    public string ExportVaultButtonText => IsVaultExportProgressVisible
+        ? "Tresorarchiv wird exportiert …"
+        : "Tresorarchiv exportieren …";
+
     public bool ShowDeleteConfirmation
     {
         get => _showDeleteConfirmation;
@@ -322,6 +360,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         : $"/{string.Join('/', _path.Skip(1).Select(part => part.Name))}";
     public bool IsRoot => CurrentFolderId == 0;
     public bool HasItems => Items.Count != 0;
+    public bool HasSelection => _selectedItems.Count != 0;
     public string SelectionCountText => _selectedItems.Count switch
     {
         0 => "Keine Auswahl",
@@ -389,6 +428,7 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectedItem));
         RenameName = _selectedItems.Count == 1 ? _selectedItem!.Name : string.Empty;
         CloseActionDialogs();
+        OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(SelectionCountText));
         NotifySelectionCommands();
     }
@@ -942,10 +982,44 @@ public sealed class VaultViewModel : ObservableObject, IDisposable
                 return;
             await using Stream destination = await file.OpenWriteAsync(cancellationToken);
             ThrowIfOperationStopped(cancellationToken);
-            int count = await _vault.ExportVaultAsync(destination, cancellationToken);
-            ThrowIfOperationStopped(cancellationToken);
-            _setStatus($"Tresorarchiv exportiert ({count} Objekte). Bewahre es wie den Tresor geschützt auf.");
+            BeginVaultExportProgress();
+            try
+            {
+                var progress = new Progress<VaultArchiveExportProgress>(UpdateVaultExportProgress);
+                int count = await _vault.ExportVaultAsync(destination, cancellationToken, progress);
+                ThrowIfOperationStopped(cancellationToken);
+                VaultExportProgress = 100;
+                VaultExportProgressDetail = "Export abgeschlossen.";
+                _setStatus($"Tresorarchiv exportiert ({count} Objekte). Bewahre es wie den Tresor geschützt auf.");
+            }
+            finally
+            {
+                IsVaultExportProgressVisible = false;
+            }
         }, "Das Tresorarchiv konnte nicht exportiert werden");
+    }
+
+    private void BeginVaultExportProgress()
+    {
+        VaultExportProgress = 0;
+        VaultExportProgressDetail = "Tresorarchiv wird vorbereitet …";
+        IsVaultExportProgressVisible = true;
+    }
+
+    private void UpdateVaultExportProgress(VaultArchiveExportProgress progress)
+    {
+        VaultExportProgress = progress.Percentage;
+        VaultExportProgressDetail = progress switch
+        {
+            { CompletedSteps: 0 } => "Tresorarchiv wird vorbereitet …",
+            { CompletedSteps: var completed, TotalSteps: var total } when completed >= total =>
+                "Export abgeschlossen.",
+            { CompletedObjects: var completed, TotalObjects: var total } when completed >= total =>
+                "Tresorarchiv wird abgeschlossen …",
+            { CompletedObjects: 1, TotalObjects: var total } =>
+                $"1 von {total} Tresorobjekten verarbeitet",
+            _ => $"{progress.CompletedObjects} von {progress.TotalObjects} Tresorobjekten verarbeitet"
+        };
     }
 
     private Task LockAsync()

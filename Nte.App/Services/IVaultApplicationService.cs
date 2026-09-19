@@ -8,8 +8,15 @@ public interface IVaultApplicationService : IDisposable
 
     bool HasPersistedVault { get; }
     bool IsUnlocked { get; }
+    bool IsRemoteVault { get; }
+    string StorageLocation { get; }
 
     Task<bool> InitializeAsync(CancellationToken cancellationToken = default);
+    Task ConnectRemoteVaultAsync(
+        string address,
+        string accessPassword,
+        CancellationToken cancellationToken = default);
+    Task UseLocalVaultAsync(CancellationToken cancellationToken = default);
     Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default);
     void Lock();
     Task<IReadOnlyList<VaultItem>> GetFolderItemsAsync(
@@ -59,8 +66,10 @@ public interface IVaultApplicationService : IDisposable
         CancellationToken cancellationToken = default);
     Task<int> ExportVaultAsync(
         Stream destination,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveExportProgress>? progress = null);
     Task<int> ImportVaultAsync(
         Stream source,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveImportProgress>? progress = null);
 }

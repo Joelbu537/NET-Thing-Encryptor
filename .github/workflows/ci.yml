@@ -16,6 +16,7 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: true
       AVALONIA_TELEMETRY_OPTOUT: 1
+      TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -25,26 +26,58 @@ jobs:
         with:
           dotnet-version: 10.0.400
 
+      - name: Install Linux desktop runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            libvlc5 vlc-plugin-base vlc-plugin-video-output \
+            libx11-6 libice6 libsm6 libfontconfig1
+
       - name: Test platform-neutral core
-        run: dotnet test ./Nte.Core.Tests/Nte.Core.Tests.csproj -c Release
+        run: dotnet run --project ./Nte.Core.Tests/Nte.Core.Tests.csproj -c Release -- --minimum-expected-tests 1
 
       - name: Test cross-platform storage and transfer
-        run: dotnet test ./Nte.Storage.Tests/Nte.Storage.Tests.csproj -c Release
+        run: dotnet run --project ./Nte.Storage.Tests/Nte.Storage.Tests.csproj -c Release -- --minimum-expected-tests 1
 
       - name: Test shared Avalonia application layer
-        run: dotnet test ./Nte.App.Tests/Nte.App.Tests.csproj -c Release
+        run: dotnet run --project ./Nte.App.Tests/Nte.App.Tests.csproj -c Release -- --minimum-expected-tests 1
 
-      - name: Publish Linux desktop client
-        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r linux-x64 --self-contained false -o ./artifacts/desktop/linux-x64
+      - name: Publish Linux remote vault server
+        run: dotnet publish ./Nte.RemoteServer/Nte.RemoteServer.csproj -c Release -r linux-x64 --self-contained false -o ./artifacts/staging/server/linux-x64/publish
+
+      - name: Upload Linux remote vault server
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Remote-Server-linux-x64
+          path: ./artifacts/staging/server/linux-x64/publish
+          if-no-files-found: error
+
+      - name: Build Linux desktop packages
+        shell: pwsh
+        run: ./build/build-linux-package.ps1 -Clean
+
+      - name: Verify Linux package metadata
+        run: |
+          dpkg-deb --info ./artifacts/release/desktop/linux-x64/*.deb
+          dpkg-deb --contents ./artifacts/release/desktop/linux-x64/*.deb
+
+      - name: Install Linux desktop package
+        run: sudo apt-get install --yes ./artifacts/release/desktop/linux-x64/*.deb
+
+      - name: Probe native media runtime
+        run: net-thing-encryptor --media-runtime-probe
 
       - name: Probe Linux desktop startup
-        run: xvfb-run -a dotnet "./artifacts/desktop/linux-x64/NET Thing Encryptor.dll" --startup-probe
+        run: xvfb-run -a net-thing-encryptor --startup-probe
 
-      - name: Upload Linux cross-publish
+      - name: Upload Linux desktop packages
         uses: actions/upload-artifact@v4
         with:
           name: NET-Thing-Encryptor-linux-x64
-          path: ./artifacts/desktop/linux-x64
+          path: |
+            ./artifacts/release/desktop/linux-x64/*.deb
+            ./artifacts/release/desktop/linux-x64/*.tar.gz
+            ./artifacts/release/desktop/linux-x64/*.sha256
           if-no-files-found: error
 
   desktop-macos:
@@ -64,13 +97,13 @@ jobs:
           dotnet-version: 10.0.400
 
       - name: Publish macOS desktop client
-        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r osx-arm64 --self-contained false -o ./artifacts/desktop/osx-arm64
+        run: dotnet publish ./Nte.Desktop/Nte.Desktop.csproj -c Release -r osx-arm64 --self-contained false -o ./artifacts/staging/desktop/macos-arm64/publish
 
       - name: Upload macOS cross-publish
         uses: actions/upload-artifact@v4
         with:
           name: NET-Thing-Encryptor-osx-arm64
-          path: ./artifacts/desktop/osx-arm64
+          path: ./artifacts/staging/desktop/macos-arm64/publish
           if-no-files-found: error
 
   android:
@@ -151,7 +184,7 @@ jobs:
           [xml]$project = Get-Content '.\Nte.Desktop\Nte.Desktop.csproj'
           $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           .\build\build-installer.ps1 -Clean -ExpectedVersion $version
-          $installer = ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe"
+          $installer = ".\artifacts\release\desktop\windows-x64\NET-Thing-Encryptor-Setup-$version.exe"
           .\build\test-installer.ps1 -InstallerPath $installer -ExpectedVersion $version -RunInstallation
 
       - name: Upload installer artifacts
@@ -159,8 +192,8 @@ jobs:
         with:
           name: NET-Thing-Encryptor-installer
           path: |
-            artifacts/installer/*.exe
-            artifacts/installer/*.sha256
+            artifacts/release/desktop/windows-x64/*.exe
+            artifacts/release/desktop/windows-x64/*.sha256
           if-no-files-found: error
 
   windows-upgrade-proof:
@@ -210,7 +243,7 @@ jobs:
           $legacyVersion = $legacyProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           $avaloniaVersion = $avaloniaProject.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           .\build\test-winforms-upgrade.ps1 `
-            -LegacyInstallerPath ".\artifacts\legacy-winforms\installer\NET-Thing-Encryptor-WinForms-Rollback-Setup-$legacyVersion.exe" `
-            -AvaloniaInstallerPath ".\artifacts\installer\NET-Thing-Encryptor-Setup-$avaloniaVersion.exe" `
+            -LegacyInstallerPath ".\artifacts\verification\legacy-winforms\windows-x64\NET-Thing-Encryptor-WinForms-Rollback-Setup-$legacyVersion.exe" `
+            -AvaloniaInstallerPath ".\artifacts\release\desktop\windows-x64\NET-Thing-Encryptor-Setup-$avaloniaVersion.exe" `
             -LegacyExpectedVersion $legacyVersion `
             -AvaloniaExpectedVersion $avaloniaVersion

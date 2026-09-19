@@ -83,7 +83,7 @@ Release-Tags verwenden das Format `v<Version>`. Ein Tag, der nicht zur Projektve
 
 ## Automatisierter WinForms-Upgrade-Nachweis
 
-M7 ergänzt einen isolierten CI-Test für den direkten Wechsel der installierten Produktlinie. `build/build-installer.ps1 -ProductLine WinFormsRollback` erzeugt ein eindeutig benanntes Rückfallpaket unter `artifacts/legacy-winforms`; der normale Release-Workflow veröffentlicht es nicht.
+M7 ergänzt einen isolierten CI-Test für den direkten Wechsel der installierten Produktlinie. `build/build-installer.ps1 -ProductLine WinFormsRollback` erzeugt ein eindeutig benanntes Rückfallpaket unter `artifacts/verification/legacy-winforms/windows-x64`; der normale Release-Workflow veröffentlicht es nicht.
 
 `build/test-winforms-upgrade.ps1` verweigert die Ausführung, wenn im Testkonto bereits eine Installation oder ein Benutzerdatenordner vorhanden ist. Der Test:
 

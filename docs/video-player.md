@@ -4,7 +4,7 @@
 
 Version 4.2.0 integriert die Videowiedergabe in den kanonischen Avalonia-Client für Windows und Android. Version 4.3.0 erweitert denselben Wiedergabekern um Audio. Beide verwenden `LibVLCSharp` 3.10.1 und die jeweilige plattformgebundene VideoLAN-Laufzeit. Android bindet `VideoLAN.LibVLC.Android` 3.7.0-beta ein.
 
-Linux und macOS verwenden denselben Desktop-View wie Windows, benötigen jedoch eine kompatible systemweit bereitgestellte LibVLC-Laufzeit. Diese Kombination ist noch nicht praktisch verifiziert und gehört deshalb weiterhin zur technischen Vorschau.
+Linux und macOS verwenden denselben Desktop-View wie Windows und benötigen eine kompatible systemweit bereitgestellte LibVLC-Laufzeit. Das Debian-/Ubuntu-Paket deklariert diese Abhängigkeit explizit; Linux-CI lädt LibVLC vor dem UI-Start. macOS bleibt bis zu einer nativen Paket- und Wiedergabeprüfung eine technische Vorschau.
 
 ## Plattformarchitektur
 
@@ -14,7 +14,8 @@ Die gemeinsame Anwendung hält Wiedergabestatus, Befehle und Lebenszyklus unabh�
 |---|---|
 | Windows | Video über `LibVLCSharp.Avalonia.VideoView`, Audio ohne Bildausgabe; jeweils im eigenen nicht-modalen Dokumentfenster, mehrere Fenster parallel möglich |
 | Android | Video über eine native, mit Avalonias `NativeControlHost` eingebettete Ansicht; Audio ohne Bildausgabe; `VideoLAN.LibVLC.Android` 3.7.0-beta für `arm64-v8a` und `x86_64` |
-| Linux/macOS | Video über Desktop-`VideoView`, Audio ohne Bildausgabe; systemweite LibVLC-Laufzeit erforderlich und noch nicht verifiziert |
+| Linux | Video über Desktop-`VideoView`, Audio ohne Bildausgabe; systemweite LibVLC-Laufzeit aus den Paketabhängigkeiten |
+| macOS | Video über Desktop-`VideoView`, Audio ohne Bildausgabe; systemweite LibVLC-Laufzeit erforderlich und noch nicht praktisch verifiziert |
 
 Eine Wiedergabesitzung besitzt genau einen LibVLC-Player und genau einen entschlüsselten Eingabestrom; Darstellungsänderungen innerhalb ihres Fensters erzeugen keine zweite entschlüsselte Kopie. Audio und Video teilen denselben LibVLC-Dienst; nur Videos fordern eine Plattformoberfläche an. Auf Desktop-Systemen besitzt jedes gleichzeitig geöffnete Mediendokument eine unabhängige Sitzung. Dadurch summiert sich der Speicherbedarf der entschlüsselten Dateien und Decoder. Beim Schließen eines Dokumentfensters wird nur dessen Sitzung beendet; beim Sperren oder Beenden werden alle offenen Sitzungen vollständig beendet und eventuell vorhandene native Videoansichten getrennt. Android hält weiterhin genau eine eingebettete Dokumentansicht vor.
 
@@ -73,7 +74,7 @@ Die gemeinsamen Tests prüfen mindestens:
 - unabhängiges Schließen paralleler Desktop-Wiedergabesitzungen und Beenden aller Sitzungen bei Tresorsperre;
 - Bereinigung des verwalteten Puffers nach der Freigabe sowie bei einer fehlgeschlagenen Initialisierung.
 
-Zusätzlich müssen Desktop- und Android-Projekt in Release-Konfiguration gebaut werden. Der Windows-Publish- und Installer-Test prüft, dass Wrapper, native VideoLAN-Laufzeit und Plugins vollständig enthalten sind.
+Zusätzlich müssen Desktop- und Android-Projekt in Release-Konfiguration gebaut werden. Der Windows-Publish- und Installer-Test prüft, dass Wrapper, native VideoLAN-Laufzeit und Plugins vollständig enthalten sind. Linux-CI baut `.deb` und `.tar.gz`, installiert das Debian-Paket, lädt die systemweite LibVLC-Laufzeit über `--media-runtime-probe` und startet die installierte Avalonia-App unter Xvfb.
 
 ## Manuelle Abnahme
 
@@ -87,4 +88,5 @@ Vor einem Release sind mindestens diese Fälle mit einem kurzen und einem größ
 - `x86_64`-Paketinhalt und Emulatorstart sowie, sobald verfügbar, Android 16 mit 16-KB-Speicherseiten; diese Prüfungen heben das reale Gerätetest-Gate für die Beta-Laufzeit nicht auf;
 - mindestens MP4/H.264 sowie ein weiteres im Tresor verwendetes Videoformat mit Tonspur;
 - Speicherbeobachtung bei einem größeren Video und Rückgang nach dem Schließen der Sitzung;
-- Linux und macOS nur dann als unterstützt ausweisen, wenn Start, Wiedergabe und Paketierung mit der dokumentierten systemweiten LibVLC-Laufzeit erfolgreich geprüft wurden.
+- Linux auf einer unterstützten Debian-/Ubuntu-Version: Installation und Deinstallation des `.deb`, Start aus Anwendungsmenü und Terminal sowie Audio-/Videowiedergabe mit der systemweiten LibVLC-Laufzeit;
+- macOS nur dann als unterstützt ausweisen, wenn Start, Wiedergabe und Paketierung mit der dokumentierten systemweiten LibVLC-Laufzeit erfolgreich geprüft wurden.

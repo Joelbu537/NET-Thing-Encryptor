@@ -98,9 +98,34 @@
               <TextBlock Text="Ein vollständiges Tresorarchiv zur sicheren Aufbewahrung an einem anderen Ort erstellen. Behandle die Sicherung genauso vertraulich wie den Tresor selbst."
                          Opacity="0.7"
                          TextWrapping="Wrap" />
-              <Button Content="Tresorarchiv exportieren …"
-                      Command="{Binding ExportVaultCommand}"
-                      HorizontalAlignment="Left" />
+              <StackPanel Spacing="10">
+                <Button Content="{Binding ExportVaultButtonText}"
+                        Command="{Binding ExportVaultCommand}"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center" />
+
+                <Grid RowDefinitions="Auto,Auto"
+                      RowSpacing="6"
+                      VerticalAlignment="Center"
+                      IsVisible="{Binding IsVaultExportProgressVisible}">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <TextBlock Text="{Binding VaultExportProgressDetail}"
+                               TextTrimming="CharacterEllipsis"
+                               Opacity="0.75" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding VaultExportProgressPercentText}"
+                               FontFamily="Consolas"
+                               FontWeight="SemiBold" />
+                  </Grid>
+                  <ProgressBar Grid.Row="1"
+                               Minimum="0"
+                               Maximum="100"
+                               Value="{Binding VaultExportProgress}"
+                               Height="8"
+                               Foreground="#1769AA"
+                               AutomationProperties.Name="Fortschritt des Tresorarchiv-Exports" />
+                </Grid>
+              </StackPanel>
             </StackPanel>
           </Border>
         </StackPanel>
@@ -112,7 +137,8 @@
                 Margin="0,0,8,0" />
         <Button Content="Speichern und anwenden"
                 Classes="primary"
-                Command="{Binding SavePreferencesCommand}" />
+                Command="{Binding SavePreferencesCommand}"
+                IsDefault="True" />
       </WrapPanel>
     </Grid>
   </Border>

@@ -5,6 +5,7 @@
         x:Class="Nte.App.Views.VaultDocumentWindow"
         x:DataType="vm:VaultDocumentViewModel"
         Title="{Binding DisplayName}"
+        Icon="/Assets/AppIcon.png"
         Width="960"
         Height="720"
         MinWidth="640"

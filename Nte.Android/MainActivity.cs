@@ -12,6 +12,7 @@ namespace Nte.Android;
     Theme = "@style/NteTheme.NoActionBar",
     MainLauncher = true,
     Exported = true,
+    WindowSoftInputMode = SoftInput.AdjustResize,
     ConfigurationChanges = ConfigChanges.Orientation |
                            ConfigChanges.ScreenSize |
                            ConfigChanges.UiMode)]
@@ -20,6 +21,7 @@ public sealed class MainActivity : AvaloniaMainActivity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+        Window?.SetSoftInputMode(SoftInput.AdjustResize);
         Window?.AddFlags(WindowManagerFlags.Secure);
     }
 

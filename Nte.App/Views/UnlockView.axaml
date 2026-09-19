@@ -4,64 +4,140 @@
              x:Class="Nte.App.Views.UnlockView"
              x:DataType="vm:UnlockViewModel"
              Loaded="UnlockView_Loaded">
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+  <ScrollViewer x:Name="UnlockScrollViewer"
+                HorizontalScrollBarVisibility="Disabled"
                 VerticalScrollBarVisibility="Auto">
-    <Border Margin="16" MaxWidth="520" Padding="24" CornerRadius="12" BorderThickness="1"
-            BorderBrush="#40607080" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Border x:Name="UnlockMenu"
+            Margin="16" MaxWidth="600" Padding="24" CornerRadius="12" BorderThickness="1"
+            BorderBrush="#40607080" HorizontalAlignment="Center" VerticalAlignment="Top">
       <StackPanel Spacing="16">
-        <TextBlock Classes="page-title" Text="{Binding Heading}" />
-        <TextBlock Text="{Binding InstructionText}"
-                   TextWrapping="Wrap" Opacity="0.75" />
-        <TextBlock Text="Passwort" FontWeight="SemiBold" />
-        <TextBox x:Name="PasswordTextBox"
-                 Classes="single-line"
-                 Text="{Binding Password, Mode=TwoWay}"
-                 PasswordChar="●"
-                 PlaceholderText="Passwort"
-                 MinHeight="42" />
-        <StackPanel Spacing="8" IsVisible="{Binding IsPasswordConfirmationVisible}">
-          <TextBlock Text="Passwort bestätigen" FontWeight="SemiBold" />
-          <TextBox Classes="single-line"
-                   Text="{Binding PasswordConfirmation, Mode=TwoWay}"
-                   PasswordChar="●"
-                   PlaceholderText="Passwort bestätigen"
-                   MinHeight="42" />
-        </StackPanel>
-        <Button Classes="primary" Content="Entsperren" Command="{Binding UnlockCommand}"
-                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                VerticalContentAlignment="Center"
-                MinHeight="42" IsDefault="True" />
-        <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
-        <StackPanel x:Name="VaultSourceSelection"
+        <TabControl x:Name="VaultSourceTabs"
+                    SelectedIndex="{Binding SelectedVaultSourceIndex, Mode=TwoWay}">
+          <TabItem x:Name="LocalVaultTab" Header="Lokal">
+            <Border x:Name="LocalVaultArea"
+                    Padding="14"
                     Margin="0,8,0,0"
+                    CornerRadius="8"
+                    Background="#101769AA">
+              <StackPanel Spacing="8">
+                <TextBlock Text="Lokaler Tresor" FontWeight="SemiBold" />
+                <TextBlock Text="Verwende den verschlüsselten Tresor, der auf diesem Gerät gespeichert ist."
+                           TextWrapping="Wrap" Opacity="0.75" />
+                <TextBlock Text="Der lokale Tresor ist ausgewählt."
+                           IsVisible="{Binding IsLocalVault}"
+                           FontWeight="SemiBold" />
+                <Button x:Name="UseLocalVaultButton"
+                        Content="Lokalen Tresor auswählen"
+                        Command="{Binding UseLocalVaultCommand}"
+                        IsVisible="{Binding IsRemoteVault}"
+                        HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+          </TabItem>
+
+          <TabItem x:Name="RemoteVaultTab" Header="Remote">
+            <Border x:Name="RemoteVaultArea"
+                    Padding="14"
+                    Margin="0,8,0,0"
+                    CornerRadius="8"
+                    Background="#101769AA"
+                    IsVisible="{Binding IsRemoteConnectionVisible}">
+              <StackPanel Spacing="8">
+                <TextBlock Text="Remote-Tresor" FontWeight="SemiBold" />
+                <TextBlock Text="Gib den Servernamen oder die IP-Adresse ein; HTTPS wird automatisch verwendet. Das Server-Zugangspasswort ist vom Tresorpasswort getrennt."
+                           TextWrapping="Wrap" Opacity="0.75" />
+                <TextBox x:Name="RemoteAddressTextBox"
+                         Classes="single-line"
+                         Text="{Binding RemoteAddress, Mode=TwoWay}"
+                         PlaceholderText="vault.example.net"
+                         MinHeight="42"
+                         KeyDown="RemoteInput_KeyDown" />
+                <TextBox x:Name="RemoteAccessPasswordTextBox"
+                         Classes="single-line"
+                         Text="{Binding RemoteAccessPassword, Mode=TwoWay}"
+                         PasswordChar="●"
+                         PlaceholderText="Server-Zugangspasswort"
+                         MinHeight="42"
+                         KeyDown="RemoteInput_KeyDown" />
+                <Button x:Name="ConnectRemoteVaultButton"
+                        Content="Mit Remote-Tresor verbinden"
+                        Command="{Binding ConnectRemoteVaultCommand}"
+                        IsDefault="{Binding IsRemoteConnectionVisible}"
+                        HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+          </TabItem>
+        </TabControl>
+
+        <TextBlock Classes="error" Text="{Binding ErrorMessage}" />
+
+        <StackPanel x:Name="VaultAccessArea"
                     Spacing="12"
-                    IsVisible="{Binding IsVaultSourceSelectionVisible}">
+                    IsVisible="{Binding IsVaultAccessVisible}">
+          <TextBlock Text="{Binding Heading}"
+                     FontSize="20"
+                     FontWeight="SemiBold" />
+          <TextBlock Text="{Binding InstructionText}"
+                     TextWrapping="Wrap" Opacity="0.75" />
+          <TextBlock Text="{Binding StorageDescription}"
+                     TextWrapping="Wrap" FontWeight="SemiBold" />
+          <TextBlock Text="Passwort" FontWeight="SemiBold" />
+          <TextBox x:Name="PasswordTextBox"
+                   Classes="single-line"
+                   Text="{Binding Password, Mode=TwoWay}"
+                   PasswordChar="●"
+                   PlaceholderText="Passwort"
+                   MinHeight="42"
+                   KeyDown="VaultInput_KeyDown" />
+          <StackPanel Spacing="8" IsVisible="{Binding IsPasswordConfirmationVisible}">
+            <TextBlock Text="Passwort bestätigen" FontWeight="SemiBold" />
+            <TextBox x:Name="PasswordConfirmationTextBox"
+                     Classes="single-line"
+                     Text="{Binding PasswordConfirmation, Mode=TwoWay}"
+                     PasswordChar="●"
+                     PlaceholderText="Passwort bestätigen"
+                     MinHeight="42"
+                     KeyDown="VaultInput_KeyDown" />
+          </StackPanel>
+          <Button x:Name="UnlockVaultButton"
+                  Classes="primary" Content="Entsperren" Command="{Binding UnlockCommand}"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  VerticalContentAlignment="Center"
+                  MinHeight="42" IsDefault="{Binding IsVaultAccessVisible}" />
+
           <Border x:Name="VaultImportArea"
-                  Padding="14" CornerRadius="8" Background="#101769AA">
+                  Padding="14" CornerRadius="8" Background="#101769AA"
+                  IsVisible="{Binding IsArchiveImportVisible}">
             <StackPanel Spacing="8">
               <TextBlock Text="Vorhandenen Tresor übernehmen" FontWeight="SemiBold" />
               <TextBlock Text="Importiere ein vorhandenes .ntevault-Archiv von diesem Gerät."
                          TextWrapping="Wrap" Opacity="0.75" />
-              <Button Content="Tresorarchiv importieren …"
+              <Button Content="{Binding ImportVaultButtonText}"
                       Command="{Binding ImportVaultCommand}"
                       IsEnabled="{Binding CanImportVault}"
                       HorizontalAlignment="Left" />
-            </StackPanel>
-          </Border>
-          <Border x:Name="RemoteVaultArea"
-                  Padding="14"
-                  CornerRadius="8"
-                  Background="#101769AA"
-                  ToolTip.Tip="{Binding RemoteVaultConnectionHint}">
-            <StackPanel Spacing="8">
-              <TextBlock Text="Remote-Tresor" FontWeight="SemiBold" />
-              <TextBlock Text="Verbinde dich künftig mit einem Tresor auf einem anderen Server. Diese Funktion ist noch nicht verfügbar."
-                         TextWrapping="Wrap" Opacity="0.75" />
-              <Button x:Name="ConnectRemoteVaultButton"
-                      Content="Mit Remote-Tresor verbinden"
-                      IsEnabled="{Binding CanConnectRemoteVault}"
-                      ToolTip.Tip="{Binding RemoteVaultConnectionHint}"
-                      HorizontalAlignment="Left" />
+              <Grid RowDefinitions="Auto,Auto"
+                    RowSpacing="6"
+                    IsVisible="{Binding IsVaultImportProgressVisible}">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <TextBlock Text="{Binding VaultImportProgressDetail}"
+                             TextTrimming="CharacterEllipsis"
+                             Opacity="0.75" />
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding VaultImportProgressPercentText}"
+                             FontFamily="Consolas"
+                             FontWeight="SemiBold" />
+                </Grid>
+                <ProgressBar x:Name="VaultImportProgressBar"
+                             Grid.Row="1"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="{Binding VaultImportProgress}"
+                             IsIndeterminate="{Binding IsVaultImportProgressIndeterminate}"
+                             Height="8"
+                             Foreground="#1769AA"
+                             AutomationProperties.Name="Fortschritt des Tresorarchiv-Imports" />
+              </Grid>
             </StackPanel>
           </Border>
         </StackPanel>

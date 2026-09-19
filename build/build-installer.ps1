@@ -199,13 +199,18 @@ $iconPath = Join-Path $repoRoot $(if ($isWinFormsRollback) {
 } else {
     "Nte.Desktop\image.ico"
 })
-$artifactRoot = Join-Path $repoRoot $(if ($isWinFormsRollback) {
-    "artifacts\legacy-winforms"
+$artifactRoot = Join-Path $repoRoot "artifacts"
+$platformDirectory = "windows-x64"
+$publishDir = Join-Path $artifactRoot $(if ($isWinFormsRollback) {
+    "staging\legacy-winforms\$platformDirectory\publish"
 } else {
-    "artifacts"
+    "staging\desktop\$platformDirectory\publish"
 })
-$publishDir = Join-Path $artifactRoot "publish\NET Thing Encryptor\$Runtime"
-$installerOutputDir = Join-Path $artifactRoot "installer"
+$installerOutputDir = Join-Path $artifactRoot $(if ($isWinFormsRollback) {
+    "verification\legacy-winforms\$platformDirectory"
+} else {
+    "release\desktop\$platformDirectory"
+})
 $version = Get-ProjectProperty -ProjectFile $projectFile -PropertyName "Version" -DefaultValue "0.0.0"
 $fileVersion = Get-ProjectProperty -ProjectFile $projectFile -PropertyName "FileVersion" -DefaultValue "$version.0"
 $outputBaseFilename = if ($isWinFormsRollback) {
@@ -246,7 +251,22 @@ Invoke-DotNet -Arguments @("restore", $projectFile, "-r", $Runtime)
 
 if (-not $SkipTests) {
     Write-Host "Running release tests..."
-    Invoke-DotNet -Arguments @("test", $solutionFile, "-c", $Configuration, "--no-restore")
+    if ($isWinFormsRollback) {
+        Invoke-DotNet -Arguments @("test", $solutionFile, "-c", $Configuration, "--no-restore")
+    } else {
+        foreach ($testProject in @(
+            "Nte.Core.Tests\Nte.Core.Tests.csproj",
+            "Nte.Storage.Tests\Nte.Storage.Tests.csproj",
+            "Nte.App.Tests\Nte.App.Tests.csproj")) {
+            Invoke-DotNet -Arguments @(
+                "run",
+                "--project", (Join-Path $repoRoot $testProject),
+                "-c", $Configuration,
+                "--no-restore",
+                "--",
+                "--minimum-expected-tests", "1")
+        }
+    }
 }
 
 $publishArguments = @(

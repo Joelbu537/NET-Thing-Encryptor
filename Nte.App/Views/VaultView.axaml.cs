@@ -81,6 +81,11 @@ public sealed partial class VaultView : UserControl
     {
         if (args.PropertyName == nameof(VaultViewModel.ShowSettings))
             Dispatcher.UIThread.Post(UpdateSettingsPresentation);
+        if (args.PropertyName is nameof(VaultViewModel.ShowCreateFolderDialog) or
+            nameof(VaultViewModel.ShowRenameDialog))
+        {
+            Dispatcher.UIThread.Post(FocusActionDialogInput, DispatcherPriority.Input);
+        }
     }
 
     private void OnOpenDocumentsChanged(object? sender, NotifyCollectionChangedEventArgs args)
@@ -229,18 +234,46 @@ public sealed partial class VaultView : UserControl
         }
     }
 
-    private void ItemActionsButton_Click(object? sender, RoutedEventArgs args)
-    {
-        if (sender is Button { DataContext: VaultItemViewModel item } button)
-            SelectItem(button, item, preserveExisting: false);
-    }
-
     private async void SearchTextBox_KeyDown(object? sender, KeyEventArgs args)
     {
         if (args.Key != Key.Enter || DataContext is not VaultViewModel viewModel)
             return;
         args.Handled = true;
         await viewModel.SearchCommand.ExecuteAsync();
+    }
+
+    private async void ActionTextBox_KeyDown(object? sender, KeyEventArgs args)
+    {
+        if (args.Key != Key.Enter || DataContext is not VaultViewModel viewModel)
+            return;
+
+        AsyncCommand? command = viewModel.ShowCreateFolderDialog
+            ? viewModel.CreateFolderCommand
+            : viewModel.ShowRenameDialog
+                ? viewModel.RenameCommand
+                : null;
+        if (command is null || !command.CanExecute(null))
+            return;
+
+        args.Handled = true;
+        await command.ExecuteAsync();
+    }
+
+    private void FocusActionDialogInput()
+    {
+        if (DataContext is not VaultViewModel viewModel)
+            return;
+
+        TextBox? input = viewModel.ShowCreateFolderDialog
+            ? CreateFolderNameTextBox
+            : viewModel.ShowRenameDialog
+                ? RenameNameTextBox
+                : null;
+        if (input is null || !input.IsAttachedToVisualTree() || !input.IsEffectivelyVisible)
+            return;
+
+        input.Focus();
+        input.SelectAll();
     }
 
     private void SelectItem(Control origin, VaultItemViewModel item, bool preserveExisting)

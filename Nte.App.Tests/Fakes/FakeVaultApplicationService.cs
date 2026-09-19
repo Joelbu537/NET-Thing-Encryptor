@@ -9,6 +9,8 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
 
     public bool HasPersistedVault { get; set; } = true;
     public bool IsUnlocked { get; private set; }
+    public bool IsRemoteVault { get; private set; }
+    public string StorageLocation { get; private set; } = "local";
     public bool InitializeResult { get; set; } = true;
     public bool UnlockResult { get; set; } = true;
     public int ArchiveImportResult { get; set; } = 4;
@@ -33,13 +35,51 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
     public List<(ulong Id, CancellationToken CancellationToken)> ReadFileRequests { get; } = [];
     public Func<ulong, CancellationToken, Task<IReadOnlyList<VaultItem>>>? GetFolderItemsAsyncHandler { get; set; }
     public Func<ulong, CancellationToken, Task<VaultFileContent>>? ReadFileAsyncHandler { get; set; }
+    public Func<Stream, IProgress<VaultArchiveExportProgress>?, CancellationToken, Task<int>>?
+        ExportVaultAsyncHandler { get; set; }
+    public Func<Stream, IProgress<VaultArchiveImportProgress>?, CancellationToken, Task<int>>?
+        ImportVaultAsyncHandler { get; set; }
+    public bool LocalHasPersistedVault { get; set; } = true;
     public int UnlockCalls { get; private set; }
+    public int RemoteConnectCalls { get; private set; }
+    public int UseLocalVaultCalls { get; private set; }
+    public string? LastRemoteAddress { get; private set; }
+    public string? LastRemoteAccessPassword { get; private set; }
+    public Exception? RemoteConnectException { get; set; }
     public int ArchiveImportCalls { get; private set; }
     public int ArchiveExportCalls { get; private set; }
     public bool Disposed { get; private set; }
 
     public Task<bool> InitializeAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(InitializeResult);
+
+    public Task ConnectRemoteVaultAsync(
+        string address,
+        string accessPassword,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        RemoteConnectCalls++;
+        LastRemoteAddress = address;
+        LastRemoteAccessPassword = accessPassword;
+        if (RemoteConnectException is not null)
+            return Task.FromException(RemoteConnectException);
+        IsUnlocked = false;
+        IsRemoteVault = true;
+        StorageLocation = address.TrimEnd('/');
+        return Task.CompletedTask;
+    }
+
+    public Task UseLocalVaultAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        UseLocalVaultCalls++;
+        IsUnlocked = false;
+        IsRemoteVault = false;
+        HasPersistedVault = LocalHasPersistedVault;
+        StorageLocation = "local";
+        return Task.CompletedTask;
+    }
 
     public Task<bool> UnlockAsync(string password, CancellationToken cancellationToken = default)
     {
@@ -161,21 +201,34 @@ internal sealed class FakeVaultApplicationService : IVaultApplicationService
 
     public async Task<int> ExportVaultAsync(
         Stream destination,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveExportProgress>? progress = null)
     {
         ArchiveExportCalls++;
+        if (ExportVaultAsyncHandler is not null)
+            return await ExportVaultAsyncHandler(destination, progress, cancellationToken);
         await destination.WriteAsync("archive"u8.ToArray(), cancellationToken);
+        progress?.Report(new VaultArchiveExportProgress(1, 1, ArchiveExportResult, ArchiveExportResult));
         return ArchiveExportResult;
     }
 
     public async Task<int> ImportVaultAsync(
         Stream source,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveImportProgress>? progress = null)
     {
         ArchiveImportCalls++;
+        if (ImportVaultAsyncHandler is not null)
+            return await ImportVaultAsyncHandler(source, progress, cancellationToken);
         using var content = new MemoryStream();
         await source.CopyToAsync(content, cancellationToken);
         HasPersistedVault = true;
+        progress?.Report(new VaultArchiveImportProgress(
+            1,
+            1,
+            ArchiveImportResult,
+            ArchiveImportResult,
+            VaultArchiveImportPhase.Completing));
         return ArchiveImportResult;
     }
 

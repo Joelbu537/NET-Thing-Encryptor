@@ -5,6 +5,7 @@
         x:Class="Nte.App.Views.SettingsWindow"
         x:DataType="vm:VaultViewModel"
         Title="Einstellungen"
+        Icon="/Assets/AppIcon.png"
         Width="600"
         Height="650"
         MinWidth="480"

@@ -11,11 +11,11 @@
 #endif
 
 #ifndef SourceDir
-#define SourceDir "..\artifacts\publish\NET Thing Encryptor\win-x64"
+#define SourceDir "..\artifacts\staging\desktop\windows-x64\publish"
 #endif
 
 #ifndef OutputDir
-#define OutputDir "..\artifacts\installer"
+#define OutputDir "..\artifacts\release\desktop\windows-x64"
 #endif
 
 #ifndef OutputBaseFilename
@@ -43,7 +43,7 @@ DisableWelcomePage=no
 OutputDir={#OutputDir}
 OutputBaseFilename={#OutputBaseFilename}
 SetupIconFile={#IconPath}
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\{#AppExeName},0
 UninstallDisplayName={#AppName}
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Installer
@@ -91,8 +91,8 @@ Type: files; Name: "{app}\LibVLCSharp*.dll"
 Type: files; Name: "{app}\Magick*.dll"
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"; IconIndex: 0
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#AppExeName}"; IconIndex: 0; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent

@@ -9,6 +9,106 @@ permissions:
   contents: write
 
 jobs:
+  linux-desktop-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+      AVALONIA_TELEMETRY_OPTOUT: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Install Linux desktop runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            libvlc5 vlc-plugin-base vlc-plugin-video-output \
+            libx11-6 libice6 libsm6 libfontconfig1
+
+      - name: Run Linux release tests
+        run: |
+          dotnet run --project ./Nte.Core.Tests/Nte.Core.Tests.csproj -c Release -- --minimum-expected-tests 1
+          dotnet run --project ./Nte.Storage.Tests/Nte.Storage.Tests.csproj -c Release -- --minimum-expected-tests 1
+          dotnet run --project ./Nte.App.Tests/Nte.App.Tests.csproj -c Release -- --minimum-expected-tests 1
+
+      - name: Build Linux desktop packages
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild ./Nte.Desktop/Nte.Desktop.csproj -getProperty:Version).Trim()
+          $tagVersion = '${{ github.ref_name }}'.TrimStart('v')
+          if ($tagVersion -ne $version) {
+            throw "Tag '$tagVersion' and desktop '$version' versions must match."
+          }
+          ./build/build-linux-package.ps1 -Clean -ExpectedVersion $tagVersion
+
+      - name: Install and smoke-test Linux package
+        run: |
+          sudo apt-get install --yes ./artifacts/release/desktop/linux-x64/*.deb
+          net-thing-encryptor --media-runtime-probe
+          xvfb-run -a net-thing-encryptor --startup-probe
+
+      - name: Upload Linux desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Linux-${{ github.ref_name }}
+          path: |
+            artifacts/release/desktop/linux-x64/*.deb
+            artifacts/release/desktop/linux-x64/*.tar.gz
+            artifacts/release/desktop/linux-x64/*.sha256
+          if-no-files-found: error
+
+  server-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: true
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.400
+
+      - name: Publish Linux server packages
+        shell: bash
+        run: |
+          version="$(dotnet msbuild ./Nte.RemoteServer/Nte.RemoteServer.csproj -getProperty:Version)"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ "$tag_version" != "$version" ]]; then
+            echo "Tag '$tag_version' and server '$version' versions must match." >&2
+            exit 1
+          fi
+          for rid in linux-x64 linux-arm64; do
+            output="./artifacts/staging/server/$rid/publish"
+            release_directory="./artifacts/release/server/$rid"
+            archive="$release_directory/NET-Thing-Encryptor-Remote-Server-$version-$rid.tar.gz"
+            mkdir -p "$release_directory"
+            dotnet publish ./Nte.RemoteServer/Nte.RemoteServer.csproj \
+              -c Release -r "$rid" --self-contained false -o "$output"
+            tar -C "$output" -czf "$archive" .
+            hash="$(sha256sum "$archive" | cut -d ' ' -f1)"
+            printf '%s *%s\n' "$hash" "$(basename "$archive")" > "$archive.sha256"
+          done
+
+      - name: Upload Linux server artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Remote-Server-${{ github.ref_name }}
+          path: |
+            artifacts/release/server/**/*.tar.gz
+            artifacts/release/server/**/*.sha256
+          if-no-files-found: error
+
   android-release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -99,7 +199,7 @@ jobs:
           & $apksigner.FullName verify $apk.FullName
           if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
 
-          $artifactDirectory = New-Item -ItemType Directory -Force '.\artifacts\android'
+          $artifactDirectory = New-Item -ItemType Directory -Force '.\artifacts\release\android'
           foreach ($package in @($aab, $apk)) {
             $destination = Join-Path $artifactDirectory.FullName "NET-Thing-Encryptor-Android-$version$($package.Extension)"
             Copy-Item $package.FullName $destination
@@ -112,7 +212,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NET-Thing-Encryptor-Android-${{ github.ref_name }}
-          path: artifacts/android
+          path: artifacts/release/android
           if-no-files-found: error
 
       - name: Remove Android signing files
@@ -129,7 +229,7 @@ jobs:
           }
 
   windows-release:
-    needs: android-release
+    needs: [android-release, linux-desktop-release, server-release]
     runs-on: windows-latest
     timeout-minutes: 30
     env:
@@ -179,23 +279,33 @@ jobs:
             throw "Tag version '$tagVersion' does not match project version '$version'."
           }
           .\build\build-installer.ps1 -Clean -ExpectedVersion $tagVersion -RequireSignature
-          $installer = ".\artifacts\installer\NET-Thing-Encryptor-Setup-$version.exe"
+          $installer = ".\artifacts\release\desktop\windows-x64\NET-Thing-Encryptor-Setup-$version.exe"
           .\build\test-installer.ps1 -InstallerPath $installer -ExpectedVersion $version -RunInstallation -RequireSignature
 
       - name: Download signed Android artifacts
         uses: actions/download-artifact@v4
         with:
           name: NET-Thing-Encryptor-Android-${{ github.ref_name }}
-          path: artifacts/android
+          path: artifacts/release/android
+
+      - name: Download Linux server artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Remote-Server-${{ github.ref_name }}
+          path: artifacts/release/server
+
+      - name: Download Linux desktop artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: NET-Thing-Encryptor-Linux-${{ github.ref_name }}
+          path: artifacts/release/desktop/linux-x64
 
       - name: Upload signed release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: NET-Thing-Encryptor-${{ github.ref_name }}
           path: |
-            artifacts/installer/*.exe
-            artifacts/installer/*.sha256
-            artifacts/android/*
+            artifacts/release/**/*
           if-no-files-found: error
 
       - name: Publish GitHub release
@@ -203,9 +313,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $assets = Get-ChildItem '.\artifacts\installer', '.\artifacts\android' -File |
+          $assets = Get-ChildItem '.\artifacts\release' -File -Recurse |
             Where-Object {
-              $_.Extension -in @('.exe', '.aab', '.apk') -or $_.Name.EndsWith('.sha256')
+              $_.Extension -in @('.exe', '.aab', '.apk', '.deb', '.gz') -or $_.Name.EndsWith('.sha256')
             } |
             ForEach-Object { $_.FullName }
           gh release create $env:GITHUB_REF_NAME @assets `

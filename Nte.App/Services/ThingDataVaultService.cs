@@ -4,14 +4,23 @@ namespace Nte.App.Services;
 
 public sealed class ThingDataVaultService : IVaultApplicationService
 {
-    private readonly IVaultStorage _storage;
+    private readonly IVaultStorage _localStorage;
+    private readonly Func<string, string, IVaultStorage> _remoteStorageFactory;
     private readonly VaultArchiveService _archiveService;
+    private IVaultStorage _storage;
     private bool _disposed;
 
-    public ThingDataVaultService(IVaultStorage storage, VaultArchiveService? archiveService = null)
+    public ThingDataVaultService(
+        IVaultStorage storage,
+        VaultArchiveService? archiveService = null,
+        Func<string, string, IVaultStorage>? remoteStorageFactory = null)
     {
-        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _localStorage = storage ?? throw new ArgumentNullException(nameof(storage));
+        _storage = _localStorage;
         _archiveService = archiveService ?? new VaultArchiveService();
+        _remoteStorageFactory = remoteStorageFactory
+            ?? ((address, accessPassword) =>
+                new RemoteVaultStorage(address, accessPassword));
         ThingData.ConfigureStorage(_storage);
         ThingData.NotificationRaised += ForwardNotification;
     }
@@ -20,12 +29,85 @@ public sealed class ThingDataVaultService : IVaultApplicationService
 
     public bool HasPersistedVault => _storage.Exists(0);
     public bool IsUnlocked => ThingData.IsSessionUnlocked;
+    public bool IsRemoteVault => !ReferenceEquals(_storage, _localStorage);
+    public string StorageLocation => _storage.ObjectLocation;
 
     public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
         cancellationToken.ThrowIfCancellationRequested();
         return ThingData.LoadMainData();
+    }
+
+    public async Task ConnectRemoteVaultAsync(
+        string address,
+        string accessPassword,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        if (IsUnlocked)
+            throw new InvalidOperationException("Lock the current vault before changing its storage.");
+
+        IVaultStorage candidate = _remoteStorageFactory(address, accessPassword);
+        try
+        {
+            await candidate.InitializeAsync(cancellationToken).ConfigureAwait(false);
+            IVaultStorage previous = _storage;
+            ThingData.LockSession();
+            ThingData.ConfigureStorage(candidate);
+            _storage = candidate;
+            try
+            {
+                if (!await ThingData.LoadMainData().ConfigureAwait(false))
+                    throw new InvalidDataException("The remote vault root could not be loaded.");
+            }
+            catch
+            {
+                _storage = previous;
+                ThingData.ConfigureStorage(previous);
+                await ThingData.LoadMainData().ConfigureAwait(false);
+                throw;
+            }
+
+            if (!ReferenceEquals(previous, _localStorage) && previous is IDisposable disposable)
+                disposable.Dispose();
+        }
+        catch
+        {
+            if (!ReferenceEquals(candidate, _storage) && candidate is IDisposable disposable)
+                disposable.Dispose();
+            throw;
+        }
+    }
+
+    public async Task UseLocalVaultAsync(CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+        if (IsUnlocked)
+            throw new InvalidOperationException("Lock the current vault before changing its storage.");
+        if (ReferenceEquals(_storage, _localStorage))
+            return;
+
+        IVaultStorage previous = _storage;
+        await _localStorage.InitializeAsync(cancellationToken).ConfigureAwait(false);
+        ThingData.LockSession();
+        ThingData.ConfigureStorage(_localStorage);
+        _storage = _localStorage;
+        try
+        {
+            if (!await ThingData.LoadMainData().ConfigureAwait(false))
+                throw new InvalidDataException("The local vault root could not be loaded.");
+        }
+        catch
+        {
+            _storage = previous;
+            ThingData.ConfigureStorage(previous);
+            await ThingData.LoadMainData().ConfigureAwait(false);
+            throw;
+        }
+
+        if (previous is IDisposable disposable)
+            disposable.Dispose();
     }
 
     public async Task<bool> UnlockAsync(
@@ -263,18 +345,21 @@ public sealed class ThingDataVaultService : IVaultApplicationService
 
     public async Task<int> ExportVaultAsync(
         Stream destination,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveExportProgress>? progress = null)
     {
         ThrowIfDisposed();
         VaultArchiveExportResult result = await _archiveService.ExportCurrentAsync(
             destination,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            progress).ConfigureAwait(false);
         return result.ObjectCount;
     }
 
     public async Task<int> ImportVaultAsync(
         Stream source,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IProgress<VaultArchiveImportProgress>? progress = null)
     {
         ThrowIfDisposed();
         if (IsUnlocked)
@@ -283,7 +368,8 @@ public sealed class ThingDataVaultService : IVaultApplicationService
         VaultArchiveImportResult result = await _archiveService.ImportAsync(
             source,
             _storage,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            progress).ConfigureAwait(false);
         ThingData.LockSession();
         if (!await ThingData.LoadMainData().ConfigureAwait(false))
             throw new InvalidDataException("The imported vault root could not be loaded.");
@@ -297,6 +383,8 @@ public sealed class ThingDataVaultService : IVaultApplicationService
 
         ThingData.NotificationRaised -= ForwardNotification;
         ThingData.LockSession();
+        if (!ReferenceEquals(_storage, _localStorage) && _storage is IDisposable disposable)
+            disposable.Dispose();
         _disposed = true;
     }
 

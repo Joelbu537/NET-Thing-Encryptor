@@ -36,11 +36,11 @@ Das bestehende Installer-Skript besitzt zwei ausdrücklich getrennte Produktlini
 `Avalonia` bleibt Standard. `WinFormsRollback` verwendet `build/legacy-winforms.slnf`, das alte Windows-Projekt, dessen eigenes Symbol und einen getrennten Artefaktstamm. Das Rückfallsetup heißt:
 
 ```text
-artifacts\legacy-winforms\installer\
+artifacts\verification\legacy-winforms\windows-x64\
 NET-Thing-Encryptor-WinForms-Rollback-Setup-<Version>.exe
 ```
 
-Der Dateiname verhindert eine Verwechslung mit dem regulären Setup. Die Release-Pipeline nimmt ausschließlich Dateien aus `artifacts/installer` auf. Ein Rückfallpaket kann deshalb nicht durch den normalen Tag-Workflow veröffentlicht werden.
+Der Dateiname verhindert eine Verwechslung mit dem regulären Setup. Die Release-Pipeline nimmt ausschließlich Dateien aus `artifacts/release` auf. Ein Rückfallpaket unter `artifacts/verification` kann deshalb nicht durch den normalen Tag-Workflow veröffentlicht werden.
 
 Der Rückfallbuild behält absichtlich dieselbe Inno-App-ID, denselben Installationspfad und dasselbe Datenformat. Im tatsächlichen Notfall benötigt er gemäß M6 eine höhere Patch-Version und eine gültige Signatur; ein Downgrade auf eine alte Versionsnummer bleibt verboten.
 
