@@ -83,7 +83,7 @@ Priority: optional
 Architecture: amd64
 Installed-Size: $installedSize
 Maintainer: NET Thing Encryptor contributors <noreply@github.com>
-Depends: libvlc5, vlc-plugin-base, vlc-plugin-video-output, libx11-6, libice6, libsm6, libfontconfig1
+Depends: libvlc5, libvlc-dev, vlc-plugin-base, vlc-plugin-video-output, libx11-6, libice6, libsm6, libfontconfig1
 Description: Encrypted file vault
  NET Thing Encryptor manages an encrypted local or remote file vault.
 "@

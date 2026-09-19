@@ -54,7 +54,7 @@ Der Linux-x64-Build ist selbstenthaltend und benötigt keine separat installiert
 ./build/build-linux-package.ps1 -Clean
 ```
 
-Die auslieferbaren Ergebnisse liegen unter `artifacts/release/desktop/linux-x64`; Publish- und Paketierungszwischenstände unter `artifacts/staging/desktop/linux-x64`. Das Debian-Paket deklariert `libvlc5`, `vlc-plugin-base`, `vlc-plugin-video-output` sowie die benötigten X11-/Fontconfig-Bibliotheken als Abhängigkeiten. CI installiert das erzeugte Paket und prüft sowohl den Avalonia-Start unter Xvfb als auch das Laden der systemweiten LibVLC-Laufzeit. Details stehen in [docs/linux.md](docs/linux.md).
+Die auslieferbaren Ergebnisse liegen unter `artifacts/release/desktop/linux-x64`; Publish- und Paketierungszwischenstände unter `artifacts/staging/desktop/linux-x64`. Das Debian-Paket deklariert `libvlc5`, `libvlc-dev`, `vlc-plugin-base`, `vlc-plugin-video-output` sowie die benötigten X11-/Fontconfig-Bibliotheken als Abhängigkeiten. CI installiert das erzeugte Paket und prüft sowohl den Avalonia-Start unter Xvfb als auch das Laden der systemweiten LibVLC-Laufzeit. Details stehen in [docs/linux.md](docs/linux.md).
 
 ## Android-Pakete bauen
 

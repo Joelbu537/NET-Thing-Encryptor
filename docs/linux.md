@@ -7,6 +7,7 @@ Der Linux-Desktop-Client wird für x64-Systeme mit Debian- beziehungsweise Ubunt
 Die Anwendung verwendet die systemweite LibVLC-Laufzeit. Dadurch enthält der Linux-Publish keine Windows-DLLs und keine fremden Windows-VLC-Plugins. Das Debian-Paket deklariert diese Laufzeit- und Desktop-Abhängigkeiten:
 
 - `libvlc5`
+- `libvlc-dev` (stellt die für LibVLCSharp benötigten unversionierten Loaderlinks bereit)
 - `vlc-plugin-base`
 - `vlc-plugin-video-output`
 - `libx11-6`

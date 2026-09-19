@@ -5,7 +5,7 @@ This build is self-contained and does not require a separate .NET runtime.
 Audio and video playback require the system LibVLC packages. On Debian and
 Ubuntu install them with:
 
-  sudo apt install libvlc5 vlc-plugin-base vlc-plugin-video-output
+  sudo apt install libvlc5 libvlc-dev vlc-plugin-base vlc-plugin-video-output
 
 Start the application with:
 

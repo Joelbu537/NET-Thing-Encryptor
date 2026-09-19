@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends --yes \
-            libvlc5 vlc-plugin-base vlc-plugin-video-output \
+            libvlc5 libvlc-dev vlc-plugin-base vlc-plugin-video-output \
             libx11-6 libice6 libsm6 libfontconfig1
 
       - name: Test platform-neutral core
